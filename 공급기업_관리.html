@@ -417,6 +417,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
           <div><div class="card-hdr-title">공급 물품 목록</div><div class="card-hdr-desc">등록된 장비의 사양, 사진, 가격을 관리합니다. 수정 내용은 신청 화면에 즉시 반영됩니다.</div></div>
           <div style="display:flex;gap:8px">
             <button class="btn btn-outline btn-sm" onclick="openAddProduct()">➕ 물품 추가</button>
+            <button class="btn btn-outline btn-sm" id="sync-all-btn" onclick="syncAllToSheets()" style="display:none">☁️ 전체 Sheets 동기화</button>
           </div>
         </div>
         <div class="tab-bar" id="prod-tabs">
@@ -855,6 +856,35 @@ async function syncQt(qt,isNew){ saveQts(); if(API_ENABLED){ const r=await apiCa
 async function syncEq(eq){ saveEq(); if(API_ENABLED){ const r=await apiCall('upsertEq',eq); if(!r||!r.ok) showToast('서버 동기화 실패(로컬 저장됨)','warn'); } }
 async function syncDeleteEq(id){ saveEq(); if(API_ENABLED) await apiCall('deleteEq',{id}); }
 
+async function syncAllToSheets(){
+  if(!API_ENABLED){ showToast('API가 연결되지 않았습니다.','error'); return; }
+  if(!confirm(`장비 ${equipment.length}개를 전체 동기화합니다.\n사진은 Google Drive에 업로드됩니다.\n계속하시겠습니까?`)) return;
+  showApiLoading('장비 전체를 Sheets에 동기화 중...');
+  try{
+    const synced=[];
+    for(let i=0;i<equipment.length;i++){
+      const eq={...equipment[i]};
+      let photos=[...(eq.photos||[])];
+      let photos_pkg=[...(eq.photos_pkg||[])];
+      const hasnew=photos.some(p=>p.startsWith('data:'))||photos_pkg.some(p=>p.startsWith('data:'));
+      if(hasnew){
+        showApiLoading(`사진 업로드 중... (${i+1}/${equipment.length}) ${eq.name}`);
+        photos=await apiUploadPhotos(photos,`eq_${eq.name}`,{type:'equipment',eqName:eq.name});
+        photos_pkg=await apiUploadPhotos(photos_pkg,`pkg_${eq.name}`,{type:'pkg',eqName:eq.name});
+        eq.photos=photos; eq.photos_pkg=photos_pkg;
+        equipment[i]=eq;
+      }
+      synced.push(eq);
+    }
+    saveEq();
+    showApiLoading('Sheets에 저장 중...');
+    const r=await apiCall('bulkSaveEq',synced);
+    if(r&&r.ok){ showToast(`${synced.length}개 장비 동기화 완료!`); }
+    else{ showToast('Sheets 저장 실패','error'); }
+  }catch(e){ showToast('오류: '+e.message,'error'); }
+  finally{ hideApiLoading(); }
+}
+
 // ═══════════════════════════════════════════
 // SHOW MAIN
 // ═══════════════════════════════════════════
@@ -863,6 +893,7 @@ async function showMain(){
   document.getElementById('view-main').classList.add('active');
   await loadData();
   initApiStatus('api-status-top');
+  if(API_ENABLED){ const sb=document.getElementById('sync-all-btn'); if(sb) sb.style.display=''; }
   renderApps(); renderProds(); renderQuotes(); renderDashboard();
 }
 
