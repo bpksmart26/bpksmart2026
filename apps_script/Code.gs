@@ -87,6 +87,7 @@ function doPost(e) {
       case 'saveCfg':     result = saveCfg(data); break;
 
       case 'uploadPhoto':    result = uploadPhoto(data); break;
+      case 'getPhotoBase64': result = getPhotoBase64(data); break;
 
       default: result = { ok:false, error:'Unknown action: ' + action };
     }
@@ -308,4 +309,19 @@ function uploadPhoto(data) {
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   const fileId = file.getId();
   return { ok:true, url: 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w600' };
+}
+
+function getPhotoBase64(data) {
+  try {
+    const url = String(data.url || '');
+    const m = url.match(/[?&]id=([^&\s]+)/) || url.match(/\/file\/d\/([^/?]+)/);
+    const fileId = m ? m[1] : '';
+    if (!fileId) return { ok:false, error:'fileId 없음' };
+    const file = DriveApp.getFileById(fileId);
+    const blob = file.getBlob();
+    const mime = blob.getContentType() || 'image/jpeg';
+    return { ok:true, base64: 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes()) };
+  } catch(e) {
+    return { ok:false, error: e.toString() };
+  }
 }

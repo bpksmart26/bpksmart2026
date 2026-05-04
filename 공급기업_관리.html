@@ -1172,6 +1172,12 @@ async function preloadImages(el){
   await Promise.allSettled(imgs.map(async img=>{
     const src=img.getAttribute('src');
     if(!src||src.startsWith('data:')||src.startsWith('blob:')) return;
+    if(src.startsWith('https://drive.google.com')){
+      if(!API_ENABLED) return;
+      const res=await apiCall('getPhotoBase64',{url:src});
+      if(res&&res.ok&&res.base64){ img.src=res.base64; }
+      return;
+    }
     try{
       const resp=await fetch(src,{mode:'cors',cache:'force-cache'});
       if(!resp.ok) return;
