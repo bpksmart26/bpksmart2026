@@ -822,6 +822,8 @@ async function loadData(){
         if(!se) localStorage.setItem(SK.EQ,JSON.stringify(equipment));
         apiCall('bulkSaveEq',equipment); // 최초 1회 Sheets에 업로드
       }
+      // Drive URL → base64 변환 (사진 표시)
+      equipment = await apiResolveEquipmentPhotos(equipment);
       applications=(appRes&&appRes.data)?appRes.data:[];
       quotes=(qtRes&&qtRes.data)?qtRes.data:[];
       if(cfgRes&&cfgRes.data&&Object.keys(cfgRes.data).length>0){

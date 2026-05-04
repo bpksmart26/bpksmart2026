@@ -19,7 +19,69 @@ async function apiCall(action, data = {}) {
   }
 }
 
-// ── 사진 1장을 Drive에 업로드 → URL 반환
+// ── Drive URL → base64 캐시 (페이지 세션 동안 유지)
+const _b64Cache = {};
+
+function _isDriveUrl(url) {
+  return url && typeof url === 'string' && url.startsWith('https://drive.google.com');
+}
+
+// ── Drive URL 1개를 base64로 변환 (캐시 활용)
+async function apiGetPhotoBase64(url) {
+  if (!url || !API_ENABLED) return url;
+  if (!_isDriveUrl(url)) return url;           // Drive URL이 아니면 그대로
+  if (_b64Cache[url]) return _b64Cache[url];   // 캐시 히트
+  const res = await apiCall('getPhotoBase64', { url });
+  if (res && res.ok && res.base64) {
+    _b64Cache[url] = res.base64;
+    return res.base64;
+  }
+  return url; // 실패 시 원본 URL 그대로
+}
+
+// ── 여러 Drive URL을 배치로 base64 변환 (한 번의 API 호출)
+async function apiResolvePhotos(urls) {
+  if (!urls || !urls.length || !API_ENABLED) return urls || [];
+  const toFetch = urls.filter(u => _isDriveUrl(u) && !_b64Cache[u]);
+  if (toFetch.length) {
+    const res = await apiCall('getPhotosBase64', { urls: toFetch });
+    if (res && res.ok && res.data) {
+      Object.entries(res.data).forEach(([k, v]) => { if (v) _b64Cache[k] = v; });
+    }
+  }
+  return urls.map(u => _b64Cache[u] || u);
+}
+
+// ── 장비 배열 전체의 photos / photos_pkg를 base64로 변환
+async function apiResolveEquipmentPhotos(equipmentArr) {
+  if (!API_ENABLED || !equipmentArr || !equipmentArr.length) return equipmentArr;
+  // 모든 Drive URL 수집 (중복 제거)
+  const allUrls = [...new Set(
+    equipmentArr.flatMap(eq => [...(eq.photos||[]), ...(eq.photos_pkg||[])])
+      .filter(_isDriveUrl)
+  )];
+  if (!allUrls.length) return equipmentArr;
+  // 배치 변환
+  const toFetch = allUrls.filter(u => !_b64Cache[u]);
+  if (toFetch.length) {
+    // 20개씩 나눠서 요청 (Apps Script 응답 크기 제한 대비)
+    const CHUNK = 20;
+    for (let i = 0; i < toFetch.length; i += CHUNK) {
+      const res = await apiCall('getPhotosBase64', { urls: toFetch.slice(i, i + CHUNK) });
+      if (res && res.ok && res.data) {
+        Object.entries(res.data).forEach(([k, v]) => { if (v) _b64Cache[k] = v; });
+      }
+    }
+  }
+  // 장비 배열의 photos/photos_pkg를 base64로 교체
+  return equipmentArr.map(eq => ({
+    ...eq,
+    photos:     (eq.photos||[]).map(u => _b64Cache[u] || u),
+    photos_pkg: (eq.photos_pkg||[]).map(u => _b64Cache[u] || u)
+  }));
+}
+
+// ── 사진 1장을 Drive에 업로드 → URL 반환 (업로드 시 base64 캐싱)
 // meta: { type: 'space'|'equipment'|'pkg', company: '회사명', eqName: '장비명' }
 async function apiUploadPhoto(base64DataUrl, name, meta) {
   if (!API_ENABLED) return base64DataUrl;
@@ -32,7 +94,11 @@ async function apiUploadPhoto(base64DataUrl, name, meta) {
     company: meta?.company || '',
     eqName: meta?.eqName || ''
   });
-  return (res && res.ok) ? res.url : base64DataUrl;
+  if (res && res.ok && res.url) {
+    _b64Cache[res.url] = base64DataUrl; // 업로드 직후 캐시 → 즉시 표시 가능
+    return res.url;
+  }
+  return base64DataUrl;
 }
 
 // ── 여러 장 업로드 (순차, 새 base64만 업로드)
