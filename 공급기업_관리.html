@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>공급기업 관리 | (주)비피케이</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script src="jikin.js"></script>
+<style>
+:root{
+  --primary:#1d4ed8;--primary-h:#1e40af;--primary-l:#dbeafe;--primary-50:#eff6ff;
+  --accent:#059669;--accent-l:#d1fae5;--accent-50:#ecfdf5;
+  --orange:#ea580c;--orange-l:#fff7ed;
+  --purple:#7c3aed;--purple-l:#f5f3ff;
+  --danger:#dc2626;--danger-l:#fef2f2;
+  --warn:#d97706;--warn-l:#fffbeb;
+  --g50:#f8fafc;--g100:#f1f5f9;--g200:#e2e8f0;--g300:#cbd5e1;--g400:#94a3b8;
+  --g500:#64748b;--g600:#475569;--g700:#334155;--g800:#1e293b;--g900:#0f172a;
+  --sh:0 2px 12px rgba(0,0,0,.08);--sh-md:0 4px 24px rgba(0,0,0,.12);--sh-lg:0 8px 40px rgba(0,0,0,.18);
+  --r:14px;--r-sm:8px;--sidebar:230px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800);min-height:100vh}
+
+/* ─── LOGIN ─── */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 100%);padding:20px}
+.login-card{background:#fff;border-radius:20px;padding:52px 48px;width:100%;max-width:440px;box-shadow:0 24px 64px rgba(0,0,0,.25)}
+.login-logo-wrap{text-align:center;margin-bottom:32px}
+.login-logo{width:60px;height:60px;background:var(--primary);border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:18px;color:#fff;margin:0 auto 12px}
+.login-company{font-size:18px;font-weight:800;color:var(--g900)}
+.login-sub{font-size:13px;color:var(--g400);margin-top:2px}
+.login-title{font-size:22px;font-weight:800;color:var(--g800);text-align:center;margin-bottom:28px}
+.login-fg{margin-bottom:18px}
+.login-fg label{display:block;font-size:14px;font-weight:600;color:var(--g700);margin-bottom:7px}
+.login-inp{width:100%;padding:13px 16px;border:2px solid var(--g200);border-radius:var(--r-sm);font-family:'Pretendard',sans-serif;font-size:15px;color:var(--g800);outline:none;transition:border-color .2s,box-shadow .2s;height:50px}
+.login-inp:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-50)}
+.login-err{background:var(--danger-l);border:1px solid #fca5a5;color:var(--danger);font-size:14px;font-weight:600;padding:12px 16px;border-radius:var(--r-sm);margin-bottom:18px;text-align:center}
+.login-btn{width:100%;height:52px;background:var(--primary);color:#fff;border:none;border-radius:var(--r-sm);font-family:'Pretendard',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 4px 14px rgba(29,78,216,.3)}
+.login-btn:hover{background:var(--primary-h);transform:translateY(-1px);box-shadow:0 6px 20px rgba(29,78,216,.4)}
+.login-note{text-align:center;font-size:12px;color:var(--g400);margin-top:20px}
+.login-cred{background:var(--g50);border:1px solid var(--g200);border-radius:8px;padding:12px 16px;margin-top:16px;font-size:13px;color:var(--g500);text-align:center}
+.login-cred strong{color:var(--primary)}
+
+/* ─── MAIN LAYOUT ─── */
+#view-main{display:none;min-height:100vh}
+#view-main.active{display:flex}
+.sidebar{width:var(--sidebar);background:var(--g900);min-height:100vh;position:fixed;top:0;left:0;display:flex;flex-direction:column;z-index:100;overflow-y:auto}
+.sb-logo{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-logo-icon{width:40px;height:40px;background:var(--primary);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:#fff;margin-bottom:10px}
+.sb-logo-name{font-size:15px;font-weight:700;color:#fff}
+.sb-logo-sub{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px}
+.sb-sec{padding:14px 14px 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:1.2px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 16px;margin:2px 8px;border-radius:var(--r-sm);font-size:14px;font-weight:500;color:rgba(255,255,255,.6);cursor:pointer;transition:all .15s;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(29,78,216,.4)}
+.nav-icon{font-size:17px;flex-shrink:0}
+.nav-badge{margin-left:auto;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;min-width:20px;text-align:center}
+.nb-red{background:var(--danger);color:#fff}
+.nb-orange{background:var(--orange);color:#fff}
+.nb-green{background:var(--accent);color:#fff}
+.sb-footer{margin-top:auto;padding:16px 14px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:rgba(255,255,255,.3);line-height:1.6}
+.logout-btn{display:flex;align-items:center;gap:8px;padding:9px 14px;margin:4px 8px;border-radius:var(--r-sm);font-size:13px;font-weight:600;color:rgba(255,255,255,.5);cursor:pointer;background:none;border:none;font-family:'Pretendard',sans-serif;transition:all .15s;width:calc(100% - 16px)}
+.logout-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+
+/* ─── MAIN WRAP ─── */
+.main-wrap{margin-left:var(--sidebar);flex:1;min-height:100vh;display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1.5px solid var(--g200);padding:0 28px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--sh)}
+.topbar-title{font-size:18px;font-weight:800;color:var(--g900)}
+.topbar-right{display:flex;align-items:center;gap:14px}
+.topbar-date{font-size:12px;color:var(--g400);font-family:'JetBrains Mono',monospace}
+.topbar-user{display:flex;align-items:center;gap:8px;background:var(--g100);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--g700)}
+
+/* ─── CONTENT ─── */
+.content{padding:28px;display:none;flex:1}
+.content.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.content.active{animation:fadeUp .25s ease}
+
+/* ─── STAT CARDS ─── */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:22px;box-shadow:var(--sh)}
+.stat-icon{float:right;font-size:30px;margin-top:-4px}
+.stat-label{font-size:12px;color:var(--g500);font-weight:600;margin-bottom:8px;clear:none}
+.stat-value{font-size:30px;font-weight:800;color:var(--g900);font-family:'JetBrains Mono',monospace;clear:both}
+.stat-sub{font-size:12px;color:var(--g400);margin-top:4px}
+
+/* ─── CARD ─── */
+.card{background:#fff;border:1px solid var(--g200);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:20px}
+.card-hdr{padding:18px 22px;border-bottom:1px solid var(--g100);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.card-hdr-title{font-size:16px;font-weight:700;color:var(--g900)}
+.card-hdr-desc{font-size:12px;color:var(--g400);margin-top:2px}
+
+/* ─── TOOLBAR ─── */
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 22px;background:var(--g50);border-bottom:1px solid var(--g100)}
+.search-inp{padding:9px 14px;border:1.5px solid var(--g200);border-radius:var(--r-sm);font-family:'Pretendard',sans-serif;font-size:14px;outline:none;width:240px;transition:border-color .2s;height:42px}
+.search-inp:focus{border-color:var(--primary)}
+.filter-sel{padding:9px 12px;border:1.5px solid var(--g200);border-radius:var(--r-sm);font-family:'Pretendard',sans-serif;font-size:14px;outline:none;color:var(--g700);background:#fff;cursor:pointer;height:42px}
+
+/* ─── TABLE ─── */
+table{width:100%;border-collapse:collapse}
+th{padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.6px;background:var(--g50);border-bottom:1px solid var(--g100);white-space:nowrap}
+td{padding:13px 16px;font-size:14px;color:var(--g700);border-bottom:1px solid var(--g100);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--g50)}
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+.fw{font-weight:700;color:var(--g900)}
+.price-text{font-family:'JetBrains Mono',monospace;color:var(--primary);font-weight:700}
+
+/* ─── BADGES ─── */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap}
+.b-new{background:var(--primary-l);color:var(--primary)}
+.b-review{background:var(--warn-l);color:var(--warn)}
+.b-mod{background:var(--orange-l);color:var(--orange)}
+.b-ok{background:var(--accent-l);color:var(--accent)}
+.b-rej{background:var(--danger-l);color:var(--danger)}
+.b-active{background:var(--accent-l);color:#065f46}
+.b-inactive{background:var(--g100);color:var(--g500)}
+.b-draft{background:var(--purple-l);color:var(--purple)}
+.b-sent{background:var(--warn-l);color:var(--warn)}
+.b-conf{background:var(--accent-l);color:var(--accent)}
+
+/* ─── BUTTONS ─── */
+.btn{padding:9px 18px;border-radius:var(--r-sm);font-family:'Pretendard',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;border:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 6px rgba(29,78,216,.25)}
+.btn-primary:hover{background:var(--primary-h)}
+.btn-outline{background:#fff;border:1.5px solid var(--g300);color:var(--g600)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-50)}
+.btn-danger{background:var(--danger-l);border:1.5px solid #fca5a5;color:var(--danger)}
+.btn-danger:hover{background:var(--danger);color:#fff;border-color:var(--danger)}
+.btn-success{background:var(--accent);color:#fff}
+.btn-success:hover{background:#047857}
+.btn-warn{background:var(--warn-l);border:1.5px solid #fde68a;color:var(--warn)}
+.btn-sm{padding:6px 12px;font-size:13px}
+.btn-xs{padding:4px 9px;font-size:12px;border-radius:6px}
+
+/* ─── MODAL ─── */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;align-items:center;justify-content:center;padding:20px}
+.modal-ov.open{display:flex}
+.modal{background:#fff;border-radius:var(--r);width:100%;max-width:620px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.22);animation:mIn .25s cubic-bezier(.34,1.56,.64,1)}
+@keyframes mIn{from{transform:scale(.92) translateY(20px);opacity:0}to{transform:none;opacity:1}}
+.modal-hdr{padding:24px 28px 16px;border-bottom:1px solid var(--g100);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.modal-title{font-size:19px;font-weight:800;color:var(--g900)}
+.modal-sub{font-size:13px;color:var(--g400);margin-top:3px}
+.modal-close{width:34px;height:34px;border-radius:8px;border:none;background:var(--g100);color:var(--g500);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.modal-close:hover{background:var(--g200);color:var(--g800)}
+.modal-body{padding:24px 28px}
+.modal-footer{padding:16px 28px 24px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--g100)}
+
+/* ─── FORM ─── */
+.fg{margin-bottom:18px}
+.fg label{display:block;font-size:14px;font-weight:600;color:var(--g700);margin-bottom:7px}
+.fc{width:100%;padding:10px 14px;border:2px solid var(--g200);border-radius:var(--r-sm);font-family:'Pretendard',sans-serif;font-size:14px;color:var(--g800);outline:none;transition:border-color .2s;height:46px}
+.fc:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-50)}
+textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
+.frow2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* ─── PHOTO GRID ─── */
+.photo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px}
+.photo-th{aspect-ratio:1;border-radius:var(--r-sm);overflow:hidden;background:var(--g100);border:1.5px solid var(--g200);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;position:relative}
+.photo-th img{width:100%;height:100%;object-fit:cover}
+.photo-th:hover{border-color:var(--primary)}
+.photo-th.add-btn{border-style:dashed;color:var(--g400);font-size:26px;font-weight:300}
+.photo-th.add-btn:hover{background:var(--primary-50);color:var(--primary);border-color:var(--primary)}
+.photo-del{position:absolute;top:3px;right:3px;width:20px;height:20px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:11px;cursor:pointer}
+.photo-th:hover .photo-del{display:flex}
+
+/* ─── UPLOAD ─── */
+.upload-zone{border:2px dashed var(--g300);border-radius:var(--r-sm);padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--g50);font-size:14px;color:var(--g500)}
+.upload-zone:hover{border-color:var(--primary);background:var(--primary-50)}
+.upload-zone.has-file{border-color:var(--accent);background:var(--accent-50);color:#065f46;font-weight:600}
+.upload-zone input{display:none}
+
+/* ─── DETAIL ─── */
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px}
+.detail-item{background:var(--g50);border-radius:var(--r-sm);padding:12px 16px}
+.di-label{font-size:11px;color:var(--g400);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.di-value{font-size:14px;color:var(--g800);font-weight:600;line-height:1.5}
+.detail-full{grid-column:1/-1}
+.eq-pill{display:inline-flex;align-items:center;gap:6px;background:var(--primary-l);color:var(--primary);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;margin:3px}
+
+/* ─── TIMELINE ─── */
+.tl{padding:0;list-style:none}
+.tl-item{display:flex;gap:12px;padding-bottom:16px;position:relative}
+.tl-item::before{content:'';position:absolute;left:16px;top:34px;width:1px;height:calc(100% - 16px);background:var(--g200)}
+.tl-item:last-child::before{display:none}
+.tl-dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;border:2px solid var(--g200);background:#fff}
+.tl-body{flex:1}
+.tl-title{font-size:14px;font-weight:600;color:var(--g800)}
+.tl-date{font-size:11px;color:var(--g400);margin-top:2px;font-family:'JetBrains Mono',monospace}
+.tl-desc{font-size:12px;color:var(--g500);margin-top:4px;line-height:1.5}
+
+/* ─── PROGRESS ─── */
+.prog-bar{height:7px;background:var(--g200);border-radius:4px;overflow:hidden;margin-top:5px}
+.prog-fill{height:100%;background:var(--primary);border-radius:4px;transition:width .4s ease}
+.prog-fill.green{background:var(--accent)}
+.prog-fill.orange{background:var(--orange)}
+
+/* ─── TABS ─── */
+.tab-bar{display:flex;border-bottom:2px solid var(--g200);padding:0 22px;background:#fff;overflow-x:auto}
+.tab-item{padding:13px 20px;font-size:14px;font-weight:600;color:var(--g500);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.tab-item:hover{color:var(--primary)}
+.tab-item.active{color:var(--primary);border-bottom-color:var(--primary)}
+
+/* ─── TOAST ─── */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--g900);color:#fff;padding:13px 22px;border-radius:var(--r-sm);font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);transition:transform .3s ease;z-index:999;white-space:nowrap}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ─── NOTICE ─── */
+.notice{padding:13px 18px;border-radius:var(--r-sm);font-size:14px;line-height:1.7;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px}
+.notice-info{background:var(--primary-l);color:#1e3a8a;border:1px solid #bfdbfe}
+.notice-warn{background:var(--warn-l);color:#78350f;border:1px solid #fde68a}
+
+/* ─── EMPTY ─── */
+.empty{text-align:center;padding:52px 20px;color:var(--g400)}
+.empty-icon{font-size:48px;margin-bottom:12px;display:block}
+.empty-txt{font-size:15px;font-weight:600;color:var(--g500)}
+
+/* ─── Q ITEMS ─── */
+.q-item{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.q-item .fc{height:40px;font-size:13px}
+
+/* ─── PDF ─── */
+#pdf-tpl{position:fixed;left:-9999px;top:0;width:794px;background:#fff;font-family:'Pretendard',sans-serif}
+.pdf-wrap{padding:48px 52px;font-size:13px;color:#111;line-height:1.5}
+.pdf-title-row{text-align:center;margin-bottom:32px}
+.pdf-title{font-size:28px;font-weight:800;letter-spacing:12px;border-bottom:3px solid #111;display:inline-block;padding-bottom:6px}
+.pdf-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:20px;border:1px solid #ccc}
+.pdf-info-left{padding:16px 20px;border-right:1px solid #ccc}
+.pdf-info-right{padding:16px 20px}
+.pdf-info-row{margin-bottom:6px;font-size:13px}
+.pdf-info-row .lbl{color:#555;font-weight:600;min-width:110px;display:inline-block}
+.pdf-bpk-box{background:#f8f9fa;border:1px solid #ddd;border-radius:6px;padding:14px 18px;font-size:12px;line-height:1.8;color:#444}
+.pdf-bpk-name{font-size:15px;font-weight:800;color:#1d4ed8;margin-bottom:6px}
+.pdf-total-box{background:#1d4ed8;color:#fff;border-radius:8px;padding:18px 22px;margin-bottom:20px}
+.pdf-total-korean{font-size:17px;font-weight:700;margin-bottom:6px}
+.pdf-total-num{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.pdf-total-vat{font-size:12px;opacity:.8;margin-top:4px}
+.pdf-process-name{font-size:14px;font-weight:700;margin-bottom:16px;padding:10px 14px;background:#f1f5f9;border-radius:6px;border-left:4px solid #1d4ed8}
+.pdf-table{width:100%;border-collapse:collapse;margin-bottom:16px}
+.pdf-table th{background:#334155;color:#fff;padding:10px 12px;font-size:12px;font-weight:700;text-align:center;border:1px solid #334155}
+.pdf-table th:first-child{text-align:left}
+.pdf-table td{padding:9px 12px;border:1px solid #ddd;font-size:12px;vertical-align:middle}
+.pdf-table td:not(:first-child){text-align:center}
+.pdf-table td.price{text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600;color:#1d4ed8}
+.pdf-table tr.total-row{background:#f1f5f9;font-weight:700}
+.pdf-table tr.install-row td{color:#555;font-style:italic}
+.pdf-note{font-size:12px;color:#555;border-top:1px solid #ddd;padding-top:12px;line-height:1.8}
+.pdf-footer{margin-top:16px;text-align:center;font-size:11px;color:#888;border-top:1px solid #ddd;padding-top:12px}
+
+/* ─── 섹션 라벨 ─── */
+.sec-label{font-size:12px;font-weight:700;color:var(--primary);letter-spacing:.8px;margin-bottom:10px;margin-top:20px;padding:8px 12px;background:var(--primary-l);border-radius:6px;display:inline-flex;align-items:center;gap:6px}
+/* ─── VIDEO ITEMS ─── */
+.video-item{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:10px 12px;background:var(--g50);border-radius:var(--r-sm);border:1.5px solid var(--g200)}
+.video-inp{flex:1;padding:9px 12px;border:1.5px solid var(--g200);border-radius:var(--r-sm);font-size:13px;outline:none;font-family:'Pretendard',sans-serif;height:40px;min-width:0}
+.video-inp:focus{border-color:var(--primary)}
+/* 매칭 설정 */
+.sc-field{display:flex;flex-direction:column;gap:6px}
+.sc-label{font-size:13px;font-weight:600;color:var(--g700)}
+.sc-hint{font-size:11px;font-weight:400;color:var(--g400);margin-left:4px}
+.sc-input-wrap{display:flex;align-items:center;gap:8px}
+.sc-inp{height:42px!important;font-family:'JetBrains Mono',monospace!important;font-size:16px!important;font-weight:700!important;color:var(--primary)!important;text-align:right;padding-right:12px!important}
+.sc-unit{font-size:13px;font-weight:600;color:var(--g500);white-space:nowrap;flex-shrink:0}
+@media(max-width:640px){#weight-grid{grid-template-columns:1fr!important}}
+.video-thumb{width:80px;height:56px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--g200)}
+/* ─── PDF EQUIP ─── */
+#pdf-equip-tpl{position:fixed;left:-9999px;top:0;width:794px;background:#fff;font-family:'Pretendard',sans-serif}
+.pdf-equip-wrap{padding:40px 48px}
+.pdf-equip-title{font-size:22px;font-weight:800;color:#1d4ed8;text-align:center;margin-bottom:6px}
+.pdf-equip-sub{font-size:13px;color:#64748b;text-align:center;margin-bottom:28px}
+.pdf-equip-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.pdf-eq-card{border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden;break-inside:avoid}
+.pdf-eq-img{width:100%;height:150px;object-fit:cover;background:#f1f5f9}
+.pdf-eq-noimg{width:100%;height:150px;background:linear-gradient(135deg,#f1f5f9,#e2e8f0);display:flex;align-items:center;justify-content:center;font-size:32px;color:#94a3b8}
+.pdf-eq-body{padding:14px 16px}
+.pdf-eq-name{font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px;line-height:1.4}
+.pdf-eq-model{font-family:'JetBrains Mono',monospace;font-size:11px;color:#64748b;margin-bottom:6px}
+.pdf-eq-price{font-size:13px;font-weight:700;color:#1d4ed8}
+.pdf-equip-footer{margin-top:28px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px}
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px){
+  .sidebar{display:none}
+  .main-wrap{margin-left:0}
+  .stat-row{grid-template-columns:1fr 1fr}
+}
+@media(max-width:640px){
+  .stat-row{grid-template-columns:1fr}
+  .frow2{grid-template-columns:1fr}
+  .modal{max-width:100%;border-radius:12px 12px 0 0;max-height:95vh;position:fixed;bottom:0;top:auto;margin:0}
+  .modal-ov{align-items:flex-end;padding:0}
+  .card-hdr{flex-direction:column;align-items:flex-start}
+  .topbar{padding:0 16px}
+  .content{padding:16px}
+  table{font-size:12px}
+  .btn-sm{font-size:11px;padding:5px 8px}
+  .q-item{flex-wrap:wrap;gap:6px}
+  .q-item input{min-width:80px}
+  .tab-bar{overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+  .tab-bar::-webkit-scrollbar{display:none}
+  .photo-grid{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOGIN ═══ -->
+<div id="view-login">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo-wrap">
+        <div class="login-logo">BPK</div>
+        <div class="login-company">(주)비피케이</div>
+        <div class="login-sub">공급기업 관리 시스템</div>
+      </div>
+      <div class="login-title">관리자 로그인</div>
+      <form onsubmit="doLogin(event)">
+        <div class="login-fg"><label>아이디</label><input class="login-inp" id="inp-id" placeholder="관리자 아이디 입력" autocomplete="username"/></div>
+        <div class="login-fg"><label>비밀번호</label><input class="login-inp" type="password" id="inp-pw" placeholder="비밀번호 입력" autocomplete="current-password"/></div>
+        <div id="login-err" class="login-err" style="display:none">아이디 또는 비밀번호를 확인해 주세요.</div>
+        <button type="submit" class="login-btn">로그인 →</button>
+      </form>
+      <div class="login-note">관리자 전용 시스템 · 무단 접근 금지</div>
+      <div class="login-cred" id="login-demo-hint"></div>
+      <div id="api-status-login" style="margin-top:12px;text-align:center"></div>
+      <script>
+        // API 미설정 시에만 데모 계정 힌트 표시 (보안)
+        if(typeof API_ENABLED!=='undefined'&&!API_ENABLED){
+          document.getElementById('login-demo-hint').innerHTML='데모 계정: <strong>bpkadmin</strong> / <strong>BPK2026!</strong>';
+        }
+      </script>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<div id="view-main">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-logo-icon">BPK</div>
+      <div class="sb-logo-name">(주)비피케이</div>
+      <div class="sb-logo-sub">공급기업 관리 시스템</div>
+    </div>
+    <div class="sb-sec">신청 관리</div>
+    <div class="nav-item active" onclick="showSec('applications')"><span class="nav-icon">📋</span> 신청 업체 관리<span class="nav-badge nb-red" id="badge-new">0</span></div>
+    <div class="sb-sec">물품 관리</div>
+    <div class="nav-item" onclick="showSec('products')"><span class="nav-icon">📦</span> 공급 물품 목록</div>
+    <div class="nav-item" onclick="showSec('quotes')"><span class="nav-icon">📄</span> 견적서 관리<span class="nav-badge nb-orange" id="badge-qt">0</span></div>
+    <div class="sb-sec">통계</div>
+    <div class="nav-item" onclick="showSec('dashboard')"><span class="nav-icon">📊</span> 현황 대시보드</div>
+    <div class="sb-sec">시스템</div>
+    <div class="nav-item" onclick="showSec('scoring')"><span class="nav-icon">⚙️</span> 매칭 설정</div>
+    <div class="sb-footer">2026 스마트제조 지원사업<br>(주)비피케이 관리자</div>
+    <button class="logout-btn" onclick="doLogout()">🚪 로그아웃</button>
+  </aside>
+
+  <div class="main-wrap">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">신청 업체 관리</div>
+      <div class="topbar-right">
+        <div id="api-status-top"></div>
+        <div class="topbar-date" id="topbar-date"></div>
+        <div class="topbar-user">🔧 관리자</div>
+      </div>
+    </div>
+
+    <!-- SEC: 신청 업체 관리 -->
+    <div class="content active" id="sec-applications">
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-icon">📬</div><div class="stat-label">전체 신청</div><div class="stat-value" id="st-total">0</div><div class="stat-sub">누적 접수</div></div>
+        <div class="stat-card"><div class="stat-icon">🆕</div><div class="stat-label">신규 (미확인)</div><div class="stat-value" style="color:var(--primary)" id="st-new">0</div><div class="stat-sub">확인 필요</div></div>
+        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">확정 완료</div><div class="stat-value" style="color:var(--accent)" id="st-ok">0</div><div class="stat-sub">견적 확정</div></div>
+        <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">검토·수정 중</div><div class="stat-value" style="color:var(--orange)" id="st-rev">0</div><div class="stat-sub">진행 중</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <div><div class="card-hdr-title">신청 업체 목록</div><div class="card-hdr-desc">장비 도입을 신청한 업체 목록입니다. 행을 클릭하면 상세 내용을 확인합니다.</div></div>
+          <button class="btn btn-outline btn-sm" onclick="exportCSV()">📥 엑셀 다운로드</button>
+        </div>
+        <div class="toolbar">
+          <input class="search-inp" placeholder="🔍 업체명, 담당자 검색..." oninput="filterApps(this.value)" id="app-search"/>
+          <select class="filter-sel" onchange="filterAppStatus(this.value)" id="app-status-filter">
+            <option value="">전체 상태</option>
+            <option value="신청접수">📬 신청접수</option>
+            <option value="검토중">⏳ 검토 중</option>
+            <option value="수정중">✏️ 수정 중</option>
+            <option value="확정">✅ 확정</option>
+            <option value="반려">❌ 반려</option>
+          </select>
+          <select class="filter-sel" onchange="filterAppProcess(this.value)">
+            <option value="">전체 공정</option>
+            <option value="계량">계량</option>
+            <option value="포장">포장</option>
+            <option value="충진">충진</option>
+            <option value="이송">이송</option>
+            <option value="검사">검사</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>접수번호</th><th>기업명</th><th>담당자</th><th>연락처</th><th>제품</th><th>희망 공정</th><th>선택 장비</th><th>상태</th><th>접수일</th><th>관리</th></tr></thead>
+          <tbody id="app-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEC: 공급 물품 목록 -->
+    <div class="content" id="sec-products">
+      <div class="card">
+        <div class="card-hdr">
+          <div><div class="card-hdr-title">공급 물품 목록</div><div class="card-hdr-desc">등록된 장비의 사양, 사진, 가격을 관리합니다. 수정 내용은 신청 화면에 즉시 반영됩니다.</div></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="openAddProduct()">➕ 물품 추가</button>
+          </div>
+        </div>
+        <div class="tab-bar" id="prod-tabs">
+          <div class="tab-item active" onclick="filterProdCat('전체',this)">전체 <span style="font-family:'JetBrains Mono',monospace;font-size:11px;opacity:.6">60</span></div>
+          <div class="tab-item" onclick="filterProdCat('통합',this)">통합라인</div>
+          <div class="tab-item" onclick="filterProdCat('포장',this)">포장기</div>
+          <div class="tab-item" onclick="filterProdCat('계량',this)">계량기</div>
+          <div class="tab-item" onclick="filterProdCat('충진',this)">충진기</div>
+          <div class="tab-item" onclick="filterProdCat('인쇄',this)">인쇄·라벨</div>
+          <div class="tab-item" onclick="filterProdCat('이송',this)">이송·물류</div>
+          <div class="tab-item" onclick="filterProdCat('검사',this)">검사·선별</div>
+        </div>
+        <div class="toolbar">
+          <input class="search-inp" placeholder="🔍 물품명, 모델명 검색..." oninput="filterProds(this.value)"/>
+          <select class="filter-sel" onchange="filterProdStatus(this.value)">
+            <option value="">전체 상태</option>
+            <option value="active">활성</option>
+            <option value="inactive">비활성</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>No.</th><th>물품명</th><th>모델명</th><th>공정구분</th><th>납품 예정 가격</th><th>사진</th><th>상태</th><th>관리</th></tr></thead>
+          <tbody id="prod-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEC: 견적서 관리 -->
+    <div class="content" id="sec-quotes">
+      <div class="notice notice-info">💡 <span>신청 업체에게 견적서를 등록하고 발송할 수 있습니다. 견적 확정 시 신청 상태가 자동으로 '확정'으로 변경되고 신청기업이 PDF를 다운로드할 수 있습니다.</span></div>
+      <div class="card">
+        <div class="card-hdr">
+          <div><div class="card-hdr-title">견적서 관리</div><div class="card-hdr-desc">신청 업체별 견적서 등록 및 발송 현황</div></div>
+          <button class="btn btn-primary btn-sm" onclick="openQuoteModal(null)">➕ 견적서 작성</button>
+        </div>
+        <div class="toolbar">
+          <input class="search-inp" placeholder="🔍 업체명 검색..." oninput="filterQuotes(this.value)"/>
+          <select class="filter-sel" onchange="filterQuoteStatus(this.value)">
+            <option value="">전체 상태</option>
+            <option value="작성중">작성 중</option>
+            <option value="발송완료">발송 완료</option>
+            <option value="확정">확정</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto">
+          <table><thead><tr><th>견적번호</th><th>업체명</th><th>접수번호</th><th>견적 금액</th><th>장비 수</th><th>상태</th><th>최종 수정일</th><th>관리</th></tr></thead>
+          <tbody id="qt-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEC: 대시보드 -->
+    <div class="content" id="sec-dashboard">
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-icon">🏭</div><div class="stat-label">등록 물품</div><div class="stat-value" id="db-eq">60</div><div class="stat-sub">활성 물품 수</div></div>
+        <div class="stat-card"><div class="stat-icon">📬</div><div class="stat-label">총 신청 건</div><div class="stat-value" id="db-app">0</div><div class="stat-sub">2026년 누계</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">견적 발송 총액</div><div class="stat-value" id="db-total" style="font-size:18px">0원</div><div class="stat-sub">VAT 별도</div></div>
+        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-label">확정 전환율</div><div class="stat-value" id="db-rate">0%</div><div class="stat-sub" id="db-rate-sub">0/0건</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card"><div class="card-hdr"><div class="card-hdr-title">공정별 신청 현황</div></div><div style="padding:20px" id="proc-chart"></div></div>
+        <div class="card"><div class="card-hdr"><div class="card-hdr-title">물품별 선택 빈도 Top 5</div></div><div style="padding:20px" id="prod-chart"></div></div>
+      </div>
+      <div class="card" style="margin-top:16px"><div class="card-hdr"><div class="card-hdr-title">최근 신청 타임라인</div></div><div style="padding:20px"><ul class="tl" id="tl-list"></ul></div></div>
+    </div>
+
+    <!-- SEC: 매칭 설정 -->
+    <div class="content" id="sec-scoring">
+      <div class="card">
+        <div class="card-hdr">
+          <div>
+            <div class="card-hdr-title">⚙️ 장비 매칭 가중치 설정</div>
+            <div class="card-hdr-desc">신청기업 매칭 결과에 적용되는 가중치·패널티·표시 개수를 조정합니다. 저장 즉시 다음 매칭부터 적용됩니다.</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-outline" onclick="resetScoringCfg()">↺ 기본값 복원</button>
+            <button class="btn btn-primary" onclick="saveScoringCfg()">💾 저장</button>
+          </div>
+        </div>
+        <div style="padding:24px;display:grid;gap:24px">
+
+          <!-- 가중치 -->
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--g700);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--g100)">📊 가중치 (점수 배점)</div>
+            <div id="scoring-maxscore-hint" style="margin-bottom:16px;padding:10px 16px;background:var(--primary-l,#eff6ff);border-radius:8px;font-size:13px;color:var(--primary);font-weight:600"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="weight-grid">
+              <div class="sc-field"><label class="sc-label">물성 일치 <span class="sc-hint">texture match</span></label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="100" id="cfg-w_texture" oninput="updateMaxScoreHint()"/><span class="sc-unit">점</span></div></div>
+              <div class="sc-field"><label class="sc-label">포장형태 일치 (최대) <span class="sc-hint">cap 적용</span></label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="100" id="cfg-w_pkg" oninput="updateMaxScoreHint()"/><span class="sc-unit">점</span></div></div>
+              <div class="sc-field"><label class="sc-label">공정 일치 (최대) <span class="sc-hint">cap 적용</span></label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="100" id="cfg-w_proc" oninput="updateMaxScoreHint()"/><span class="sc-unit">점</span></div></div>
+              <div class="sc-field"><label class="sc-label">전기 적합</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="30" id="cfg-w_electric" oninput="updateMaxScoreHint()"/><span class="sc-unit">점</span></div></div>
+              <div class="sc-field"><label class="sc-label">공압 적합</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="20" id="cfg-w_air" oninput="updateMaxScoreHint()"/><span class="sc-unit">점</span></div></div>
+              <div class="sc-field"><label class="sc-label">공간 적합</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="20" id="cfg-w_space" oninput="updateMaxScoreHint()"/><span class="sc-unit">점</span></div></div>
+              <div class="sc-field"><label class="sc-label">통합 보너스 (2공정 이상)</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="20" id="cfg-w_tong_proc" oninput="updateMaxScoreHint()"/><span class="sc-unit">점</span></div></div>
+              <div class="sc-field"><label class="sc-label">통합 보너스 (category=통합)</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="20" id="cfg-w_tong_cat" oninput="updateMaxScoreHint()"/><span class="sc-unit">점</span></div></div>
+            </div>
+          </div>
+
+          <!-- 패널티 -->
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--g700);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--g100)">🚫 패널티 (감점)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="sc-field"><label class="sc-label">물성 불일치 <span class="sc-hint">공통 태그 장비 제외</span></label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="100" id="cfg-p_texture"/><span class="sc-unit">점</span></div></div>
+              <div class="sc-field"><label class="sc-label">380V 전용 + 220V만 보유</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="50" id="cfg-p_electric"/><span class="sc-unit">점</span></div></div>
+              <div class="sc-field"><label class="sc-label">공압 없음 + 공압필수 장비</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="50" id="cfg-p_air"/><span class="sc-unit">점</span></div></div>
+              <div class="sc-field"><label class="sc-label">20㎡ 미만 + 대형공간 장비</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="30" id="cfg-p_space"/><span class="sc-unit">점</span></div></div>
+              <div class="sc-field" style="grid-column:1/-1"><label class="sc-label">패널티 합계 제외 임계값 <span class="sc-hint">이 점수 초과 시 추천 목록에서 제외</span></label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="1" max="200" id="cfg-p_threshold"/><span class="sc-unit">점 초과 시 제외</span></div></div>
+            </div>
+          </div>
+
+          <!-- 결과 표시 -->
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--g700);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--g100)">📋 결과 표시 개수</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div class="sc-field"><label class="sc-label">공정별 추천 장비 수</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="1" max="10" id="cfg-top_per_proc"/><span class="sc-unit">개</span></div></div>
+              <div class="sc-field"><label class="sc-label">통합 추천 장비 수</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="1" max="10" id="cfg-top_integrated"/><span class="sc-unit">개</span></div></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: 신청 상세 -->
+<div class="modal-ov" id="modal-app">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-hdr"><div><div class="modal-title" id="m-app-title">신청 상세</div><div class="modal-sub" id="m-app-sub"></div></div><button class="modal-close" onclick="closeModal('modal-app')">✕</button></div>
+    <div class="modal-body" id="m-app-body"></div>
+    <div class="modal-footer" id="m-app-footer"></div>
+  </div>
+</div>
+
+<!-- MODAL: 물품 수정 -->
+<div class="modal-ov" id="modal-prod">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-hdr"><div><div class="modal-title" id="m-prod-title">물품 수정</div><div class="modal-sub" id="m-prod-sub"></div></div><button class="modal-close" onclick="closeModal('modal-prod')">✕</button></div>
+    <div class="modal-body">
+      <div class="frow2">
+        <div class="fg"><label>물품명</label><input class="fc" id="p-name"/></div>
+        <div class="fg"><label>모델명</label><input class="fc" id="p-model"/></div>
+      </div>
+      <div class="frow2">
+        <div class="fg"><label>납품 예정 가격 (원)</label><input class="fc" id="p-price" type="number" step="100000"/></div>
+        <div class="fg"><label>공정구분</label>
+          <select class="fc" id="p-cat">
+            <option>통합</option><option>포장</option><option>계량</option><option>충진</option><option>인쇄</option><option>캡핑기</option><option>세병</option><option>교반</option><option>소분</option><option>검사</option><option>이송</option><option>기타</option><option>제함기</option><option>테이핑기</option><option>랩핑기</option><option>성형</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg"><label>물품 설명</label><textarea class="fc" id="p-desc" rows="3"></textarea></div>
+
+      <div class="sec-label">📷 장비 사진 <span style="font-size:11px;font-weight:400;opacity:.7">최대 4장 · 장비 외관</span></div>
+      <div class="fg">
+        <div class="photo-grid" id="p-photos">
+          <div class="photo-th add-btn" onclick="document.getElementById('p-photo-inp').click()">+</div>
+        </div>
+        <input type="file" id="p-photo-inp" accept="image/*" multiple style="display:none" onchange="addProdPhoto(this,'p-photos',4)"/>
+        <div style="font-size:12px;color:var(--g400);margin-top:6px">JPG · PNG · 최대 4장</div>
+      </div>
+
+      <div class="sec-label">📦 포장 제품 사진 <span style="font-size:11px;font-weight:400;opacity:.7">최대 4장 · 완성 포장 상태</span></div>
+      <div class="fg">
+        <div class="photo-grid" id="p-photos-pkg">
+          <div class="photo-th add-btn" onclick="document.getElementById('p-photo-pkg-inp').click()">+</div>
+        </div>
+        <input type="file" id="p-photo-pkg-inp" accept="image/*" multiple style="display:none" onchange="addProdPhoto(this,'p-photos-pkg',4)"/>
+        <div style="font-size:12px;color:var(--g400);margin-top:6px">JPG · PNG · 최대 4장</div>
+      </div>
+
+      <div class="sec-label">▶ 유튜브 영상 <span style="font-size:11px;font-weight:400;opacity:.7">최대 3개</span></div>
+      <div class="fg">
+        <div id="p-videos"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="addVideoInput('')">+ 영상 추가</button>
+        <div style="font-size:12px;color:var(--g400);margin-top:6px">대원팩(<strong>@daewon_pack</strong>) 채널 영상 URL을 입력해 주세요</div>
+      </div>
+
+      <div class="fg" style="margin-top:16px"><label>상태</label>
+        <select class="fc" id="p-status"><option value="active">활성 (신청화면 노출)</option><option value="inactive">비활성 (숨김)</option></select>
+      </div>
+      <div style="margin-top:20px;padding-top:16px;border-top:2px solid var(--g200)">
+        <div style="font-size:12px;font-weight:700;color:#7c3aed;letter-spacing:1px;margin-bottom:14px">📋 장비 스펙 정보</div>
+        <div class="frow2">
+          <div class="fg"><label>생산속도 (Production Speed)</label><input class="fc" id="p-spec-speed" placeholder="예: 30~60 bag/min"/></div>
+          <div class="fg"><label>소비전력 (Total Power)</label><input class="fc" id="p-spec-power" placeholder="예: 3.5 kW"/></div>
+        </div>
+        <div class="frow2">
+          <div class="fg"><label>포장재 종류 (Packing Material)</label><input class="fc" id="p-spec-packing" placeholder="예: PP/PE, OPP/CPP, NY/PE"/></div>
+          <div class="fg"><label>전원사양 (Power Source)</label><input class="fc" id="p-spec-voltage" placeholder="예: AC 220V 단상 60Hz"/></div>
+        </div>
+        <div class="frow2">
+          <div class="fg"><label>장비 외형 치수 (Dimension)</label><input class="fc" id="p-spec-dimension" placeholder="예: W800 × D1200 × H1600 mm"/></div>
+          <div class="fg"><label>장비 중량 (Weight)</label><input class="fc" id="p-spec-weight" placeholder="예: 350 kg"/></div>
+        </div>
+        <div class="fg"><label>공압 사용 조건 (Compressed Air Requirement)</label><input class="fc" id="p-spec-air" placeholder="예: 5~7 kgf/cm², 100 L/min"/></div>
+      </div>
+      <div style="margin-top:20px;padding-top:16px;border-top:2px solid var(--g200)">
+        <div style="font-size:12px;font-weight:700;color:var(--primary);letter-spacing:1px;margin-bottom:14px">🏷️ 태그 정보 (콤마로 구분하여 입력)</div>
+        <div class="frow2">
+          <div class="fg"><label>물성 태그</label><input class="fc" id="p-tag-texture" placeholder="예: 분말,과립,액체"/></div>
+          <div class="fg"><label>포장형태 태그</label><input class="fc" id="p-tag-pkg" placeholder="예: 파우치,삼면포장"/></div>
+        </div>
+        <div class="frow2">
+          <div class="fg"><label>공정 태그</label><input class="fc" id="p-tag-process" placeholder="예: 계량,포장,이송"/></div>
+          <div class="fg"><label>제품·용도 태그</label><input class="fc" id="p-tag-product" placeholder="예: 소스,건식품,농산물"/></div>
+        </div>
+        <div class="frow2">
+          <div class="fg"><label>특성 태그</label><input class="fc" id="p-tag-feature" placeholder="예: 자동화,고속,위생"/></div>
+          <div class="fg"><label>설치공간 태그</label><input class="fc" id="p-tag-space" placeholder="예: 중형공간,대형공간"/></div>
+        </div>
+        <div class="frow2">
+          <div class="fg"><label>전기 태그</label><input class="fc" id="p-tag-electric" placeholder="예: 220V,380V3상"/></div>
+          <div class="fg"><label>공압 태그</label><input class="fc" id="p-tag-air" placeholder="예: 공압필수,중유량"/></div>
+        </div>
+        <div class="fg"><label>검색 키워드</label><input class="fc" id="p-tag-keyword" placeholder="예: 파우치포장,정량계량,스마트포장"/></div>
+        <div class="fg"><label>매칭 태그 (통합) <span style="font-size:11px;color:var(--g400)">— 신청기업 매칭에 사용되는 전체 태그</span></label><input class="fc" id="p-tags" placeholder="예: 분말,파우치,계량,포장,380V3상,공압필수"/></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-prod')">취소</button>
+      <button class="btn btn-primary" onclick="saveProd()">💾 저장 및 반영</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 견적서 -->
+<div class="modal-ov" id="modal-quote">
+  <div class="modal">
+    <div class="modal-hdr"><div><div class="modal-title" id="m-qt-title">견적서 작성</div><div class="modal-sub" id="m-qt-sub">신청 업체에 발송할 견적서를 작성합니다.</div></div><button class="modal-close" onclick="closeModal('modal-quote')">✕</button></div>
+    <div class="modal-body">
+      <div class="frow2">
+        <div class="fg"><label>업체명</label><input class="fc" id="q-company" readonly style="background:var(--g50);cursor:default"/></div>
+        <div class="fg"><label>접수번호</label><input class="fc" id="q-receiptno" readonly style="background:var(--g50);cursor:default;font-family:'JetBrains Mono',monospace"/></div>
+      </div>
+      <div class="fg">
+        <label>견적 항목 <span style="font-size:12px;color:var(--g400);font-weight:400">(등록된 공급물품에서 선택)</span></label>
+        <div id="q-items"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="addQItem()">+ 항목 추가</button>
+      </div>
+      <div style="background:var(--g50);border-radius:var(--r-sm);padding:14px 18px;margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:15px;font-weight:700;color:var(--g700)">합계 금액 (VAT 별도)</span>
+        <span class="price-text" style="font-size:20px" id="q-total-disp">0원</span>
+      </div>
+      <div class="fg" style="margin-top:16px"><label>공정명</label><input class="fc" id="q-process" placeholder="예: 계량·포장"/></div>
+      <div class="fg"><label>비고 / 특이사항</label><textarea class="fc" id="q-memo" placeholder="설치 조건, 납기일, 특이사항 등"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-quote')">취소</button>
+      <button class="btn btn-warn btn-sm" onclick="saveQDraft()">✏️ 수정</button>
+      <button class="btn btn-success" onclick="sendQuote()">✅ 확정</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF TEMPLATE -->
+<div id="pdf-tpl"><div class="pdf-wrap" id="pdf-content"></div></div>
+<!-- EQUIP PDF TEMPLATE -->
+<div id="pdf-equip-tpl"></div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════
+const SK={EQ:'bpk_eq_v2',APP:'bpk_app_v1',QT:'bpk_qt_v1'};
+const CRED={id:'bpkadmin',pw:'BPK2026!'}; // API 미사용 시 로컬 fallback용
+const SEC_MAP={applications:{el:'sec-applications',title:'신청 업체 관리'},products:{el:'sec-products',title:'공급 물품 목록'},quotes:{el:'sec-quotes',title:'견적서 관리'},dashboard:{el:'sec-dashboard',title:'현황 대시보드'},scoring:{el:'sec-scoring',title:'매칭 설정'}};
+
+// ═══════════════════════════════════════════
+// DEFAULT EQUIPMENT
+// ═══════════════════════════════════════════
+const DEFAULT_EQ=[
+  {id:1,name:'자동계량&포장 통합라인',model:'BPK-VP420-LS',price:45000000,category:'통합',desc:'식품 원료를 자동 계량 후 파우치·비닐 등에 정량 포장하는 통합 자동화 설비로, 인건비 절감 및 생산성 향상에 적합한 스마트 포장라인입니다.',tag_texture:'분말,과립,액체,고형물',tag_pkg:'파우치,비닐포장',tag_process:'계량,포장,이송',tag_product:'식품원료,건식품,소스류,농식품',tag_feature:'통합라인,자동화,중속,고속',tag_space:'대형공간,라인구성',tag_electric:'380V3상,고전력',tag_air:'공압필수,중유량',tag_keyword:'자동계량,정량포장,파우치포장,비닐포장,포장라인,스마트포장',tags:'분말,과립,액체,고형물,파우치,계량,포장,이송,통합라인,자동화,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:2,name:'분말 자동계량&포장 시스템',model:'BPK-VP320-PW',price:45000000,category:'통합',desc:'고춧가루·곡물분말·스프분말 등 분말류를 정밀 계량 후 자동 포장하는 설비로 위생적이고 균일한 중량 관리가 가능합니다.',tag_texture:'분말',tag_pkg:'파우치,비닐포장',tag_process:'계량,포장',tag_product:'고춧가루,곡물분말,스프분말,파우더',tag_feature:'분말전용,정량,위생,자동화',tag_space:'중형공간,대형공간',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'분말,가루,파우더,고춧가루,곡물분말,스프분말,오거,정량계량',tags:'분말,파우치,계량,포장,분말전용,중형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:3,name:'액상류 자동충진수직사면포장기',model:'BPK-FS4-150',price:18000000,category:'포장',desc:'소스·육수·조미액 등 액상 제품을 사면 밀봉 형태로 자동 포장하는 설비로 누액 방지와 밀봉 안정성',tag_texture:'액체,점액질',tag_pkg:'사면포장,스틱포장,필름포장',tag_process:'충진,포장,밀봉',tag_product:'소스,육수,조미액,액상식품',tag_feature:'누액방지,소용량,자동화',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'액상,소스,육수,조미액,사면포장,스틱포장,액상충진',tags:'액체,점액질,사면포장,충진,포장,밀봉,중형공간,공압필수',photos:[],status:'active'},
+  {id:4,name:'액상류 자동충진수직삼면포장기',model:'BPK-FS3-150',price:18000000,category:'포장',desc:'액상·반액상 제품을 삼면 밀봉 포장하는 설비로 소용량 스틱형 포장에 적합합니다.',tag_texture:'액체,점액질',tag_pkg:'삼면포장,스틱포장,필름포장',tag_process:'충진,포장,밀봉',tag_product:'액상식품,반액상,소스류',tag_feature:'소용량,자동화',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'액상,반액상,삼면포장,스틱형,액상충진',tags:'액체,점액질,삼면포장,충진,포장,밀봉,중형공간,공압필수',photos:[],status:'active'},
+  {id:5,name:'수평형 자동포장기(250)',model:'BPK-MRP-2500',price:25000000,category:'포장',desc:'과자·떡·빵·냉동식품 등 고형 식품을 수평 삼면 방식으로 자동 포장하는 설비로, 다양한 규격 대응이 가능합니다.',tag_texture:'고형물,반죽',tag_pkg:'삼면포장,필름포장,수평포장',tag_process:'포장,밀봉,이송',tag_product:'과자,떡,빵,냉동식품',tag_feature:'수평형,중속,자동화',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'수평포장,삼면포장,과자,떡,빵,냉동식품,고형식품',tags:'고형물,반죽,삼면포장,수평포장,포장,중형공간,공압필수',photos:[],status:'active'},
+  {id:6,name:'수평형 자동포장기(350)',model:'BPK-MRP-3500',price:28000000,category:'포장',desc:'과자·떡·빵·냉동식품 등 고형 식품을 수평 삼면 방식으로 자동 포장하는 설비로, 다양한 규격 대응이 가능합니다.',tag_texture:'고형물,반죽',tag_pkg:'삼면포장,필름포장,수평포장',tag_process:'포장,밀봉,이송',tag_product:'과자,떡,빵,냉동식품',tag_feature:'수평형,중속,자동화',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'수평포장,삼면포장,고형식품,떡,빵,냉동식품',tags:'고형물,반죽,삼면포장,수평포장,포장,중형공간,공압필수',photos:[],status:'active'},
+  {id:7,name:'수평형 자동포장기(450)',model:'BPK-MRP-4500',price:32000000,category:'포장',desc:'과자·떡·빵·냉동식품 등 고형 식품을 수평 삼면 방식으로 자동 포장하는 설비로, 다양한 규격 대응이 가능합니다.',tag_texture:'고형물,반죽',tag_pkg:'삼면포장,필름포장,수평포장',tag_process:'포장,밀봉,이송',tag_product:'과자,떡,빵,냉동식품,대형제품',tag_feature:'수평형,중대형,자동화',tag_space:'중형공간,대형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'수평포장,대형제품,삼면포장,고형식품',tags:'고형물,삼면포장,수평포장,포장,대형공간,공압필수',photos:[],status:'active'},
+  {id:8,name:'수평형 자동 포장기(600)',model:'BPK-MRP-6000',price:38000000,category:'포장',desc:'과자·떡·빵·냉동식품 등 고형 식품을 수평 삼면 방식으로 자동 포장하는 설비로, 다양한 규격 대응이 가능합니다.',tag_texture:'고형물,반죽',tag_pkg:'삼면포장,필름포장,수평포장',tag_process:'포장,밀봉,이송',tag_product:'대용량식품,대형제품,냉동식품',tag_feature:'수평형,대용량,자동화',tag_space:'대형공간',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'수평포장,대용량,대형포장,고형식품',tags:'고형물,삼면포장,수평포장,대용량,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:9,name:'수평형 자동 포장기(700)',model:'BPK-MRP-7000',price:42000000,category:'포장',desc:'과자·떡·빵·냉동식품 등 고형 식품을 수평 삼면 방식으로 자동 포장하는 설비로, 다양한 규격 대응이 가능합니다.',tag_texture:'고형물,반죽',tag_pkg:'삼면포장,필름포장,수평포장',tag_process:'포장,밀봉,이송',tag_product:'대형제품,대용량식품',tag_feature:'수평형,대용량,고속,자동화',tag_space:'대형공간',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'수평포장,최대규격,대형제품,대용량',tags:'고형물,수평포장,대용량,고속,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:10,name:'소형 삼면포장기',model:'BPK-H280-3S',price:7000000,category:'포장',desc:'소량 생산 식품 및 간식류에 적합한 경제형 자동 포장기입니다',tag_texture:'고형물,과립,분말',tag_pkg:'삼면포장,필름포장',tag_process:'포장,밀봉',tag_product:'소량식품,간식류',tag_feature:'소형,경제형,반자동가능',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'소형삼면포장,소량생산,간식류,경제형',tags:'고형물,삼면포장,포장,소형,소형공간,220V,저유량',photos:[],status:'active'},
+  {id:11,name:'로터리 파우치 자동포장기',model:'BPK-MRP-2500',price:50000000,category:'포장',desc:'스탠딩 파우치·지퍼 파우치 등에 자동으로 충진·밀봉하는 고급형 설비로, 소스·반찬류·건강식품에 적합합니다.',tag_texture:'액체,점액질,고형물,과립',tag_pkg:'스탠드파우치,M형파우치,지퍼파우치',tag_process:'충진,포장,밀봉,공급',tag_product:'소스,반찬류,건강식품,파우치식품',tag_feature:'로터리,고급형,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'로터리,파우치,스탠딩파우치,지퍼파우치,충진,밀봉',tags:'액체,점액질,스탠드파우치,M형파우치,충진,포장,로터리,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:12,name:'간장류(소스) 자동 계량&액상충진 시스템',model:'BPK-LFAT-100',price:45000000,category:'통합',desc:'간장·소스류를 정량 계량 및 자동 충진하는 설비로 점도 제품 대응이 가능합니다.',tag_texture:'액체,점액질',tag_pkg:'병용기,파우치',tag_process:'계량,충진',tag_product:'간장,소스,액상식품,고점도식품',tag_feature:'정량,점도대응,자동화라인',tag_space:'중형공간,대형공간',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'간장,소스,액상충진,정량계량,점도',tags:'액체,점액질,계량,충진,정량,중형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:13,name:'자동 병 라벨기',model:'BPK-BR100',price:20000000,category:'인쇄',desc:'식품 병 제품에 라벨을 자동 부착하여 외관 품질과 생산성을 향상시키는 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'라벨링,인쇄',tag_product:'병제품,식품병,용기제품',tag_feature:'자동,외관품질',tag_space:'중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'병라벨기,자동라벨,라벨부착,원형병',tags:'병용기,라벨링,인쇄,자동,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:14,name:'반자동 라벨기',model:'BPK-SABR100',price:15000000,category:'인쇄',desc:'소규모 생산에 적합한 수동 보조형 라벨 부착 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'라벨링,인쇄',tag_product:'병제품,소규모생산',tag_feature:'반자동,소형',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'반자동라벨기,소규모,라벨부착',tags:'병용기,라벨링,반자동,소형,소형공간,220V',photos:[],status:'active'},
+  {id:15,name:'자동캡핑기',model:'BPK-ATCS',price:10000000,category:'캡핑기',desc:'병·용기 캡을 자동 체결하는 설비로 충진라인과 연동 가능합니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'캡핑,체결',tag_product:'병제품,용기제품',tag_feature:'자동,라인연동',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압필수,저유량',tag_keyword:'자동캡핑,캡체결,병뚜껑,용기캡',tags:'병용기,캡핑,자동,라인연동,220V,공압필수',photos:[],status:'active'},
+  {id:16,name:'반자동 캡핑기',model:'BPK-SMCS',price:5000000,category:'캡핑기',desc:'소규모 생산 대응 캡 체결 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'캡핑,체결',tag_product:'병제품,소규모생산',tag_feature:'반자동,소형',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'반자동캡핑,캡체결,소규모',tags:'병용기,캡핑,반자동,소형공간,220V,저유량',photos:[],status:'active'},
+  {id:17,name:'에어세병기',model:'BPK-AIRBT',price:6000000,category:'세병',desc:'충진 전 병 내부를 공압 세척하여 위생성을 확보하는 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'세척,위생,충진전처리',tag_product:'병제품,용기제품',tag_feature:'위생,HACCP,공압세척',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압필수,중유량',tag_keyword:'에어세병,병세척,공압세척,충진전세척',tags:'병용기,세척,위생,HACCP,220V,공압필수,중유량',photos:[],status:'active'},
+  {id:18,name:'교반탱크(리본타입)',model:'BPK-MXT',price:15000000,category:'교반',desc:'분말·액상 원료를 균일하게 혼합하는 식품용 교반 설비입니다.',tag_texture:'분말,액체,점액질',tag_pkg:'탱크,원료혼합',tag_process:'혼합,교반',tag_product:'식품원료,분말원료,액상원료',tag_feature:'리본타입,위생',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압불필요',tag_keyword:'교반탱크,리본믹서,혼합기,액상혼합,분말혼합',tags:'분말,액체,혼합,교반,탱크,중형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:19,name:'분말 교반기',model:'BPK-PMXT',price:15000000,category:'교반',desc:'분말 원료 혼합에 적합한 위생형 설비입니다.',tag_texture:'분말',tag_pkg:'원료혼합',tag_process:'혼합,교반',tag_product:'분말원료,파우더',tag_feature:'분말전용,위생',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압불필요',tag_keyword:'분말교반기,분말혼합기,파우더믹서',tags:'분말,혼합,교반,분말전용,중형공간,공압불필요',photos:[],status:'active'},
+  {id:20,name:'반죽소분기',model:'BPK-MXFF',price:10000000,category:'소분',desc:'반죽·떡·제과류를 일정 중량으로 자동 분할하는 설비입니다',tag_texture:'반죽,고형물',tag_pkg:'소분,분할',tag_process:'성형,분할,계량',tag_product:'반죽,떡,제과류,베이커리',tag_feature:'소분,정량,소형',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'반죽소분,반죽분할,떡분할,제과소분',tags:'반죽,고형물,성형,분할,소분,220V,공압권장',photos:[],status:'active'},
+  {id:21,name:'금속검출기',model:'BPK-MTCH',price:7000000,category:'검사',desc:'식품 내 금속 이물질을 검출하여 품질 및 HACCP 기준에 대응하는 설비입니다.',tag_texture:'공통',tag_pkg:'검사장비',tag_process:'검사,금속검출,품질관리',tag_product:'식품,HACCP,이물검사',tag_feature:'HACCP,품질,안전',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'금속검출기,이물검사,HACCP,식품안전',tags:'검사,금속검출,HACCP,품질관리,220V,공압불필요',photos:[],status:'active'},
+  {id:22,name:'중량선별기',model:'BPK-WHCH',price:9000000,category:'검사',desc:'설정 중량 기준으로 제품을 자동 선별하는 설비입니다.',tag_texture:'공통',tag_pkg:'선별장비',tag_process:'검사,중량선별,선별',tag_product:'식품,완제품검사',tag_feature:'품질,자동선별',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'중량선별기,체크웨이어,무게검사,자동선별',tags:'검사,중량선별,선별,품질,220V,공압권장',photos:[],status:'active'},
+  {id:23,name:'금속&중량 선별 콤비형',model:'BPK-MWCH2',price:18000000,category:'검사',desc:'금속검출과 중량선별을 동시에 수행하는 통합 설비입니다.',tag_texture:'공통',tag_pkg:'검사장비,선별장비',tag_process:'검사,금속검출,중량선별,선별',tag_product:'식품,HACCP,완제품검사',tag_feature:'콤비형,통합검사,HACCP',tag_space:'중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'금속검출,중량선별,콤비형,체크웨이어,HACCP',tags:'검사,금속검출,중량선별,콤비형,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:24,name:'농수산물 자동계량,포장라인 시스템',model:'BPK-ATW100',price:45000000,category:'통합',desc:'농수산물·건조식품을 자동 계량 및 포장하는 스마트 생산라인입니다.',tag_texture:'고형물,과립,농수산물,건식품',tag_pkg:'파우치,비닐포장',tag_process:'계량,포장,이송',tag_product:'농수산물,건조식품,건나물,견과류',tag_feature:'스마트라인,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'농수산물,자동계량,건조식품,포장라인,건나물',tags:'농수산물,건식품,계량,포장,자동화라인,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:25,name:'액상 충진,스틱포장 시스템',model:'BPK-ATF',price:25000000,category:'충진',desc:'액상 제품을 충진 후 스틱형으로 자동 포장하는 통합 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'스틱포장,필름포장',tag_process:'충진,포장,밀봉',tag_product:'액상제품,소스,스틱액상',tag_feature:'통합,자동화',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'액상충진,스틱포장,스틱액상,액상파우치',tags:'액체,점액질,스틱포장,충진,포장,중형공간,공압필수',photos:[],status:'active'},
+  {id:26,name:'자동 제함,테이핑 포장 시스템',model:'BPK-BXTL',price:45000000,category:'통합',desc:'포장 완료 제품을 자동 박스 성형 및 밀봉하는 설비입니다.',tag_texture:'공통',tag_pkg:'박스,케이스',tag_process:'제함,테이핑,포장,밀봉',tag_product:'완제품포장,물류포장',tag_feature:'자동화라인,물류자동화',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'제함기,테이핑기,박스성형,박스밀봉,카톤',tags:'박스,제함,테이핑,포장,물류자동화,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:27,name:'충진,캡핑,라벨링 포장 시스템',model:'BPK-FCL10',price:45000000,category:'통합',desc:'병 제품의 충진부터 라벨 부착까지 자동화한 생산라인입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'충진,캡핑,라벨링,포장',tag_product:'병제품,소스병,음료,용기제품',tag_feature:'통합라인,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'충진캡핑라벨링,병충진라인,용기포장라인',tags:'병용기,충진,캡핑,라벨링,통합라인,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:28,name:'호퍼로드 이송기',model:'BPK-HP200',price:5000000,category:'이송',desc:'식품 원료를 자동으로 이송하는 공급 설비입니다.',tag_texture:'분말,과립,고형물',tag_pkg:'원료공급',tag_process:'이송,공급',tag_product:'식품원료,분말원료,건식품',tag_feature:'보조설비,라인연동',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'호퍼로더,원료이송,자동공급,분말이송',tags:'이송,공급,원료공급,소형공간,220V,공압권장',photos:[],status:'active'},
+  {id:29,name:'탈산소제 투입기',model:'BPK-SKAF',price:12000000,category:'기타',desc:'파우치 포장 시 탈산소제를 자동 삽입하는 설비입니다.',tag_texture:'공통',tag_pkg:'파우치',tag_process:'포장,투입,보존',tag_product:'파우치포장,신선식품,건식품',tag_feature:'신선도,부자재투입',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압필수,저유량',tag_keyword:'탈산소제,산소흡수제,자동투입,파우치부자재',tags:'파우치,포장,부자재투입,신선도,소형공간,220V,공압필수',photos:[],status:'active'},
+  {id:30,name:'작업용 턴테이블',model:'BPK-FPTT',price:3000000,category:'이송',desc:'포장 및 검사 작업을 보조하는 회전형 설비입니다.',tag_texture:'공통',tag_pkg:'보조작업대',tag_process:'이송,검사보조,포장보조',tag_product:'완제품,작업보조',tag_feature:'보조설비,소형',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'턴테이블,작업대,회전테이블,포장보조',tags:'이송,보조,작업용,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:31,name:'완제품 배출 컨베이어',model:'BPK-FPBC',price:3000000,category:'이송',desc:'포장 완료 제품을 자동 이송하는 설비입니다.',tag_texture:'공통',tag_pkg:'컨베이어',tag_process:'이송,배출',tag_product:'완제품,포장완료품',tag_feature:'보조설비,라인연동',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'배출컨베이어,완제품이송,컨베이어',tags:'이송,컨베이어,배출,라인연동,220V,공압불필요',photos:[],status:'active'},
+  {id:32,name:'조합식계량기2Head',model:'BPK-FPBC',price:8000000,category:'계량',desc:'과립·견과·건식품 등을 고속·정밀 계량하는 다중헤드 설비입니다.',tag_texture:'과립,고형물,건식품',tag_pkg:'계량기',tag_process:'계량',tag_product:'견과류,건식품,과립,스낵',tag_feature:'2Head,소형,정밀',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'조합식계량기,멀티헤드,2헤드,견과류계량',tags:'과립,고형물,계량,2Head,소형공간,220V,공압권장',photos:[],status:'active'},
+  {id:33,name:'조합식계량기4Head',model:'BPK-WH4',price:16000000,category:'계량',desc:'과립·견과·건식품 등을 고속·정밀 계량하는 다중헤드 설비입니다.',tag_texture:'과립,고형물,건식품',tag_pkg:'계량기',tag_process:'계량',tag_product:'견과류,건식품,과립,스낵',tag_feature:'4Head,중속,정밀',tag_space:'중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'조합식계량기,멀티헤드,4헤드,견과류계량',tags:'과립,고형물,계량,4Head,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:34,name:'조합식계량기10Head',model:'BPK-WH10',price:30000000,category:'계량',desc:'과립·견과·건식품 등을 고속·정밀 계량하는 다중헤드 설비입니다.',tag_texture:'과립,고형물,건식품',tag_pkg:'계량기',tag_process:'계량',tag_product:'견과류,건식품,과립,스낵',tag_feature:'10Head,고속,정밀',tag_space:'중형공간,대형공간',tag_electric:'220V,380V3상',tag_air:'공압권장,중유량',tag_keyword:'조합식계량기,멀티헤드,10헤드,고속계량',tags:'과립,고형물,계량,10Head,고속,대형공간,380V3상,공압권장',photos:[],status:'active'},
+  {id:35,name:'조합식계량기14Head',model:'BPK-WH14',price:32000000,category:'계량',desc:'과립·견과·건식품 등을 고속·정밀 계량하는 다중헤드 설비입니다.',tag_texture:'과립,고형물,건식품',tag_pkg:'계량기',tag_process:'계량',tag_product:'견과류,건식품,과립,스낵',tag_feature:'14Head,고속,정밀',tag_space:'대형공간',tag_electric:'380V3상',tag_air:'공압권장,중유량',tag_keyword:'조합식계량기,멀티헤드,14헤드,고속계량',tags:'과립,고형물,계량,14Head,고속,대형공간,380V3상,공압권장',photos:[],status:'active'},
+  {id:36,name:'오거식 분말 자동계량기',model:'BPK-ARAW',price:20000000,category:'계량',desc:'분말 제품을 정량 계량하는 스크류 방식 설비입니다.',tag_texture:'분말',tag_pkg:'계량기',tag_process:'계량',tag_product:'분말제품,가루,파우더',tag_feature:'오거식,스크류,정량',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압권장,저유량',tag_keyword:'오거,스크류계량,분말계량,파우더계량',tags:'분말,계량,오거식,스크류,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:37,name:'원두 드립백 올인원 포장시스템',model:'BPK-CFAI',price:45000000,category:'통합',desc:'커피 드립백을 자동 충진 및 포장하는 설비입니다.',tag_texture:'분말,과립',tag_pkg:'드립백,티백,필터포장',tag_process:'충진,포장,계량',tag_product:'커피,원두,드립백',tag_feature:'올인원,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'원두드립백,커피포장,드립백포장,커피충진',tags:'분말,과립,드립백,충진,포장,계량,올인원,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:38,name:'피스톤 자동충진기',model:'BPK-LFSA',price:5000000,category:'충진',desc:'액상 및 고점도 식품을 정량 충진하는 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기,파우치',tag_process:'충진',tag_product:'소스,액상식품,고점도식품',tag_feature:'피스톤,소형,정량',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압필수,저유량',tag_keyword:'피스톤충진기,액상충진,고점도충진,소스충진',tags:'액체,점액질,충진,피스톤,소형공간,220V,공압필수',photos:[],status:'active'},
+  {id:39,name:'펌프형 고점도 자동충진기',model:'BPK-LFMP',price:20000000,category:'충진',desc:'액상 및 고점도 식품을 정량 충진하는 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기,파우치',tag_process:'충진',tag_product:'고점도식품,소스,페이스트',tag_feature:'펌프형,고점도,정량',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'펌프충진기,고점도충진,페이스트,소스충진',tags:'액체,점액질,충진,고점도,펌프형,중형공간,공압필수',photos:[],status:'active'},
+  {id:40,name:'2구 액상자동충진기(Bottle형)',model:'BPK-2HLF',price:16000000,category:'충진',desc:'액상 및 고점도 식품을 정량 충진하는 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'충진',tag_product:'병제품,소스병,액상식품',tag_feature:'2구,자동,정량',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'2구충진기,병충진,액상자동충진,소스병',tags:'액체,점액질,병용기,충진,2구,중형공간,공압필수',photos:[],status:'active'},
+  {id:41,name:'스킨팩포장기',model:'BPK-SKP',price:25000000,category:'포장',desc:'진공 밀착 포장으로 신선도 유지에 적합한 설비입니다.',tag_texture:'고형물,신선식품',tag_pkg:'스킨팩,진공포장,트레이',tag_process:'포장,진공,밀봉',tag_product:'육류,수산물,밀키트,신선식품',tag_feature:'신선도,진공밀착',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'스킨팩,진공밀착포장,신선포장,트레이포장',tags:'진공포장,스킨팩,트레이,포장,신선도,중형공간,공압필수',photos:[],status:'active'},
+  {id:42,name:'단식진공포장기',model:'BPK-1VP',price:5000000,category:'포장',desc:'식품 신선도 유지 및 보관성 향상을 위한 진공 포장 설비입니다.',tag_texture:'고형물,액체,공통',tag_pkg:'진공포장',tag_process:'포장,진공,밀봉',tag_product:'식품,소량생산,보관식품',tag_feature:'단식,소형,보관성',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'단식진공포장기,진공포장,소형진공',tags:'진공포장,포장,소형,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:43,name:'복식진공포장기',model:'BPK-2VP',price:10000000,category:'포장',desc:'식품 신선도 유지 및 보관성 향상을 위한 진공 포장 설비입니다.',tag_texture:'고형물,액체,공통',tag_pkg:'진공포장',tag_process:'포장,진공,밀봉',tag_product:'식품,중형생산,보관식품',tag_feature:'복식,중형,보관성',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압불필요',tag_keyword:'복식진공포장기,진공포장,중형진공',tags:'진공포장,포장,중형,중형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:44,name:'자동 박스 제함기',model:'BPK-BT',price:30000000,category:'제함기',desc:'박스 성형·테이핑·스티로폼 밀봉 등 물류 자동화 설비입니다',tag_texture:'공통',tag_pkg:'박스,케이스',tag_process:'제함,포장,물류',tag_product:'박스포장,물류자동화,카톤',tag_feature:'자동,물류자동화',tag_space:'대형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'박스제함기,카톤성형,박스성형,자동제함',tags:'박스,제함,물류자동화,대형공간,공압필수',photos:[],status:'active'},
+  {id:45,name:'자동 박스 테이핑기',model:'BPK-BTS',price:5000000,category:'테이핑기',desc:'박스 성형·테이핑·스티로폼 밀봉 등 물류 자동화 설비입니다',tag_texture:'공통',tag_pkg:'박스,케이스',tag_process:'테이핑,포장,밀봉,물류',tag_product:'박스포장,카톤',tag_feature:'자동,물류보조',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'박스테이핑기,카톤테이핑,자동테이핑',tags:'박스,테이핑,포장,소형공간,220V,공압권장',photos:[],status:'active'},
+  {id:46,name:'스티로폼 사이드 테이핑기',model:'BPK-STST',price:25000000,category:'테이핑기',desc:'박스 성형·테이핑·스티로폼 밀봉 등 물류 자동화 설비입니다',tag_texture:'공통',tag_pkg:'박스,스티로폼',tag_process:'테이핑,포장,밀봉',tag_product:'스티로폼박스,수산물,신선물류',tag_feature:'사이드테이핑,물류자동화',tag_space:'중형공간,대형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'스티로폼테이핑,사이드테이핑,박스테이핑',tags:'박스,스티로폼,테이핑,중형공간,공압필수',photos:[],status:'active'},
+  {id:47,name:'자동 파렛트 랩핑기',model:'BPK-FRM',price:5000000,category:'랩핑기',desc:'파렛트 적재 후 자동 랩핑하는 물류 설비입니다.',tag_texture:'공통',tag_pkg:'파렛트,랩핑',tag_process:'랩핑,포장,물류',tag_product:'파렛트,창고,물류',tag_feature:'물류자동화,보조설비',tag_space:'대형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'파렛트랩핑기,스트레치랩,물류랩핑',tags:'랩핑,물류,파렛트,대형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:48,name:'작업용 완제품 턴테이블',model:'BPK-FTT',price:5000000,category:'이송',desc:'검수 및 포장 보조 설비입니다.',tag_texture:'공통',tag_pkg:'보조작업대',tag_process:'이송,검수보조,포장보조',tag_product:'완제품,검수작업',tag_feature:'보조설비,소형',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'완제품턴테이블,검수테이블,회전작업대',tags:'이송,검수보조,보조설비,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:49,name:'컨베이어 통합 이송 시스템',model:'BPK-CSV1',price:10000000,category:'이송',desc:'라인 구성에 필요한 이송 자동화 설비입니다.',tag_texture:'공통',tag_pkg:'컨베이어,라인',tag_process:'이송,공급,배출',tag_product:'식품라인,포장라인,완제품',tag_feature:'통합이송,라인연동',tag_space:'중형공간,대형공간,라인구성',tag_electric:'220V,380V3상',tag_air:'공압불필요',tag_keyword:'컨베이어시스템,이송라인,통합이송,라인구성',tags:'이송,컨베이어,라인연동,라인구성,220V,공압불필요',photos:[],status:'active'},
+  {id:50,name:'자동컵씰러 2구,4구형',model:'BPK-CS2R4',price:15000000,category:'포장',desc:'컵 제품 밀봉 자동화 설비입니다.',tag_texture:'액체,고형물,점액질',tag_pkg:'컵,트레이실링',tag_process:'포장,밀봉,실링',tag_product:'컵제품,디저트,반찬,소스컵',tag_feature:'2구,4구,자동',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'컵씰러,컵실링,트레이실링,컵밀봉',tags:'트레이실링,컵,포장,밀봉,중형공간,공압필수',photos:[],status:'active'},
+  {id:51,name:'자동 필름 공급,롤러,패킹 시스템',model:'BPK-FRPS',price:40000000,category:'통합',desc:'포장 필름 자동 공급&포장&계량 ',tag_texture:'공통',tag_pkg:'필름포장,롤필름',tag_process:'필름공급,포장,계량,패킹',tag_product:'포장필름,롤러패킹',tag_feature:'통합시스템,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'필름공급,롤러,패킹,자동포장,계량통합',tags:'필름포장,포장,계량,패킹,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:52,name:'자동 로봇 포장 패킹 시스템',model:'BPK-RFS',price:35000000,category:'통합',desc:'로봇 기반 자동 포장 및 적재 설비입니다.',tag_texture:'공통',tag_pkg:'박스,파우치,패킹',tag_process:'로봇포장,패킹,적재,포장',tag_product:'완제품,물류,자동적재',tag_feature:'로봇,고속,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상,고전력',tag_air:'공압필수,중유량',tag_keyword:'로봇포장,로봇패킹,자동적재,피킹',tags:'로봇,포장,패킹,적재,고속,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:53,name:'수축포장기 시스템',model:'BPK-SHTP',price:20000000,category:'포장',desc:'열수축 방식 포장 설비입니다.',tag_texture:'공통',tag_pkg:'수축포장,필름포장',tag_process:'포장,수축,열수축',tag_product:'완제품,세트포장',tag_feature:'열수축,자동',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압권장,저유량',tag_keyword:'수축포장기,열수축,슈링크포장,필름수축',tags:'수축포장,열수축,포장,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:54,name:'티백 포장기계 자동 시스템',model:'BPK-TBAP',price:45000000,category:'포장',desc:'티백 제품 자동 충진 및 포장 설비입니다.',tag_texture:'분말,과립',tag_pkg:'티백,필터포장',tag_process:'충진,포장,계량',tag_product:'차,티백,분말차,허브티',tag_feature:'자동화라인,소형포장',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'티백포장,티백충진,차포장,필터포장',tags:'분말,과립,티백,충진,포장,계량,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:55,name:'떡 성형기',model:'BPK-RC',price:15000000,category:'성형',desc:'떡 제품을 일정 형태로 자동 성형하는 설비입니다.',tag_texture:'반죽,고형물',tag_pkg:'성형제품',tag_process:'성형,분할',tag_product:'떡,떡류,반죽제품',tag_feature:'성형,식품전용',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압권장,저유량',tag_keyword:'떡성형기,떡제조,반죽성형,식품성형',tags:'반죽,고형물,성형,떡,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:56,name:'자동 액상류 충진&캠핑&로터리 포장시스템',model:'BPK-LFCR',price:45000000,category:'통합',desc:'스텐드,캡파우치 형태의  봉투 자동충진&공급&캡핑 포장설비입니다.',tag_texture:'액체,점액질',tag_pkg:'스탠드파우치,캡파우치,파우치',tag_process:'충진,공급,캡핑,포장,밀봉',tag_product:'소스,액상식품,파우치식품',tag_feature:'로터리,자동화라인,고급형',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'액상로터리,캡파우치,스탠드파우치,파우치충진,캡핑',tags:'액체,점액질,스탠드파우치,캡파우치,충진,캡핑,로터리,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:57,name:'열전사프린터',model:'BPK-TTO32',price:8000000,category:'인쇄',desc:'필름에 제조일자/유통기한/LOT를 고해상도로 인쇄(포장기와 연동).',tag_texture:'공통',tag_pkg:'필름,파우치',tag_process:'인쇄,날짜인쇄,마킹',tag_product:'제조일자,유통기한,LOT,필름',tag_feature:'고해상도,포장기연동',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'열전사프린터,TTO,날짜인쇄,유통기한,LOT,필름인쇄',tags:'인쇄,날짜,LOT,필름,포장기연동,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:58,name:'잉크젯프린터',model:'BPK-TIJ',price:3000000,category:'인쇄',desc:'파우치/박스에 날짜·LOT·바코드 인쇄(소모품 카트리지 방식)',tag_texture:'공통',tag_pkg:'파우치,박스,용기',tag_process:'인쇄,마킹,바코드',tag_product:'날짜,LOT,바코드,박스인쇄',tag_feature:'소형,카트리지',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'잉크젯프린터,TIJ,바코드인쇄,날짜인쇄,LOT',tags:'인쇄,바코드,날짜,LOT,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:59,name:'수직,수평 밴드씰러',model:'BPK-BSV',price:3500000,category:'포장',desc:'수평,수직 이송 방식 연속 실링(대형 봉투/내포장에 유리).',tag_texture:'공통',tag_pkg:'봉투,내포장,필름포장',tag_process:'실링,밀봉,포장',tag_product:'대형봉투,내포장,식품봉투',tag_feature:'수직수평,연속실링,소형',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'밴드씰러,연속실링,봉투실링,수평실링,수직실링',tags:'실링,밀봉,포장,봉투,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:60,name:'트레이 실링기',model:'BPK-TRSEAL',price:7000000,category:'포장',desc:'반찬/밀키트 트레이 밀봉(상면 필름 씰링',tag_texture:'고형물,액체,점액질',tag_pkg:'트레이실링,트레이',tag_process:'포장,밀봉,실링',tag_product:'반찬,밀키트,트레이식품',tag_feature:'소형,상면필름',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압필수,저유량',tag_keyword:'트레이실링기,밀키트실링,반찬트레이,상면필름',tags:'트레이실링,트레이,포장,밀봉,밀키트,소형공간,220V,공압필수',photos:[],status:'active'},
+];
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let equipment=[],applications=[],quotes=[];
+let editProdId=null,editQtId=null;
+let prodCat='전체',prodQ='',prodSt='';
+let appQ='',appSt='',appProc='';
+let qtQ='',qtSt='';
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+window.onload=()=>{
+  document.getElementById('topbar-date').textContent=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  initApiStatus('api-status-login');
+  if(sessionStorage.getItem('bpk_auth')==='1') showMain();
+};
+
+// ═══════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════
+async function doLogin(e){
+  e.preventDefault();
+  const id=document.getElementById('inp-id').value.trim();
+  const pw=document.getElementById('inp-pw').value;
+  const btn=document.querySelector('.login-btn');
+  btn.disabled=true; btn.textContent='확인 중...';
+  let ok=false;
+  if(API_ENABLED){
+    const res=await apiCall('auth',{id,pw});
+    ok=res&&res.ok;
+  } else {
+    ok=(id===CRED.id&&pw===CRED.pw); // 로컬 fallback
+  }
+  btn.disabled=false; btn.textContent='로그인';
+  if(ok){
+    sessionStorage.setItem('bpk_auth','1');
+    document.getElementById('login-err').style.display='none';
+    showMain();
+  } else {
+    document.getElementById('login-err').style.display='block';
+  }
+}
+function doLogout(){
+  if(!confirm('로그아웃 하시겠습니까?')) return;
+  sessionStorage.removeItem('bpk_auth');
+  location.reload();
+}
+
+// ═══════════════════════════════════════════
+// LOAD DATA
+// ═══════════════════════════════════════════
+async function loadData(){
+  if(API_ENABLED){
+    showApiLoading('데이터를 불러오는 중...');
+    try{
+      const [eqRes,appRes,qtRes,cfgRes]=await Promise.all([
+        apiCall('getEq'),apiCall('getApps'),apiCall('getQts'),apiCall('getCfg')
+      ]);
+      if(eqRes&&eqRes.data&&eqRes.data.length>0){
+        equipment=eqRes.data;
+        localStorage.setItem(SK.EQ,JSON.stringify(equipment));
+      } else {
+        const se=localStorage.getItem(SK.EQ);
+        equipment=se?JSON.parse(se):DEFAULT_EQ.map(e=>({...e}));
+        if(!se) localStorage.setItem(SK.EQ,JSON.stringify(equipment));
+        apiCall('bulkSaveEq',equipment); // 최초 1회 Sheets에 업로드
+      }
+      applications=(appRes&&appRes.data)?appRes.data:[];
+      quotes=(qtRes&&qtRes.data)?qtRes.data:[];
+      if(cfgRes&&cfgRes.data&&Object.keys(cfgRes.data).length>0){
+        localStorage.setItem('bpk_scoring_cfg',JSON.stringify(cfgRes.data));
+      }
+    }catch(err){
+      console.warn('API loadData 실패, localStorage fallback',err);
+      _loadFromLocalStorage();
+      showToast('서버 연결 실패 — 로컬 데이터로 표시됩니다. (' + err.message + ')','error');
+    }finally{ hideApiLoading(); }
+  } else {
+    _loadFromLocalStorage();
+  }
+}
+
+function _loadFromLocalStorage(){
+  const se=localStorage.getItem(SK.EQ);
+  equipment=se?JSON.parse(se):DEFAULT_EQ.map(e=>({...e}));
+  if(!se) localStorage.setItem(SK.EQ,JSON.stringify(equipment));
+  const sa=localStorage.getItem(SK.APP);
+  applications=sa?JSON.parse(sa):[];
+  const sq=localStorage.getItem(SK.QT);
+  quotes=sq?JSON.parse(sq):[];
+}
+
+function saveEq(){ localStorage.setItem(SK.EQ,JSON.stringify(equipment)); }
+function saveApps(){ localStorage.setItem(SK.APP,JSON.stringify(applications)); }
+function saveQts(){ localStorage.setItem(SK.QT,JSON.stringify(quotes)); }
+
+async function syncApp(app,isNew){ saveApps(); if(API_ENABLED){ const r=await apiCall(isNew?'saveApp':'updateApp',app); if(!r||!r.ok) showToast('서버 동기화 실패(로컬 저장됨)','warn'); } }
+async function syncQt(qt,isNew){ saveQts(); if(API_ENABLED){ const r=await apiCall(isNew?'saveQt':'updateQt',qt); if(!r||!r.ok) showToast('서버 동기화 실패(로컬 저장됨)','warn'); } }
+async function syncEq(eq){ saveEq(); if(API_ENABLED){ const r=await apiCall('upsertEq',eq); if(!r||!r.ok) showToast('서버 동기화 실패(로컬 저장됨)','warn'); } }
+async function syncDeleteEq(id){ saveEq(); if(API_ENABLED) await apiCall('deleteEq',{id}); }
+
+// ═══════════════════════════════════════════
+// SHOW MAIN
+// ═══════════════════════════════════════════
+async function showMain(){
+  document.getElementById('view-login').style.display='none';
+  document.getElementById('view-main').classList.add('active');
+  await loadData();
+  initApiStatus('api-status-top');
+  renderApps(); renderProds(); renderQuotes(); renderDashboard();
+}
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+function showSec(key){
+  Object.values(SEC_MAP).forEach(v=>document.getElementById(v.el).classList.remove('active'));
+  document.getElementById(SEC_MAP[key].el).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach((n,i)=>n.classList.toggle('active',['applications','products','quotes','dashboard','scoring'][i]===key));
+  document.getElementById('topbar-title').textContent=SEC_MAP[key].title;
+  if(key==='scoring') loadScoringCfg();
+}
+
+// ═══════════════════════════════════════════
+// SCORING CONFIG
+// ═══════════════════════════════════════════
+const DEFAULT_SCORING_CFG={
+  w_texture:40,w_pkg:30,w_proc:20,w_speed:5,
+  w_electric:3,w_air:2,w_space:2,
+  w_tong_proc:5,w_tong_cat:3,
+  p_texture:35,p_electric:15,p_air:20,p_space:10,
+  p_threshold:30,
+  top_per_proc:3,top_integrated:3
+};
+
+function loadScoringCfg(){
+  let cfg=DEFAULT_SCORING_CFG;
+  try{ cfg=Object.assign({},DEFAULT_SCORING_CFG,JSON.parse(localStorage.getItem('bpk_scoring_cfg')||'{}')); }catch(e){}
+  Object.keys(cfg).forEach(k=>{
+    const el=document.getElementById('cfg-'+k);
+    if(el) el.value=cfg[k];
+  });
+  updateMaxScoreHint();
+}
+
+function saveScoringCfg(){
+  const cfg={};
+  Object.keys(DEFAULT_SCORING_CFG).forEach(k=>{
+    const el=document.getElementById('cfg-'+k);
+    if(el) cfg[k]=parseFloat(el.value)||0;
+  });
+  localStorage.setItem('bpk_scoring_cfg',JSON.stringify(cfg));
+  if(API_ENABLED) apiCall('saveCfg',cfg);
+  const btn=document.querySelector('#sec-scoring .btn-primary');
+  const orig=btn.innerHTML;
+  btn.innerHTML='✅ 저장됨';
+  btn.disabled=true;
+  setTimeout(()=>{ btn.innerHTML=orig; btn.disabled=false; },1500);
+}
+
+function resetScoringCfg(){
+  if(!confirm('가중치를 기본값으로 되돌립니다. 계속할까요?')) return;
+  localStorage.removeItem('bpk_scoring_cfg');
+  loadScoringCfg();
+}
+
+function updateMaxScoreHint(){
+  const ids=['w_texture','w_pkg','w_proc','w_electric','w_air','w_space','w_tong_proc','w_tong_cat'];
+  const total=ids.reduce((s,k)=>{ const el=document.getElementById('cfg-'+k); return s+(el?parseFloat(el.value)||0:0); },0);
+  const hint=document.getElementById('scoring-maxscore-hint');
+  if(hint) hint.textContent=`현재 최대 점수 합계: ${total}점 (100% 매칭 시 기준점)`;
+}
+
+// ═══════════════════════════════════════════
+// STATUS
+// ═══════════════════════════════════════════
+function statusBadge(s){
+  const m={'신청접수':'b-new','검토중':'b-review','수정중':'b-mod','확정':'b-ok','반려':'b-rej'};
+  const ic={'신청접수':'📬','검토중':'⏳','수정중':'✏️','확정':'✅','반려':'❌'};
+  return `<span class="badge ${m[s]||'b-new'}">${ic[s]||''}  ${s}</span>`;
+}
+
+// ═══════════════════════════════════════════
+// APPLICATIONS
+// ═══════════════════════════════════════════
+function filterApps(q){appQ=q;renderApps();}
+function filterAppStatus(v){appSt=v;renderApps();}
+function filterAppProcess(v){appProc=v;renderApps();}
+
+function renderApps(){
+  let data=applications.filter(a=>{
+    const mq=!appQ||a.company.includes(appQ)||a.manager.includes(appQ);
+    const ms=!appSt||a.status===appSt;
+    const mp=!appProc||(a.processes||[]).includes(appProc);
+    return mq&&ms&&mp;
+  });
+  const tb=document.getElementById('app-tbody');
+  tb.innerHTML=data.length?data.map(a=>{
+    const eqNames=(a.equipment||[]).map(id=>{const e=equipment.find(x=>x.id===id);return e?e.name:''}).join(', ');
+    return `<tr onclick="openAppDetail('${a.id}')" style="cursor:pointer">
+      <td><span class="mono">${a.id}</span></td>
+      <td><span class="fw">${a.company}</span></td>
+      <td>${a.manager}</td>
+      <td><span class="mono" style="font-size:11px">${a.phone}</span></td>
+      <td>${a.pname||'-'}</td>
+      <td>${(a.processes||[]).map(p=>`<span class="badge b-new" style="margin:1px;font-size:11px">${p}</span>`).join('')}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--g500)">${eqNames||'-'}</td>
+      <td>${statusBadge(a.status)}</td>
+      <td><span class="mono" style="font-size:10px">${a.date}</span></td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <button class="btn btn-sm btn-outline" onclick="openAppDetail('${a.id}')">상세</button>
+        <button class="btn btn-sm btn-primary" style="margin-left:4px" onclick="openQuoteModal('${a.id}')">견적</button>
+      </td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="10"><div class="empty"><span class="empty-icon">📭</span><div class="empty-txt">신청 내역이 없습니다.</div></div></td></tr>`;
+
+  ['st-total','st-new','st-ok','st-rev'].forEach(id=>document.getElementById(id));
+  document.getElementById('st-total').textContent=applications.length;
+  document.getElementById('st-new').textContent=applications.filter(a=>a.status==='신청접수').length;
+  document.getElementById('st-ok').textContent=applications.filter(a=>a.status==='확정').length;
+  document.getElementById('st-rev').textContent=applications.filter(a=>a.status==='검토중'||a.status==='수정중').length;
+  document.getElementById('badge-new').textContent=applications.filter(a=>a.status==='신청접수').length;
+}
+
+function openAppDetail(id){
+  const a=applications.find(x=>x.id===id); if(!a) return;
+  document.getElementById('m-app-title').textContent=a.company;
+  document.getElementById('m-app-sub').textContent=`${a.id} · 접수일시: ${a.date}`;
+  const eqItems=(a.equipment||[]).map(eid=>{const e=equipment.find(x=>x.id===eid);return e?`<span class="eq-pill">📦 ${e.name}<span style="font-family:'JetBrains Mono',monospace;font-size:10px;margin-left:4px;opacity:.7">${e.price.toLocaleString('ko-KR')}원</span></span>`:''}).join('');
+  const total=(a.equipment||[]).reduce((s,eid)=>{const e=equipment.find(x=>x.id===eid);return s+(e?e.price:0);},0);
+  document.getElementById('m-app-body').innerHTML=`
+    <div style="margin-bottom:16px">${statusBadge(a.status)}</div>
+    <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">기업 정보</div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="di-label">기업명</div><div class="di-value">${a.company||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">사업자등록번호</div><div class="di-value">${a.bizno||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">대표자명</div><div class="di-value">${a.ceo||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">담당자</div><div class="di-value">${a.manager||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">휴대폰</div><div class="di-value">${a.phone||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">이메일</div><div class="di-value">${a.email||'-'}</div></div>
+      <div class="detail-item detail-full"><div class="di-label">사업장 주소</div><div class="di-value">${a.address||a.addr||'-'}</div></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;margin-top:16px">제품 및 공정 정보</div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="di-label">생산 제품</div><div class="di-value">${a.pname||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">제품 물성</div><div class="di-value">${a.texture||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">포장 형태</div><div class="di-value">${(a.pkgtypes||[]).join(', ')||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">목표 생산속도</div><div class="di-value">분당 ${a.speed||'-'}개${a.qty?` · 일 목표 ${a.qty}개`:''}</div></div>
+      <div class="detail-item detail-full"><div class="di-label">개선 희망 공정</div><div class="di-value">${(a.processes||[]).join(' · ')||'-'}</div></div>
+      ${a.problem_type?`<div class="detail-item"><div class="di-label">도입 목적</div><div class="di-value">${a.problem_type==='구형장비교체'?'🔄 구형 장비 교체':'✨ 신규 도입 필요'}</div></div>`:''}
+      ${(a.problem_points&&a.problem_points.length)?`<div class="detail-item detail-full"><div class="di-label">공정 문제점</div><div class="di-value">${a.problem_points.join(' · ')}</div></div>`:''}
+      ${(a.electric&&a.electric.length)?`<div class="detail-item"><div class="di-label">전기 사용</div><div class="di-value">${a.electric.join(', ')}</div></div>`:''}
+      ${a.air_yn?`<div class="detail-item"><div class="di-label">공압 설치</div><div class="di-value">${a.air_yn}${a.air_flow?' · '+a.air_flow:''}</div></div>`:''}
+      ${(a.space_w&&a.space_h)?`<div class="detail-item"><div class="di-label">설치 공간</div><div class="di-value">${a.space_w}m × ${a.space_h}m = ${(parseFloat(a.space_w)*parseFloat(a.space_h)).toFixed(1)}㎡</div></div>`:''}
+      ${a.memo?`<div class="detail-item detail-full"><div class="di-label">추가 요청</div><div class="di-value">${a.memo}</div></div>`:''}
+    </div>
+    ${(a.product_photos&&a.product_photos.length)?`
+    <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 10px">제품 사진</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${a.product_photos.map(p=>`<img src="${p}" style="width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--g200);cursor:pointer" onclick="window.open('${p}','_blank')"/>`).join('')}</div>`:''}
+    ${(a.space_photos&&a.space_photos.length)?`
+    <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 10px">현장 사진</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${a.space_photos.map(p=>`<img src="${p}" style="width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--g200);cursor:pointer" onclick="window.open('${p}','_blank')"/>`).join('')}</div>`:''}
+    <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 10px">선택 장비</div>
+    <div style="margin-bottom:12px">${eqItems||'<span style="color:var(--g400);font-size:14px">장비 미선택</span>'}</div>
+    <div style="background:var(--g50);border-radius:var(--r-sm);padding:14px 18px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:14px;color:var(--g600);font-weight:600">총 예상 금액 (VAT 별도)</span>
+      <span class="price-text" style="font-size:17px">${total.toLocaleString('ko-KR')}원</span>
+    </div>`;
+  document.getElementById('m-app-footer').innerHTML=`<button class="btn btn-outline" onclick="closeModal('modal-app')">닫기</button><button class="btn btn-primary" onclick="closeModal('modal-app');openQuoteModal('${id}')">📄 견적서 작성</button>`;
+  openModal('modal-app');
+}
+
+async function changeStatus(id,status){
+  const a=applications.find(x=>x.id===id); if(!a) return;
+  a.status=status;
+  closeModal('modal-app'); renderApps(); renderDashboard();
+  await syncApp(a,false);
+  showToast(`상태가 '${status}'로 변경되었습니다.`);
+}
+
+// ═══════════════════════════════════════════
+// PRODUCTS
+// ═══════════════════════════════════════════
+function filterProdCat(cat,el){ prodCat=cat; document.querySelectorAll('#prod-tabs .tab-item').forEach(t=>t.classList.remove('active')); if(el) el.classList.add('active'); renderProds(); }
+function filterProds(q){ prodQ=q; renderProds(); }
+function filterProdStatus(v){ prodSt=v; renderProds(); }
+
+function renderProds(){
+  let data=equipment.filter(p=>{
+    const mc=prodCat==='전체'||p.category===prodCat;
+    const mq=!prodQ||p.name.includes(prodQ)||p.model.includes(prodQ);
+    const ms=!prodSt||p.status===prodSt;
+    return mc&&mq&&ms;
+  });
+  document.getElementById('prod-tbody').innerHTML=data.length?data.map(p=>{
+    const photoCount=(p.photos||[]).filter(x=>x).length;
+    return `<tr>
+      <td><span class="mono" style="color:var(--g400)">${p.id}</span></td>
+      <td><span class="fw">${p.name}</span></td>
+      <td><span class="mono">${p.model}</span></td>
+      <td><span class="badge b-new" style="font-size:11px">${p.category}</span></td>
+      <td><span class="price-text">${p.price.toLocaleString('ko-KR')}원</span></td>
+      <td style="text-align:center">${photoCount>0?`<span style="font-size:13px;color:var(--accent);font-weight:600">📷 ${photoCount}장</span>`:`<span style="font-size:12px;color:var(--g400)">미등록</span>`}</td>
+      <td>${p.status==='active'?'<span class="badge b-active">● 활성</span>':'<span class="badge b-inactive">○ 비활성</span>'}</td>
+      <td style="white-space:nowrap"><button class="btn btn-sm btn-outline" onclick="openEditProd(${p.id})">✏️ 수정</button></td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="8"><div class="empty"><span class="empty-icon">📦</span><div class="empty-txt">조건에 맞는 물품이 없습니다.</div></div></td></tr>`;
+}
+
+function openEditProd(id){
+  const p=id?equipment.find(x=>x.id===id):null;
+  editProdId=id||null;
+  document.getElementById('m-prod-title').textContent=id?'물품 수정':'물품 추가';
+  document.getElementById('m-prod-sub').textContent=p?`${p.model} · 현재가 ${p.price.toLocaleString('ko-KR')}원`:'새 물품을 등록합니다.';
+  document.getElementById('p-name').value=p?.name||'';
+  document.getElementById('p-model').value=p?.model||'';
+  document.getElementById('p-price').value=p?.price||'';
+  document.getElementById('p-cat').value=p?.category||'통합';
+  document.getElementById('p-desc').value=p?.desc||'';
+  document.getElementById('p-status').value=p?.status||'active';
+  document.getElementById('p-tag-texture').value=p?.tag_texture||'';
+  document.getElementById('p-tag-pkg').value=p?.tag_pkg||'';
+  document.getElementById('p-tag-process').value=p?.tag_process||'';
+  document.getElementById('p-tag-product').value=p?.tag_product||'';
+  document.getElementById('p-tag-feature').value=p?.tag_feature||'';
+  document.getElementById('p-tag-space').value=p?.tag_space||'';
+  document.getElementById('p-tag-electric').value=p?.tag_electric||'';
+  document.getElementById('p-tag-air').value=p?.tag_air||'';
+  document.getElementById('p-tag-keyword').value=p?.tag_keyword||'';
+  document.getElementById('p-tags').value=p?.tags||'';
+  document.getElementById('p-spec-speed').value=p?.spec_speed||'';
+  document.getElementById('p-spec-power').value=p?.spec_power||'';
+  document.getElementById('p-spec-packing').value=p?.spec_packing||'';
+  document.getElementById('p-spec-dimension').value=p?.spec_dimension||'';
+  document.getElementById('p-spec-weight').value=p?.spec_weight||'';
+  document.getElementById('p-spec-air').value=p?.spec_air||'';
+  document.getElementById('p-spec-voltage').value=p?.spec_voltage||'';
+  const grid=document.getElementById('p-photos');
+  grid.innerHTML='';
+  (p?.photos||[]).forEach(src=>{
+    if(!src) return;
+    const d=document.createElement('div'); d.className='photo-th';
+    d.innerHTML=`<img src="${src}"/><div class="photo-del" onclick="this.parentElement.remove()">✕</div>`;
+    grid.appendChild(d);
+  });
+  const addBtn=document.createElement('div'); addBtn.className='photo-th add-btn'; addBtn.textContent='+'; addBtn.onclick=()=>document.getElementById('p-photo-inp').click();
+  grid.appendChild(addBtn);
+  // Load packaging photos
+  const gridPkg=document.getElementById('p-photos-pkg');
+  gridPkg.innerHTML='';
+  (p?.photos_pkg||[]).forEach(src=>{
+    if(!src) return;
+    const d=document.createElement('div'); d.className='photo-th';
+    d.innerHTML=`<img src="${src}"/><div class="photo-del" onclick="this.parentElement.remove()">✕</div>`;
+    gridPkg.appendChild(d);
+  });
+  const addBtnPkg=document.createElement('div'); addBtnPkg.className='photo-th add-btn'; addBtnPkg.textContent='+'; addBtnPkg.onclick=()=>document.getElementById('p-photo-pkg-inp').click();
+  gridPkg.appendChild(addBtnPkg);
+  // Load videos
+  const videosEl=document.getElementById('p-videos');
+  videosEl.innerHTML='';
+  (p?.videos||[]).forEach(url=>addVideoInput(url));
+  openModal('modal-prod');
+}
+function openAddProduct(){ openEditProd(null); }
+
+// 이미지 파일 → 압축된 base64 (최대 900px / JPEG 80%)
+function compressImage(dataUrl){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=900;
+      const scale=Math.min(1,MAX/Math.max(img.width,img.height,1));
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(img.width*scale);
+      cv.height=Math.round(img.height*scale);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      resolve(cv.toDataURL('image/jpeg',0.8));
+    };
+    img.onerror=()=>resolve(dataUrl);
+    img.src=dataUrl;
+  });
+}
+
+// PDF 렌더링 전 외부 이미지(Drive URL 등)를 data URL로 변환
+async function preloadImages(el){
+  const imgs=[...el.querySelectorAll('img[src]')];
+  await Promise.allSettled(imgs.map(async img=>{
+    const src=img.getAttribute('src');
+    if(!src||src.startsWith('data:')||src.startsWith('blob:')) return;
+    try{
+      const resp=await fetch(src,{mode:'cors',cache:'force-cache'});
+      if(!resp.ok) return;
+      const blob=await resp.blob();
+      img.src=await new Promise(res=>{
+        const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(blob);
+      });
+    }catch(e){ /* 실패 시 원본 유지 */ }
+  }));
+}
+
+function addProdPhoto(inp,gridId,maxCount){
+  if(!inp.files.length) return;
+  const gId=gridId||'p-photos';
+  const max=maxCount||4;
+  const grid=document.getElementById(gId);
+  if(!grid) return;
+  const addBtn=grid.querySelector('.add-btn');
+  const current=grid.querySelectorAll('.photo-th:not(.add-btn)').length;
+  [...inp.files].slice(0,max-current).forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=async e=>{
+      const compressed=await compressImage(e.target.result);
+      const d=document.createElement('div'); d.className='photo-th';
+      d.innerHTML=`<img src="${compressed}"/><div class="photo-del" onclick="this.parentElement.remove()">✕</div>`;
+      grid.insertBefore(d,addBtn);
+    };
+    reader.readAsDataURL(f);
+  });
+  inp.value='';
+}
+
+function getYouTubeId(url){
+  if(!url) return null;
+  const m=url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|v\/))([a-zA-Z0-9_-]{11})/);
+  return m?m[1]:null;
+}
+
+function addVideoInput(url){
+  const container=document.getElementById('p-videos'); if(!container) return;
+  if(container.querySelectorAll('.video-item').length>=3){showToast('영상은 최대 3개까지 추가할 수 있습니다.');return;}
+  const vid=getYouTubeId(url||'');
+  const thumbSrc=vid?`https://img.youtube.com/vi/${vid}/mqdefault.jpg`:'';
+  const div=document.createElement('div'); div.className='video-item';
+  div.innerHTML=`<img class="video-thumb" src="${thumbSrc}" style="${thumbSrc?'':'opacity:0'}" onerror="this.style.opacity=0"/><input class="video-inp" type="url" value="${url||''}" placeholder="유튜브 영상 URL (대원팩 채널)" oninput="previewVideo(this)"/><button class="btn btn-xs btn-danger" onclick="this.parentElement.remove()" style="flex-shrink:0">✕</button>`;
+  container.appendChild(div);
+}
+
+function previewVideo(inp){
+  const vid=getYouTubeId(inp.value);
+  const img=inp.parentElement.querySelector('.video-thumb');
+  if(!img) return;
+  if(vid){ img.src=`https://img.youtube.com/vi/${vid}/mqdefault.jpg`; img.style.opacity='1'; }
+  else { img.src=''; img.style.opacity='0'; }
+}
+
+async function saveProd(){
+  const name=document.getElementById('p-name').value.trim();
+  const model=document.getElementById('p-model').value.trim();
+  const price=parseInt(document.getElementById('p-price').value)||0;
+  const cat=document.getElementById('p-cat').value;
+  const desc=document.getElementById('p-desc').value.trim();
+  const status=document.getElementById('p-status').value;
+  const tag_texture=document.getElementById('p-tag-texture').value.trim();
+  const tag_pkg=document.getElementById('p-tag-pkg').value.trim();
+  const tag_process=document.getElementById('p-tag-process').value.trim();
+  const tag_product=document.getElementById('p-tag-product').value.trim();
+  const tag_feature=document.getElementById('p-tag-feature').value.trim();
+  const tag_space=document.getElementById('p-tag-space').value.trim();
+  const tag_electric=document.getElementById('p-tag-electric').value.trim();
+  const tag_air=document.getElementById('p-tag-air').value.trim();
+  const tag_keyword=document.getElementById('p-tag-keyword').value.trim();
+  const tags=document.getElementById('p-tags').value.trim();
+  const photoEls=[...document.getElementById('p-photos').querySelectorAll('.photo-th:not(.add-btn) img')];
+  let photos=photoEls.map(img=>img.src).filter(s=>s&&!s.startsWith('data:,'));
+  const pkgEls=[...document.getElementById('p-photos-pkg').querySelectorAll('.photo-th:not(.add-btn) img')];
+  let photos_pkg=pkgEls.map(img=>img.src).filter(s=>s&&!s.startsWith('data:,'));
+  const videoEls=[...document.getElementById('p-videos').querySelectorAll('.video-inp')];
+  const videos=videoEls.map(inp=>inp.value.trim()).filter(v=>v&&getYouTubeId(v));
+  if(!name){ alert('물품명을 입력해 주세요.'); return; }
+
+  // base64 사진을 Drive에 업로드 (새로 추가된 사진만, 기존 URL은 유지)
+  if(API_ENABLED){
+    const hasnew=photos.some(p=>p.startsWith('data:'))||photos_pkg.some(p=>p.startsWith('data:'));
+    if(hasnew){
+      showApiLoading('장비 사진을 업로드하는 중...');
+      try{
+        photos=await apiUploadPhotos(photos, `eq_${name}`, {type:'equipment',eqName:name});
+        photos_pkg=await apiUploadPhotos(photos_pkg, `pkg_${name}`, {type:'pkg',eqName:name});
+      }catch(e){ console.warn('사진 업로드 실패, base64 유지'); }
+      finally{ hideApiLoading(); }
+    }
+  }
+
+  const spec_speed=document.getElementById('p-spec-speed').value.trim();
+  const spec_power=document.getElementById('p-spec-power').value.trim();
+  const spec_packing=document.getElementById('p-spec-packing').value.trim();
+  const spec_dimension=document.getElementById('p-spec-dimension').value.trim();
+  const spec_weight=document.getElementById('p-spec-weight').value.trim();
+  const spec_air=document.getElementById('p-spec-air').value.trim();
+  const spec_voltage=document.getElementById('p-spec-voltage').value.trim();
+  const specData={spec_speed,spec_power,spec_packing,spec_dimension,spec_weight,spec_air,spec_voltage};
+  const tagData={tag_texture,tag_pkg,tag_process,tag_product,tag_feature,tag_space,tag_electric,tag_air,tag_keyword,tags};
+  let targetEq;
+  if(editProdId){
+    const p=equipment.find(x=>x.id===editProdId);
+    if(p){ Object.assign(p,{name,model,price,category:cat,desc,status,photos,photos_pkg,videos,...tagData,...specData}); targetEq=p; }
+  } else {
+    const newId=Math.max(...equipment.map(e=>e.id),0)+1;
+    targetEq={id:newId,name,model,price,category:cat,desc,status,photos,photos_pkg,videos,...tagData,...specData};
+    equipment.push(targetEq);
+  }
+  closeModal('modal-prod'); renderProds();
+  if(targetEq) await syncEq(targetEq); else saveEq();
+  showToast('물품 정보가 저장되었습니다. 신청 화면에 즉시 반영됩니다.');
+}
+
+// ═══════════════════════════════════════════
+// QUOTES
+// ═══════════════════════════════════════════
+function filterQuotes(q){qtQ=q;renderQuotes();}
+function filterQuoteStatus(v){qtSt=v;renderQuotes();}
+
+function renderQuotes(){
+  let data=quotes.filter(q=>(!qtQ||q.company.includes(qtQ))&&(!qtSt||q.status===qtSt));
+  const sm={'작성중':'b-draft','발송완료':'b-sent','확정':'b-conf'};
+  const ic={'작성중':'📝','발송완료':'📤','확정':'✅'};
+  document.getElementById('qt-tbody').innerHTML=data.length?data.map(q=>`
+    <tr>
+      <td><span class="mono">${q.id}</span></td>
+      <td><span class="fw">${q.company}</span></td>
+      <td><span class="mono" style="font-size:11px">${q.appId||'-'}</span></td>
+      <td><span class="price-text">${q.total.toLocaleString('ko-KR')}원</span></td>
+      <td style="text-align:center">${q.eqCount||0}개</td>
+      <td><span class="badge ${sm[q.status]}">${ic[q.status]} ${q.status}</span></td>
+      <td><span class="mono" style="font-size:11px">${q.date}</span></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm btn-outline" onclick="openQuoteModal('${q.appId}','${q.id}')">✏️ 수정</button>
+        ${q.status!=='확정'?`<button class="btn btn-sm btn-success" style="margin-left:4px" onclick="confirmQuote('${q.id}')">✅ 확정</button>`:''}
+        <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="genPDF('${q.id}')">📄 PDF${q.pdfUrl?'<span style="color:#10b981;margin-left:3px" title="Drive에 저장됨">✓</span>':''}</button>
+        <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="genEquipPDF('${q.id}')">📸 장비PDF${q.equipPdfUrl?'<span style="color:#10b981;margin-left:3px" title="Drive에 저장됨">✓</span>':''}</button>
+        ${q.pdfUrl?`<a href="${q.pdfUrl}" target="_blank" class="btn btn-sm" style="margin-left:4px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534" title="Drive에서 열기">☁️</a>`:''}
+        ${q.equipPdfUrl?`<a href="${q.equipPdfUrl}" target="_blank" class="btn btn-sm" style="margin-left:4px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534" title="장비사진 Drive에서 열기">☁️📸</a>`:''}
+      </td>
+    </tr>`).join(''):`<tr><td colspan="8"><div class="empty"><span class="empty-icon">📄</span><div class="empty-txt">견적서가 없습니다.</div></div></td></tr>`;
+  document.getElementById('badge-qt').textContent=quotes.filter(q=>q.status==='작성중').length;
+}
+
+async function confirmQuote(id){
+  const q=quotes.find(x=>x.id===id); if(!q) return;
+  q.status='확정';
+  const a=applications.find(x=>x.id===q.appId); if(a) a.status='확정';
+  renderQuotes(); renderApps(); renderDashboard();
+  await Promise.all([syncQt(q,false), a?syncApp(a,false):Promise.resolve()]);
+  showToast('견적이 확정 처리되었습니다. 신청기업에서 PDF 다운로드가 가능합니다.');
+}
+
+function _buildEqOptions(selectedId){
+  const opts=equipment.filter(e=>!e.status||e.status==='active').map(e=>`<option value="${e.id}" data-model="${e.model||''}" data-price="${e.price}" ${String(e.id)===String(selectedId)?'selected':''}>${e.name}${e.model?' ('+e.model+')':''}</option>`).join('');
+  return `<option value="">-- 물품 선택 --</option>${opts}`;
+}
+function _makeQItemRow(eqId,qty){
+  const eq=eqId?equipment.find(e=>String(e.id)===String(eqId)):null;
+  const priceDisp=eq?(eq.price*(qty||1)).toLocaleString('ko-KR')+'원':'-';
+  return `<div class="q-item" style="align-items:center;gap:8px;margin-bottom:8px;display:flex">
+    <select class="fc" style="flex:3;height:40px;font-size:13px" onchange="onQEqChange(this)">${_buildEqOptions(eqId)}</select>
+    <input class="fc q-qty" type="number" value="${qty||1}" min="1" style="flex:0 0 64px;height:40px;font-size:13px;text-align:center" oninput="calcQTotal()"/>
+    <span class="q-price-disp" style="flex:1.2;text-align:right;font-size:13px;font-weight:700;color:var(--g700);font-family:'JetBrains Mono',monospace;white-space:nowrap">${priceDisp}</span>
+    <button class="btn btn-sm btn-danger" onclick="this.closest('.q-item').remove();calcQTotal()">✕</button>
+  </div>`;
+}
+
+function onQEqChange(sel){
+  const row=sel.closest('.q-item');
+  const qty=parseInt(row.querySelector('.q-qty').value)||1;
+  const price=parseInt(sel.options[sel.selectedIndex]?.dataset.price||0)||0;
+  row.querySelector('.q-price-disp').textContent=price?((price*qty).toLocaleString('ko-KR')+'원'):'-';
+  calcQTotal();
+}
+
+function openQuoteModal(appId,qtId){
+  const app=applications.find(a=>a.id===appId);
+  const existQt=qtId?quotes.find(q=>q.id===qtId):null;
+  editQtId=qtId||null;
+  document.getElementById('m-qt-title').textContent=app?`견적서 작성 — ${app.company}`:'견적서 작성';
+  document.getElementById('q-company').value=existQt?.company||app?.company||'';
+  document.getElementById('q-receiptno').value=existQt?.appId||appId||'';
+  document.getElementById('q-process').value=existQt?.process||(app?.processes||[]).join('·')||'';
+  document.getElementById('q-memo').value=existQt?.memo||'';
+  const itemsEl=document.getElementById('q-items');
+  itemsEl.innerHTML='';
+  if(existQt?.items&&existQt.items.length){
+    existQt.items.forEach(item=>{
+      const eq=equipment.find(e=>e.name===item.name||(item.model&&e.model===item.model));
+      itemsEl.insertAdjacentHTML('beforeend',_makeQItemRow(eq?.id,item.qty));
+    });
+  } else if(app?.equipment?.length){
+    app.equipment.forEach(eid=>itemsEl.insertAdjacentHTML('beforeend',_makeQItemRow(eid,1)));
+  } else {
+    itemsEl.insertAdjacentHTML('beforeend',_makeQItemRow(null,1));
+  }
+  calcQTotal();
+  openModal('modal-quote');
+}
+
+function addQItem(){ document.getElementById('q-items').insertAdjacentHTML('beforeend',_makeQItemRow(null,1)); }
+
+function calcQTotal(){
+  const total=[...document.querySelectorAll('#q-items .q-item')].reduce((s,row)=>{
+    const sel=row.querySelector('select');
+    const qty=parseInt(row.querySelector('.q-qty')?.value||1)||1;
+    const price=parseInt(sel?.options[sel.selectedIndex]?.dataset.price||0)||0;
+    row.querySelector('.q-price-disp').textContent=price?((price*qty).toLocaleString('ko-KR')+'원'):'-';
+    return s+price*qty;
+  },0);
+  document.getElementById('q-total-disp').textContent=total.toLocaleString('ko-KR')+'원';
+}
+
+function getQData(status){
+  const company=document.getElementById('q-company').value.trim();
+  const appId=document.getElementById('q-receiptno').value.trim();
+  const process=document.getElementById('q-process').value.trim();
+  const memo=document.getElementById('q-memo').value.trim();
+  const rows=[...document.querySelectorAll('#q-items .q-item')];
+  const items=rows.map(row=>{
+    const sel=row.querySelector('select');
+    const eqId=sel?.value;
+    const eq=eqId?equipment.find(e=>String(e.id)===String(eqId)):null;
+    if(!eq) return null;
+    const qty=parseInt(row.querySelector('.q-qty')?.value||1)||1;
+    return {name:eq.name,model:eq.model||'',qty,unit:'SET',price:eq.price};
+  }).filter(Boolean);
+  const total=items.reduce((s,i)=>s+i.qty*i.price,0);
+  return{company,appId,process,memo,items,total,eqCount:items.length,status,date:new Date().toISOString().slice(0,10)};
+}
+
+async function saveQDraft(){
+  const d=getQData('작성중');
+  if(!d.company){alert('업체명을 입력해 주세요.');return;}
+  let isNew=false,qt;
+  if(editQtId){qt=quotes.find(x=>x.id===editQtId);if(qt) Object.assign(qt,d);}
+  else{const id='QT-2026-'+String(quotes.length+1).padStart(3,'0');qt={id,...d};quotes.push(qt);isNew=true;}
+  closeModal('modal-quote'); renderQuotes();
+  await syncQt(qt,isNew);
+  showToast('✏️ 견적서가 저장되었습니다.');
+}
+
+async function sendQuote(){
+  const d=getQData('확정');
+  if(!d.company){alert('업체명을 입력해 주세요.');return;}
+  if(!d.items.length){alert('견적 항목을 1개 이상 선택해 주세요.');return;}
+  if(!confirm(`${d.company}의 견적서를 확정 처리하시겠습니까?\n확정 후 신청기업이 PDF를 다운로드할 수 있습니다.`)) return;
+  let isNew=false,qt;
+  if(editQtId){qt=quotes.find(x=>x.id===editQtId);if(qt) Object.assign(qt,d);}
+  else{const id='QT-2026-'+String(quotes.length+1).padStart(3,'0');qt={id,...d};quotes.push(qt);isNew=true;}
+  const app=d.appId?applications.find(x=>x.id===d.appId):null;
+  if(app) app.status='확정';
+  closeModal('modal-quote'); renderQuotes(); renderApps(); renderDashboard();
+  await Promise.all([syncQt(qt,isNew), app?syncApp(app,false):Promise.resolve()]);
+  showToast(`✅ ${d.company} 견적서가 확정되었습니다. 신청기업에서 PDF 다운로드가 가능합니다.`);
+}
+
+// ═══════════════════════════════════════════
+// PDF
+// ═══════════════════════════════════════════
+function numToKorean(num){
+  if(!num) return '금 영원정';
+  const ko=['','일','이','삼','사','오','육','칠','팔','구'];
+  const u1=['','십','백','천']; const u2=['','만','억','조'];
+  let result=''; let gi=0; let n=num;
+  while(n>0){
+    const chunk=n%10000;
+    if(chunk!==0){
+      let cs=''; let c=chunk;
+      for(let i=0;i<4;i++){const d=c%10;if(d!==0) cs=(d===1&&i>0?'':ko[d])+u1[i]+cs;c=Math.floor(c/10);}
+      result=cs+u2[gi]+result;
+    }
+    gi++;n=Math.floor(n/10000);
+  }
+  return '금 '+result+'원정';
+}
+
+async function genPDF(qtId){
+  const q=quotes.find(x=>x.id===qtId); if(!q) return;
+  const a=applications.find(x=>x.id===q.appId)||{company:q.company,bizno:'',phone:'',address:''};
+  const memoExtra=q.memo?`<br>· ${q.memo}`:'';
+  const jikin=typeof JIKINTB64!=='undefined'?JIKINTB64:'';
+
+  // 견적 항목과 등록 장비 매핑 (스펙 페이지용)
+  const eqInfoList=q.items.map(item=>{
+    const found=equipment.find(e=>
+      (item.eqId&&String(e.id)===String(item.eqId))||
+      e.name===item.name||
+      (item.model&&item.model!=='-'&&e.model===item.model)
+    );
+    return found||Object.assign({photos:[],spec_speed:'',spec_power:'',spec_packing:'',
+      spec_dimension:'',spec_weight:'',spec_air:'',spec_voltage:''},item);
+  });
+
+  // 헬퍼
+  const _td=(s,st='')=>`<td style="padding:6px 9px;border:1px solid #bbb;${st}">${s}</td>`;
+  const _th=(s,st='')=>`<th style="padding:7px 9px;background:#222;color:#fff;border:1px solid #444;text-align:center;font-weight:700;${st}">${s}</th>`;
+
+  const itemRows=q.items.map(it=>`<tr>
+    ${_td(`${it.name}${it.model&&it.model!=='-'?`<div style='font-size:10px;color:#666;margin-top:1px'>${it.model}</div>`:''}`)}
+    ${_td(it.qty,'text-align:center')}
+    ${_td(it.unit||'SET','text-align:center')}
+    ${_td((it.qty*it.price).toLocaleString('ko-KR')+'원','text-align:right')}
+  </tr>`).join('');
+  const padCount=Math.max(0,5-q.items.length);
+  const padRows=padCount?Array(padCount).fill(`<tr>${_td('&nbsp;')}${_td('')}${_td('')}${_td('')}</tr>`).join(''):'';
+
+  const stampHtml=jikin
+    ?`<img src="${jikin}" style="width:62px;height:62px;object-fit:contain;margin-left:6px" />`
+    :`<span style="display:inline-block;width:52px;height:52px;border-radius:50%;border:2.5px solid #cc0000;text-align:center;line-height:52px;font-size:10px;font-weight:900;color:#cc0000;transform:rotate(-8deg);margin-left:6px">(인)</span>`;
+
+  document.getElementById('pdf-content').innerHTML=`
+<div style="padding:22px 46px 14px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:12.5px;line-height:1.4">
+
+  <div style="text-align:center;font-size:28px;font-weight:900;letter-spacing:20px;margin-bottom:18px">見　積　書</div>
+
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+    <div style="line-height:1.95;font-size:12.5px">
+      <div>수신 : <strong style="font-size:13.5px">${q.company}</strong> 貴中</div>
+      <div>사업자등록번호 : ${a.bizno||'-'}</div>
+      <div>연락처 : ${a.phone||'-'}</div>
+    </div>
+    <div style="text-align:right;line-height:1.7;font-size:11.5px">
+      <div style="margin-bottom:5px">날짜 : ${q.date}</div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:3px">
+        <span style="font-size:15px;font-weight:900;letter-spacing:1px">주식회사 비피케이</span>${stampHtml}
+      </div>
+      <div>본사 : 대구광역시 달서구 문화회관 11길 61(장기동)</div>
+      <div>TEL:(053)716-7600 / FAX:(053)716-7670 / bpk90@naver.com</div>
+      <div>사업자등록번호 : 275-88-01197</div>
+    </div>
+  </div>
+
+  <div style="font-size:14px;font-weight:700;margin:8px 0 10px">下記 와 같이 見積 합니다</div>
+
+  <div style="display:flex;justify-content:space-between;align-items:center;border:2px solid #111;padding:8px 16px;margin-bottom:10px">
+    <div style="font-weight:900;text-decoration:underline;font-size:13px">合計金額 : ${numToKorean(q.total)}</div>
+    <div style="font-weight:900;font-size:14px">₩ ${q.total.toLocaleString('ko-KR')} 원 <span style="font-size:10.5px;font-weight:400">(부가세 별도)</span></div>
+  </div>
+
+  <div style="font-size:12.5px;margin-bottom:2px"><span style="font-weight:700">도입장비명 :</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${q.process||'포장자동화'} 장비</div>
+  <div style="font-size:11.5px;font-weight:700;margin-bottom:4px">구성 장비 내역</div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr>${_th('품&nbsp;&nbsp;&nbsp;&nbsp;명')}${_th('수&nbsp;량','width:13%')}${_th('단&nbsp;위','width:13%')}${_th('합&nbsp;&nbsp;&nbsp;&nbsp;계','width:27%')}</tr></thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <tr>${_td(`1.&nbsp;${q.process||'포장자동화'}&nbsp;자동화`)}${_td('1','text-align:center;width:13%')}${_td('SET','text-align:center;width:13%')}${_td(q.total.toLocaleString('ko-KR')+'원','text-align:right;width:27%')}</tr>
+    <tr>${_td('2.&nbsp;설치 및 시운전경비, 전제반비용')}${_td('1','text-align:center')}${_td('식','text-align:center')}${_td('포&nbsp;&nbsp;함','text-align:center')}</tr>
+    <tr style="background:#efefef"><td colspan="3" style="padding:6px 8px;text-align:center;border:1px solid #bbb;font-weight:800">TOTAL</td>${_td(q.total.toLocaleString('ko-KR')+'원','text-align:right;font-weight:800')}</tr>
+  </table>
+
+  <div style="margin-top:10px;border:1px solid #bbb;display:flex;min-height:85px">
+    <div style="padding:10px 12px;min-width:54px;border-right:1px solid #bbb;font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center">비&nbsp;&nbsp;고</div>
+    <div style="padding:10px 14px;flex:1;font-size:10.5px;line-height:1.75;color:#222">
+      · 본 견적은 장비 공급 및 설치 기준 금액이며, 현장 여건에 따른 전기, 공압, 설비배관, 기초 공사 비용은 포함되어 있지 않습니다.<br>
+      · 견적서의 유효기간은 발행일로부터 30일간 유효합니다.<br>
+      · 유지보수 기간은 5년이며, 무상A/S기간은 2년입니다. 무상A/S기간 내라도 귀사의 귀책사유(사용상 과실 등) 또는 천재지변에 의한 경우에는 유상 처리 될 수 있습니다.<br>
+      · 상기 금액은 VAT 별도 금액입니다.${memoExtra}
+    </div>
+  </div>
+
+  <div style="margin-top:8px;text-align:center;font-size:9.5px;color:#999;border-top:1px solid #e5e5e5;padding-top:6px">
+    (주)비피케이 &nbsp;|&nbsp; TEL (053)716-7600 &nbsp;|&nbsp; bpk90@naver.com &nbsp;|&nbsp; 대구광역시 달서구 문화회관 11길 61(장기동)
+  </div>
+</div>`;
+
+  const tpl=document.getElementById('pdf-tpl');
+  tpl.style.left='0';tpl.style.top='0';tpl.style.zIndex='-1';
+  try{
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const pgW=pdf.internal.pageSize.getWidth();
+    const pgH=pdf.internal.pageSize.getHeight();
+
+    // 1페이지: 견적서
+    const c1=await html2canvas(tpl,{scale:2,useCORS:true,logging:false});
+    const h1=c1.height*(pgW/c1.width);
+    // 항상 1페이지 강제: 넘치면 A4 높이에 맞게 압축
+    pdf.addImage(c1.toDataURL('image/png'),'PNG',0,0,pgW,Math.min(h1,pgH));
+
+    // 2페이지~: 장비별 사양 페이지
+    const eTpl=document.getElementById('pdf-equip-tpl');
+    eTpl.style.left='0';eTpl.style.top='0';eTpl.style.zIndex='-1';
+    for(const eq of eqInfoList){
+      pdf.addPage();
+      const photo=(eq.photos&&eq.photos[0])||null;
+      const specDefs=[
+        ['생산속도',eq.spec_speed],
+        ['소비전력 (Total Power)',eq.spec_power],
+        ['포장재 종류 (Packing material)',eq.spec_packing],
+        ['외형 치수 (Dimension)',eq.spec_dimension],
+        ['장비 중량 (Weight)',eq.spec_weight],
+        ['공압 조건 (Compressed air)',eq.spec_air],
+        ['전원 사양 (Power source)',eq.spec_voltage]
+      ];
+      const specRows=specDefs.filter(([,v])=>v).map(([k,v])=>
+        `<tr><td style="padding:8px 12px;background:#f4f6f9;border:1px solid #d1d5db;width:210px;font-weight:700;color:#1e3a5f">${k}</td><td style="padding:8px 12px;border:1px solid #d1d5db;color:#111">${v}</td></tr>`
+      ).join('');
+
+      eTpl.innerHTML=`
+<div style="padding:40px 50px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:13px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1d4ed8;padding-bottom:12px;margin-bottom:24px">
+    <div>
+      <div style="font-size:10px;color:#6b7280;margin-bottom:4px">장비 사양서 · ${q.id} · ${q.company}</div>
+      <div style="font-size:22px;font-weight:900">${eq.name||'-'}</div>
+      ${eq.model&&eq.model!=='-'?`<div style="font-size:13px;color:#374151;margin-top:4px;font-weight:600">${eq.model}</div>`:''}
+    </div>
+    <div style="font-size:11px;color:#94a3b8;text-align:right;line-height:1.8">(주)비피케이<br>TEL (053)716-7600</div>
+  </div>
+  ${photo?`<div style="text-align:center;margin-bottom:26px"><img src="${photo}" style="max-width:440px;max-height:310px;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px" /></div>`:''}
+  <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:#1d4ed8">장비 사양 (Specifications)</div>
+  <table style="width:100%;border-collapse:collapse;font-size:13px">
+    ${specRows||`<tr><td colspan="2" style="padding:14px;text-align:center;color:#9ca3af;border:1px solid #d1d5db">등록된 스펙 정보가 없습니다.</td></tr>`}
+  </table>
+  <div style="margin-top:48px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:8px">
+    (주)비피케이 &nbsp;|&nbsp; TEL (053)716-7600 &nbsp;|&nbsp; bpk90@naver.com &nbsp;|&nbsp; 대구광역시 달서구 문화회관 11길 61(장기동)
+  </div>
+</div>`;
+
+      await preloadImages(eTpl);
+      const ec=await html2canvas(eTpl,{scale:2,useCORS:true,logging:false});
+      const eh=ec.height*(pgW/ec.width);
+      pdf.addImage(ec.toDataURL('image/png'),'PNG',0,0,pgW,Math.min(eh,pgH));
+    }
+    eTpl.style.left='-9999px';eTpl.style.zIndex='';
+
+    const fileName=`BPK_견적서_${q.company}_${q.id}.pdf`;
+    pdf.save(fileName);
+    showToast('📄 PDF 다운로드 완료');
+
+    if(API_ENABLED){
+      showApiLoading('견적서를 Drive에 저장하는 중...');
+      try{
+        const pdfUri=pdf.output('datauristring');
+        const url=await apiUploadPhoto(pdfUri,fileName,{type:'quote',company:q.company});
+        if(url&&url.startsWith('http')){
+          q.pdfUrl=url;
+          await syncQt(q,false);
+          showToast('📄 견적서가 Drive에도 저장되었습니다.');
+        }
+      }catch(e){ console.warn('견적서 Drive 저장 실패',e); }
+      finally{ hideApiLoading(); }
+    }
+  } finally {
+    tpl.style.left='-9999px';tpl.style.zIndex='';
+  }
+}
+
+async function genEquipPDF(qtId){
+  const q=quotes.find(x=>x.id===qtId); if(!q) return;
+  // 견적 항목 → 장비 매핑
+  const eqList=q.items.map(item=>{
+    const found=equipment.find(e=>
+      (item.eqId&&String(e.id)===String(item.eqId))||
+      e.name===item.name||
+      (item.model&&item.model!=='-'&&e.model===item.model)
+    );
+    return found||Object.assign({photos:[],spec_speed:'',spec_power:'',spec_packing:'',
+      spec_dimension:'',spec_weight:'',spec_air:'',spec_voltage:''},item);
+  });
+
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF('p','mm','a4');
+  const pgW=pdf.internal.pageSize.getWidth();
+  const pgH=pdf.internal.pageSize.getHeight();
+  const eTpl=document.getElementById('pdf-equip-tpl');
+  eTpl.style.left='0';eTpl.style.top='0';eTpl.style.zIndex='-1';
+  let firstPage=true;
+
+  for(const eq of eqList){
+    if(!firstPage) pdf.addPage();
+    firstPage=false;
+    const photo=(eq.photos&&eq.photos[0])||null;
+    const specDefs=[
+      ['생산속도',eq.spec_speed],['소비전력 (Total Power)',eq.spec_power],
+      ['포장재 종류 (Packing material)',eq.spec_packing],['외형 치수 (Dimension)',eq.spec_dimension],
+      ['장비 중량 (Weight)',eq.spec_weight],['공압 조건 (Compressed air)',eq.spec_air],
+      ['전원 사양 (Power source)',eq.spec_voltage]
+    ];
+    const specRows=specDefs.filter(([,v])=>v).map(([k,v])=>
+      `<tr><td style="padding:8px 12px;background:#f4f6f9;border:1px solid #d1d5db;width:210px;font-weight:700;color:#1e3a5f">${k}</td><td style="padding:8px 12px;border:1px solid #d1d5db;color:#111">${v}</td></tr>`
+    ).join('');
+
+    eTpl.innerHTML=`
+<div style="padding:40px 50px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:13px">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1d4ed8;padding-bottom:12px;margin-bottom:24px">
+    <div>
+      <div style="font-size:10px;color:#6b7280;margin-bottom:4px">장비 사양서 · ${q.id} · ${q.company}</div>
+      <div style="font-size:22px;font-weight:900">${eq.name||'-'}</div>
+      ${eq.model&&eq.model!=='-'?`<div style="font-size:13px;color:#374151;margin-top:4px;font-weight:600">${eq.model}</div>`:''}
+    </div>
+    <div style="font-size:11px;color:#94a3b8;text-align:right;line-height:1.8">(주)비피케이<br>TEL (053)716-7600</div>
+  </div>
+  ${photo?`<div style="text-align:center;margin-bottom:26px"><img src="${photo}" style="max-width:440px;max-height:310px;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px" /></div>`:''}
+  <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:#1d4ed8">장비 사양 (Specifications)</div>
+  <table style="width:100%;border-collapse:collapse;font-size:13px">
+    ${specRows||`<tr><td colspan="2" style="padding:14px;text-align:center;color:#9ca3af;border:1px solid #d1d5db">등록된 스펙 정보가 없습니다.</td></tr>`}
+  </table>
+  <div style="margin-top:48px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:8px">
+    (주)비피케이 &nbsp;|&nbsp; TEL (053)716-7600 &nbsp;|&nbsp; bpk90@naver.com &nbsp;|&nbsp; 대구광역시 달서구 문화회관 11길 61(장기동)
+  </div>
+</div>`;
+
+    await preloadImages(eTpl);
+    const ec=await html2canvas(eTpl,{scale:2,useCORS:true,logging:false});
+    const eh=ec.height*(pgW/ec.width);
+    pdf.addImage(ec.toDataURL('image/png'),'PNG',0,0,pgW,Math.min(eh,pgH));
+  }
+  eTpl.style.left='-9999px';eTpl.style.zIndex='';
+
+  const equipFileName=`BPK_장비사양_${q.company}_${q.id}.pdf`;
+  pdf.save(equipFileName);
+  showToast('📸 장비사양 PDF 다운로드 완료');
+
+  if(API_ENABLED){
+    showApiLoading('장비사양 PDF를 Drive에 저장하는 중...');
+    try{
+      const pdfUri=pdf.output('datauristring');
+      const url=await apiUploadPhoto(pdfUri,equipFileName,{type:'quote',company:q.company});
+      if(url&&url.startsWith('http')){
+        q.equipPdfUrl=url;
+        await syncQt(q,false);
+        showToast('📸 장비사양 PDF가 Drive에도 저장되었습니다.');
+      }
+    }catch(e){ console.warn('장비사양 PDF Drive 저장 실패',e); }
+    finally{ hideApiLoading(); }
+  }
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+function renderDashboard(){
+  document.getElementById('db-app').textContent=applications.length;
+  const confirmed=applications.filter(a=>a.status==='확정').length;
+  const totalQtAmt=quotes.filter(q=>q.status!=='작성중').reduce((s,q)=>s+q.total,0);
+  const rate=applications.length?Math.round(confirmed/applications.length*100):0;
+  document.getElementById('db-total').textContent=totalQtAmt>=100000000?(totalQtAmt/100000000).toFixed(1)+'억':totalQtAmt>=10000?(totalQtAmt/10000).toFixed(0)+'만':totalQtAmt.toLocaleString();
+  document.getElementById('db-rate').textContent=rate+'%';
+  document.getElementById('db-rate-sub').textContent=`${confirmed}/${applications.length}건 확정`;
+  document.getElementById('db-eq').textContent=equipment.filter(e=>e.status==='active').length;
+  // Process chart
+  const pc={}; applications.forEach(a=>(a.processes||[]).forEach(p=>{pc[p]=(pc[p]||0)+1;}));
+  const ps=Object.entries(pc).sort((a,b)=>b[1]-a[1]); const mx=ps[0]?.[1]||1;
+  document.getElementById('proc-chart').innerHTML=ps.length?ps.map(([n,c])=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="font-weight:600;color:var(--g700)">${n}</span><span class="mono" style="color:var(--primary)">${c}건</span></div><div class="prog-bar"><div class="prog-fill" style="width:${c/mx*100}%"></div></div></div>`).join(''):`<div class="empty" style="padding:20px"><span style="font-size:13px">데이터 없음</span></div>`;
+  // Product chart
+  const eqc={}; applications.forEach(a=>(a.equipment||[]).forEach(id=>{eqc[id]=(eqc[id]||0)+1;}));
+  const tp=Object.entries(eqc).sort((a,b)=>b[1]-a[1]).slice(0,5); const mx2=tp[0]?.[1]||1;
+  const colors=['','green','orange','','green'];
+  document.getElementById('prod-chart').innerHTML=tp.length?tp.map(([id,c],i)=>{const eq=equipment.find(e=>e.id===parseInt(id));return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600;color:var(--g700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px">${eq?.name||''}</span><span class="mono" style="color:var(--primary);flex-shrink:0;margin-left:8px">${c}건</span></div><div class="prog-bar"><div class="prog-fill ${colors[i]}" style="width:${c/mx2*100}%"></div></div></div>`;}).join(''):`<div class="empty" style="padding:20px"><span style="font-size:13px">데이터 없음</span></div>`;
+  // Timeline
+  document.getElementById('tl-list').innerHTML=[...applications].reverse().slice(0,6).map(a=>`<li class="tl-item"><div class="tl-dot">${{'신청접수':'📬','검토중':'⏳','수정중':'✏️','확정':'✅','반려':'❌'}[a.status]||'📬'}</div><div class="tl-body"><div class="tl-title">${a.company} · ${a.pname||'-'}</div><div class="tl-date">${a.date} · ${a.id}</div><div class="tl-desc">${(a.processes||[]).join('·')} 공정 | ${(a.equipment||[]).length}개 장비 선택</div></div></li>`).join('')||`<li style="text-align:center;color:var(--g400);padding:20px;font-size:13px">신청 내역이 없습니다.</li>`;
+}
+
+// ═══════════════════════════════════════════
+// EXPORT CSV
+// ═══════════════════════════════════════════
+function exportCSV(){
+  const rows=[['접수번호','기업명','대표자','담당자','전화','이메일','주소','제품','물성','공정','포장형태','속도','장비','상태','접수일','메모'],...applications.map(a=>[a.id,a.company,a.ceo||'',a.manager,a.phone,a.email||'',a.addr||'',a.pname||'',a.texture||'',(a.processes||[]).join('|'),(a.pkgtypes||[]).join('|'),a.speed||'',(a.equipment||[]).map(id=>equipment.find(e=>e.id===id)?.name||'').join('|'),a.status,a.date,a.memo||''])];
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`BPK_신청현황_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+  showToast('📥 엑셀 파일이 다운로드되었습니다.');
+}
+
+// ═══════════════════════════════════════════
+// MODAL / TOAST
+// ═══════════════════════════════════════════
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-ov').forEach(el=>el.addEventListener('click',e=>{if(e.target===el) el.classList.remove('open');}));
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+</script>
+</body>
+</html>

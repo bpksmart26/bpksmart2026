@@ -1,0 +1,1992 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스마트제조 장비 도입 신청 | (주)비피케이</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script src="jikin.js"></script>
+<style>
+:root{
+  --primary:#1d4ed8;--primary-h:#1e40af;--primary-l:#dbeafe;--primary-50:#eff6ff;
+  --accent:#059669;--accent-l:#d1fae5;--accent-50:#ecfdf5;
+  --danger:#dc2626;--danger-l:#fef2f2;
+  --warn:#d97706;--warn-l:#fffbeb;
+  --g50:#f8fafc;--g100:#f1f5f9;--g200:#e2e8f0;--g300:#cbd5e1;--g400:#94a3b8;
+  --g500:#64748b;--g600:#475569;--g700:#334155;--g800:#1e293b;--g900:#0f172a;
+  --sh:0 2px 12px rgba(0,0,0,.08);--sh-md:0 4px 24px rgba(0,0,0,.12);--sh-lg:0 8px 40px rgba(0,0,0,.18);
+  --r:14px;--r-sm:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800);min-height:100vh;line-height:1.6}
+
+/* HEADER */
+.hdr{background:#fff;border-bottom:2px solid var(--g200);padding:0 32px;height:68px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:var(--sh)}
+.logo-wrap{display:flex;align-items:center;gap:12px;cursor:pointer;text-decoration:none}
+.logo-icon{width:42px;height:42px;background:var(--primary);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:'JetBrains Mono',monospace;font-weight:600;font-size:14px;flex-shrink:0}
+.logo-name{font-size:17px;font-weight:700;color:var(--g900)}
+.logo-sub{font-size:12px;color:var(--g400)}
+.hdr-badge{background:var(--primary-l);color:var(--primary);font-size:13px;font-weight:600;padding:6px 16px;border-radius:20px;border:1.5px solid rgba(29,78,216,.2)}
+
+/* VIEWS */
+.view{display:none}
+.view.active{display:block;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* LANDING */
+.hero{background:linear-gradient(135deg,#1e40af 0%,#1d4ed8 50%,#3b82f6 100%);color:#fff;text-align:center;padding:64px 24px 56px}
+.hero-tag{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;font-size:13px;font-weight:600;padding:5px 16px;margin-bottom:16px;letter-spacing:.5px}
+.hero-title{font-size:34px;font-weight:800;margin-bottom:14px;letter-spacing:-0.5px;line-height:1.3}
+.hero-sub{font-size:16px;opacity:.9;line-height:1.8;max-width:520px;margin:0 auto}
+
+.choice-sec{max-width:880px;margin:0 auto;padding:52px 24px 64px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.c-card{background:#fff;border-radius:var(--r);padding:44px 36px;box-shadow:var(--sh-md);cursor:pointer;transition:all .25s;border:2.5px solid var(--g200);text-align:center;position:relative;overflow:hidden}
+.c-card::after{content:'';position:absolute;inset:0;opacity:0;transition:opacity .25s;border-radius:var(--r)}
+.c-card.apply::after{background:linear-gradient(135deg,var(--primary-50),var(--primary-l))}
+.c-card.lookup::after{background:linear-gradient(135deg,var(--accent-50),var(--accent-l))}
+.c-card:hover{transform:translateY(-5px);box-shadow:var(--sh-lg)}
+.c-card.apply:hover{border-color:var(--primary)}
+.c-card.lookup:hover{border-color:var(--accent)}
+.c-card:hover::after{opacity:1}
+.c-icon{font-size:60px;margin-bottom:18px;position:relative;z-index:1;display:block}
+.c-title{font-size:23px;font-weight:800;color:var(--g900);margin-bottom:10px;position:relative;z-index:1}
+.c-desc{font-size:14px;color:var(--g500);line-height:1.8;margin-bottom:28px;position:relative;z-index:1}
+.c-btn{display:inline-flex;align-items:center;gap:8px;padding:13px 32px;border-radius:10px;font-family:'Pretendard',sans-serif;font-size:15px;font-weight:700;cursor:pointer;border:none;transition:all .2s;position:relative;z-index:1}
+.c-card.apply .c-btn{background:var(--primary);color:#fff;box-shadow:0 4px 14px rgba(29,78,216,.35)}
+.c-card.apply .c-btn:hover{background:var(--primary-h)}
+.c-card.lookup .c-btn{background:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(5,150,105,.35)}
+.c-card.lookup .c-btn:hover{background:#047857}
+
+/* BACK BAR */
+.back-bar{background:#fff;border-bottom:1.5px solid var(--g200);padding:12px 32px;display:flex;align-items:center;gap:10px}
+.back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--primary);font-size:14px;font-weight:600;cursor:pointer;font-family:'Pretendard',sans-serif}
+.back-btn:hover{text-decoration:underline}
+.back-title{font-size:16px;font-weight:700;color:var(--g800)}
+
+/* STEP BAR */
+.step-bar{background:#fff;border-bottom:1.5px solid var(--g200);padding:20px 32px}
+.steps{max-width:700px;margin:0 auto;display:flex;align-items:center}
+.st-item{display:flex;align-items:center;gap:10px}
+.st-item:last-child{flex:0}
+.st-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;border:2.5px solid var(--g300);color:var(--g400);background:#fff;transition:all .3s}
+.st-num.active{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 0 0 4px var(--primary-l)}
+.st-num.done{background:var(--accent);border-color:var(--accent);color:#fff}
+.st-lbl{font-size:13px;font-weight:600;color:var(--g400);white-space:nowrap;transition:color .3s}
+.st-lbl.active{color:var(--primary)}
+.st-lbl.done{color:var(--accent)}
+.st-line{flex:1;height:2px;background:var(--g200);margin:0 8px;border-radius:2px;min-width:20px;transition:background .3s}
+.st-line.done{background:var(--accent)}
+
+/* APPLY MAIN */
+.apply-wrap{max-width:720px;margin:32px auto;padding:0 24px}
+.page{display:none}
+.page.active{display:block;animation:fadeUp .3s ease}
+
+.panel{background:#fff;border-radius:var(--r);box-shadow:var(--sh-md);padding:40px;margin-bottom:20px;border:1px solid var(--g200)}
+.panel-title{font-size:22px;font-weight:800;color:var(--g900);margin-bottom:6px}
+.panel-desc{font-size:15px;color:var(--g500);margin-bottom:32px;line-height:1.8}
+
+.sec-hd{font-size:12px;font-weight:700;color:var(--primary);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:18px;margin-top:4px;display:flex;align-items:center;gap:10px}
+.sec-hd::after{content:'';flex:1;height:1px;background:var(--primary-l)}
+
+/* FORMS */
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.frow.full{grid-template-columns:1fr}
+.fg{display:flex;flex-direction:column;gap:7px}
+.fg label{font-size:14px;font-weight:600;color:var(--g700)}
+.fg label .req{color:var(--danger);margin-left:2px}
+.fc{padding:12px 16px;border:2px solid var(--g200);border-radius:var(--r-sm);font-family:'Pretendard',sans-serif;font-size:15px;color:var(--g800);background:#fff;transition:border-color .2s,box-shadow .2s;outline:none;width:100%;height:50px}
+.fc:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-50)}
+.fc.err{border-color:var(--danger)}
+select.fc{cursor:pointer}
+textarea.fc{height:auto;min-height:100px;resize:vertical;line-height:1.7}
+.err-msg{font-size:12px;color:var(--danger);display:none}
+.fg.has-err .err-msg{display:block}
+.fg.has-err .fc{border-color:var(--danger)}
+
+/* CHIPS */
+.chip-grp{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px}
+.chip-grp-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px}
+.chip-grp-3 .chip{width:100%;justify-content:flex-start}
+.chip{display:flex;align-items:center;gap:8px;padding:10px 16px;border:2px solid var(--g200);border-radius:var(--r-sm);cursor:pointer;font-size:14px;color:var(--g600);transition:all .2s;user-select:none;background:#fff;font-family:'Pretendard',sans-serif;font-weight:500}
+.chip:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-50)}
+.chip input{display:none}
+.chip.on{border-color:var(--primary);background:var(--primary-l);color:var(--primary);font-weight:700}
+.chip .ci{font-size:17px}
+.chip-v{align-items:flex-start;padding:10px 14px}
+.chip-v .ci{margin-top:2px}
+.chip-lbl{font-size:14px;font-weight:600;line-height:1.3}
+.chip-ex{font-size:11px;color:var(--g400);font-weight:400;margin-top:3px;line-height:1.4}
+.chip.on .chip-ex{color:var(--primary);opacity:.75}
+
+/* CONSENT */
+.consent-box{background:var(--g50);border:1.5px solid var(--g200);border-radius:var(--r-sm);padding:16px 18px;font-size:13px;color:var(--g500);line-height:1.8;max-height:130px;overflow-y:auto;margin-bottom:14px}
+.consent-chk{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:15px;font-weight:600;color:var(--g700)}
+.consent-chk input[type="checkbox"]{width:20px;height:20px;accent-color:var(--primary);cursor:pointer;flex-shrink:0}
+
+/* UPLOAD */
+.upload-zone{border:2.5px dashed var(--g300);border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--g50)}
+.upload-zone:hover{border-color:var(--primary);background:var(--primary-50)}
+.upload-zone.has-file{border-color:var(--accent);background:var(--accent-50)}
+.upload-zone input{display:none}
+.upload-icon{font-size:36px;margin-bottom:8px}
+.upload-lbl{font-size:14px;color:var(--g500);line-height:1.7}
+
+/* RANGE */
+.range-wrap{display:flex;align-items:center;gap:14px}
+input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px}
+.range-val{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;color:var(--primary);background:var(--primary-l);padding:5px 12px;border-radius:var(--r-sm);min-width:90px;text-align:right}
+.range-hints{display:flex;justify-content:space-between;font-size:12px;color:var(--g400);margin-top:4px}
+
+/* BUTTONS */
+.btn-row{display:flex;justify-content:flex-end;gap:12px;margin-top:36px;padding-top:24px;border-top:1px solid var(--g100)}
+.btn{padding:12px 28px;border-radius:10px;font-family:'Pretendard',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:8px;height:50px}
+.btn-outline{background:#fff;border:2px solid var(--g300);color:var(--g600)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 2px 10px rgba(29,78,216,.3)}
+.btn-primary:hover{background:var(--primary-h);transform:translateY(-1px);box-shadow:0 4px 20px rgba(29,78,216,.4)}
+.btn-success{background:var(--accent);color:#fff;box-shadow:0 2px 10px rgba(5,150,105,.3)}
+.btn-success:hover{background:#047857;transform:translateY(-1px)}
+
+/* AI RESULT */
+.ai-loading{text-align:center;padding:60px 24px}
+.spinner{width:52px;height:52px;border:5px solid var(--primary-l);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 18px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ai-txt{font-size:17px;font-weight:600;color:var(--g700);margin-bottom:6px}
+.ai-sub{font-size:14px;color:var(--g400)}
+
+.match-hdr{background:linear-gradient(135deg,var(--primary) 0%,#1e3a8a 100%);border-radius:10px;padding:22px 24px;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+.mh-icon{font-size:36px}
+.mh-title{font-size:17px;font-weight:700;margin-bottom:4px}
+.mh-desc{font-size:14px;opacity:.88;line-height:1.5}
+
+.eq-card{border:2px solid var(--g200);border-radius:12px;padding:18px;transition:all .2s;cursor:pointer;background:#fff;position:relative}
+.eq-card:hover{border-color:var(--primary);box-shadow:0 2px 16px rgba(29,78,216,.12);transform:translateY(-2px)}
+.eq-card.on{border-color:var(--primary);background:var(--primary-50)}
+.eq-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.eq-name{font-size:15px;font-weight:700;color:var(--g900)}
+.eq-model{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--g400);margin-top:2px}
+.eq-price{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--primary);background:var(--primary-l);padding:3px 10px;border-radius:6px;flex-shrink:0;white-space:nowrap}
+.eq-desc{font-size:13px;color:var(--g500);line-height:1.65;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.eq-reason{background:#fffbeb;border:1.5px solid #fde68a;border-radius:6px;padding:8px 12px;font-size:12px;color:#78350f;line-height:1.6;margin-bottom:8px}
+.eq-reason strong{color:#92400e}
+.tag-wrap{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.tag{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600}
+.tag-b{background:var(--primary-l);color:var(--primary)}
+.tag-g{background:var(--accent-l);color:#065f46}
+/* 선택 버튼 (sel-dot 대체) */
+.sel-btn{width:100%;margin-top:10px;padding:10px;border-radius:8px;font-size:14px;font-weight:700;font-family:'Pretendard',sans-serif;cursor:pointer;transition:all .2s;border:2px solid var(--primary);background:#fff;color:var(--primary)}
+.sel-btn:hover{background:var(--primary-l)}
+.sel-btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.sel-btn.on:hover{background:#047857;border-color:#047857}
+.eq-card-btns{display:flex;gap:8px;margin-top:10px}
+.eq-card-btns .eq-detail-btn{margin-top:0;flex:1}
+.eq-card-btns .sel-btn{margin-top:0;flex:1.6}
+/* 탭바 */
+.eq-tab-bar{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.eq-tab{border:2.5px solid var(--g200);border-radius:14px;padding:16px 14px;background:#fff;cursor:pointer;font-family:'Pretendard',sans-serif;text-align:center;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:4px;box-shadow:var(--sh)}
+.eq-tab:hover{transform:translateY(-2px);box-shadow:var(--sh-md)}
+.eq-tab-icon{font-size:24px;display:block}
+.eq-tab-title{font-size:14px;font-weight:800;display:block}
+.eq-tab-sub{font-size:11px;font-weight:400;display:block;margin-top:1px}
+.eq-tab-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:10px;display:inline-block;margin-top:4px}
+/* AI 추천 탭 */
+#tab-match{border-color:var(--primary-l);background:var(--primary-50)}
+#tab-match .eq-tab-title{color:var(--primary)}
+#tab-match .eq-tab-sub{color:var(--g400)}
+#tab-match .eq-tab-badge{background:var(--primary-l);color:var(--primary)}
+#tab-match.on{border-color:var(--primary);background:var(--primary-l);box-shadow:0 0 0 3px rgba(29,78,216,.15),var(--sh-md)}
+#tab-match.on .eq-tab-badge{background:var(--primary);color:#fff}
+/* 전체 장비 탭 — 주황색 계열로 시선 유도 */
+#tab-all{border-color:#fed7aa;background:#fff7ed}
+#tab-all .eq-tab-title{color:#c2410c}
+#tab-all .eq-tab-sub{color:#9a3412}
+#tab-all .eq-tab-badge{background:#fed7aa;color:#9a3412}
+#tab-all:hover{background:#fef3c7;border-color:#f97316}
+#tab-all.on{border-color:var(--primary);background:var(--primary-l);box-shadow:0 0 0 3px rgba(29,78,216,.15),var(--sh-md)}
+#tab-all.on .eq-tab-title{color:var(--primary)}
+#tab-all.on .eq-tab-sub{color:var(--g500)}
+#tab-all.on .eq-tab-badge{background:var(--primary);color:#fff}
+/* 검색창 */
+.eq-search-wrap{margin-bottom:14px;position:relative}
+.eq-search-inp{height:50px;font-size:15px;padding-left:44px;width:100%}
+.eq-search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;pointer-events:none}
+/* 선택 요약 바 */
+.sel-bar{display:flex;align-items:center;justify-content:space-between;background:var(--g900);border-radius:12px;padding:14px 20px;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.sel-bar-info{font-size:15px;color:rgba(255,255,255,.8);display:flex;align-items:center;gap:6px}
+.sel-bar-count{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#fff}
+.link-btn{background:none;border:none;color:var(--primary);font-weight:700;cursor:pointer;font-family:'Pretendard',sans-serif;font-size:14px;text-decoration:underline;padding:0}
+/* 속도 프리셋 */
+.speed-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.speed-btn{border:2px solid var(--g200);border-radius:10px;padding:14px 8px;background:#fff;cursor:pointer;font-family:'Pretendard',sans-serif;text-align:center;transition:all .2s}
+.speed-btn:hover{border-color:var(--primary);background:var(--primary-50)}
+.speed-btn.on{border-color:var(--primary);background:var(--primary);color:#fff}
+.sp-icon{font-size:24px;display:block;margin-bottom:6px}
+.sp-name{font-size:13px;font-weight:800;display:block}
+.sp-val{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;display:block;margin-top:2px}
+.sp-desc{font-size:11px;color:var(--g400);display:block;margin-top:2px}
+.speed-btn.on .sp-desc{color:rgba(255,255,255,.7)}
+.speed-btn.on .sp-val{color:rgba(255,255,255,.9)}
+@media(max-width:520px){.speed-presets{grid-template-columns:repeat(2,1fr)}}
+/* 공정 그룹 */
+.proc-sec{margin-bottom:24px}
+.proc-sec-hd{font-size:13px;font-weight:700;color:var(--primary);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;padding:8px 14px;background:var(--primary-l);border-radius:8px;display:flex;align-items:center;gap:8px}
+.eq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.eq-grid{grid-template-columns:1fr}}
+.badge-tong{display:inline-block;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
+.eq-photo-thumb{width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:10px}
+.eq-detail-btn{width:100%;margin-top:10px;padding:7px;background:var(--g100);border:1.5px solid var(--g200);border-radius:7px;font-size:12px;font-weight:700;color:var(--g600);cursor:pointer;font-family:'Pretendard',sans-serif;transition:all .2s}
+.eq-detail-btn:hover{background:var(--primary-l);border-color:var(--primary);color:var(--primary)}
+/* 전체 장비 목록 */
+.all-eq-wrap{margin-top:28px;padding-top:24px;border-top:2px dashed var(--g200)}
+.all-eq-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px}
+.all-eq-title{font-size:16px;font-weight:800;color:var(--g800)}
+.all-eq-count{font-size:13px;color:var(--g400);font-weight:600}
+.cat-filter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.cat-tab{padding:6px 14px;border:1.5px solid var(--g200);border-radius:20px;font-size:13px;font-weight:600;color:var(--g600);cursor:pointer;transition:all .15s;background:#fff;font-family:'Pretendard',sans-serif}
+.cat-tab:hover{border-color:var(--primary);color:var(--primary)}
+.cat-tab.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.all-eq-cat-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;margin-bottom:6px;letter-spacing:.4px}
+.cat-badge-통합{background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff}
+.cat-badge-포장{background:#dcfce7;color:#166534}
+.cat-badge-계량{background:#dbeafe;color:#1e40af}
+.cat-badge-충진{background:#fef3c7;color:#92400e}
+.cat-badge-인쇄{background:#fce7f3;color:#9d174d}
+.cat-badge-이송{background:#f1f5f9;color:#475569}
+.cat-badge-검사{background:#fff7ed;color:#9a3412}
+.cat-badge-기타{background:#f3f4f6;color:#6b7280}
+@media(max-width:520px){.cat-filter{gap:4px}.cat-tab{padding:5px 10px;font-size:12px}}
+/* 문제점 선택 UI */
+.prob-type-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+.prob-type-btn{border:2px solid var(--g200);border-radius:12px;padding:22px 16px;background:#fff;cursor:pointer;font-family:'Pretendard',sans-serif;text-align:center;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:6px}
+.prob-type-btn:hover{border-color:var(--primary);background:var(--primary-50)}
+.prob-type-btn.on{border-color:var(--primary);background:var(--primary-50);box-shadow:0 0 0 3px var(--primary-l)}
+.prob-type-btn input{display:none}
+.ptb-icon{font-size:30px}
+.ptb-title{font-size:15px;font-weight:800;color:var(--g900)}
+.ptb-sub{font-size:12px;color:var(--g500);line-height:1.5;text-align:center}
+.prob-type-btn.on .ptb-title{color:var(--primary)}
+.prob-detail-wrap{margin-top:14px;padding:18px 20px;background:var(--primary-50);border-radius:12px;border:2px solid var(--primary-l)}
+.prob-detail-title{font-size:12px;font-weight:700;color:var(--primary);letter-spacing:.8px;margin-bottom:12px;text-transform:uppercase}
+.prob-detail-list{display:flex;flex-direction:column;gap:8px}
+.prob-item{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;background:#fff;border-radius:9px;border:2px solid var(--g200);cursor:pointer;transition:all .15s;font-family:'Pretendard',sans-serif}
+.prob-item:hover{border-color:var(--primary);background:var(--primary-50)}
+.prob-item.on{border-color:var(--primary);background:#fff;box-shadow:0 2px 8px rgba(29,78,216,.12)}
+.prob-item input{display:none}
+.pi-num{width:24px;height:24px;border-radius:50%;background:var(--g200);color:var(--g500);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;transition:all .15s}
+.prob-item.on .pi-num{background:var(--primary);color:#fff}
+.pi-text{font-size:14px;font-weight:600;color:var(--g700);line-height:1.6}
+.pi-text small{display:block;font-size:12px;font-weight:400;color:var(--g400);margin-top:2px}
+.prob-item.on .pi-text{color:var(--g900)}
+/* 장비 상세 모달 */
+.eq-modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2000;overflow-y:auto;padding:20px}
+.eq-modal-ov.open{display:flex;align-items:flex-start;justify-content:center}
+.eq-modal-box{background:#fff;border-radius:16px;width:100%;max-width:560px;overflow:hidden;box-shadow:0 16px 56px rgba(0,0,0,.3);position:relative;margin:auto}
+.eq-modal-hdr{padding:22px 24px 0;display:flex;justify-content:space-between;align-items:flex-start}
+.eq-modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--g400);line-height:1;padding:0;margin-top:-4px}
+.eq-modal-photos{padding:16px 24px 0}
+.eq-modal-slider{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.eq-modal-slider::-webkit-scrollbar{display:none}
+.eq-modal-img{width:220px;height:160px;flex-shrink:0;object-fit:cover;border-radius:10px;border:2px solid var(--g200)}
+.eq-modal-img.main{width:100%;height:220px;flex-shrink:0}
+.eq-modal-body{padding:16px 24px 24px}
+.eq-modal-name{font-size:20px;font-weight:800;color:var(--g900);margin-bottom:4px}
+.eq-modal-model{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--g400);margin-bottom:12px}
+.eq-modal-price{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--primary);margin-bottom:16px}
+.eq-modal-desc{font-size:14px;color:var(--g600);line-height:1.8;margin-bottom:16px;background:var(--g50);padding:14px 16px;border-radius:8px}
+.eq-modal-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+.eq-modal-sel-btn{width:100%;height:50px;border-radius:10px;font-size:16px;font-weight:700;font-family:'Pretendard',sans-serif;cursor:pointer;border:none;transition:all .2s}
+.eq-modal-sel-btn.select{background:var(--primary);color:#fff;box-shadow:0 4px 14px rgba(29,78,216,.3)}
+.eq-modal-sel-btn.select:hover{background:var(--primary-h)}
+.eq-modal-sel-btn.deselect{background:var(--danger-l);color:var(--danger);border:2px solid #fca5a5}
+.eq-modal-sel-btn.deselect:hover{background:#fee2e2}
+
+/* SUMMARY */
+.sum-block{background:var(--g50);border:1.5px solid var(--g200);border-radius:10px;padding:18px 22px;margin-bottom:18px}
+.sum-title{font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
+.s-row{display:flex;justify-content:space-between;align-items:flex-start;font-size:15px;padding:7px 0;border-bottom:1px solid var(--g100);gap:12px}
+.s-row:last-child{border-bottom:none}
+.s-key{color:var(--g500);flex-shrink:0}
+.s-val{color:var(--g800);font-weight:600;text-align:right}
+.total-box{background:var(--primary);border-radius:10px;padding:18px 22px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-top:16px}
+.total-lbl{font-size:15px;opacity:.9}
+.total-sub{font-size:12px;opacity:.7;margin-top:2px}
+.total-amt{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700}
+
+/* SUCCESS */
+.suc-screen{text-align:center;padding:48px 24px}
+.suc-icon{font-size:72px;margin-bottom:20px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);display:block}
+@keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+.suc-title{font-size:26px;font-weight:800;color:var(--g900);margin-bottom:12px}
+.suc-desc{font-size:16px;color:var(--g500);line-height:1.8;margin-bottom:32px}
+.receipt-box{background:var(--g50);border:1.5px solid var(--g200);border-radius:12px;padding:24px;text-align:left;max-width:440px;margin:0 auto}
+.receipt-id{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--primary);font-weight:700;margin-bottom:10px}
+.receipt-note{font-size:14px;color:var(--g500);line-height:1.8}
+
+/* LOOKUP */
+.lookup-wrap{max-width:640px;margin:40px auto;padding:0 24px}
+.lookup-panel{background:#fff;border-radius:var(--r);box-shadow:var(--sh-md);padding:44px 40px;border:1px solid var(--g200)}
+.lookup-title{font-size:22px;font-weight:800;color:var(--g900);margin-bottom:6px}
+.lookup-desc{font-size:15px;color:var(--g500);margin-bottom:32px;line-height:1.8}
+.lookup-result{margin-top:32px;border-top:2px solid var(--g200);padding-top:32px;animation:fadeUp .3s ease}
+
+/* STATUS TIMELINE */
+.status-tl{display:flex;align-items:center;background:var(--g50);border:1.5px solid var(--g200);border-radius:12px;padding:22px 24px;margin-bottom:24px;overflow-x:auto}
+.stl-item{display:flex;flex-direction:column;align-items:center;gap:7px;flex:1;min-width:76px}
+.stl-dot{width:40px;height:40px;border-radius:50%;border:3px solid var(--g300);background:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all .3s}
+.stl-dot.done{border-color:var(--accent);background:var(--accent);color:#fff}
+.stl-dot.cur{border-color:var(--primary);background:var(--primary);color:#fff;box-shadow:0 0 0 5px var(--primary-l)}
+.stl-lbl{font-size:12px;font-weight:600;color:var(--g400);white-space:nowrap;text-align:center}
+.stl-lbl.done{color:var(--accent)}
+.stl-lbl.cur{color:var(--primary)}
+.stl-line{flex:1;height:3px;background:var(--g200);margin:0 4px;border-radius:2px;min-width:16px}
+.stl-line.done{background:var(--accent)}
+
+.res-company{font-size:18px;font-weight:800;color:var(--g900);margin-bottom:4px}
+.res-id{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--g400);margin-bottom:20px}
+
+.res-eq-item{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;background:#fff;border:1.5px solid var(--g200);border-radius:var(--r-sm);margin-bottom:8px}
+.res-eq-name{font-size:14px;font-weight:600;color:var(--g800)}
+.res-eq-price{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--primary);font-weight:600}
+.res-total{background:var(--primary);color:#fff;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+.res-total-lbl{font-size:14px;opacity:.9}
+.res-total-amt{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700}
+
+.pdf-btn{display:inline-flex;align-items:center;gap:10px;padding:16px 40px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-family:'Pretendard',sans-serif;font-size:17px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(5,150,105,.3);transition:all .2s;width:100%;justify-content:center}
+.pdf-btn:hover{background:#047857;transform:translateY(-2px);box-shadow:0 6px 24px rgba(5,150,105,.4)}
+.pdf-btn-locked{display:inline-flex;align-items:center;gap:10px;padding:16px 40px;background:var(--g200);color:var(--g400);border:none;border-radius:12px;font-family:'Pretendard',sans-serif;font-size:17px;font-weight:700;cursor:not-allowed;width:100%;justify-content:center}
+.status-msg{text-align:center;padding:12px;border-radius:8px;font-size:14px;font-weight:600;margin-bottom:16px}
+.status-msg.info{background:var(--primary-l);color:var(--primary)}
+.status-msg.warn{background:var(--warn-l);color:var(--warn)}
+
+.info-tip{background:#eff6ff;border-left:4px solid var(--primary);padding:14px 18px;border-radius:0 8px 8px 0;font-size:14px;color:var(--g600);line-height:1.7;margin-bottom:24px}
+.info-tip strong{color:var(--primary)}
+.not-found{text-align:center;padding:32px;color:var(--g400)}
+.not-found-icon{font-size:48px;margin-bottom:12px;display:block}
+.not-found-txt{font-size:15px;font-weight:600;margin-bottom:6px;color:var(--g600)}
+.not-found-sub{font-size:13px}
+
+/* PDF TEMPLATE (hidden) */
+#pdf-tpl{position:fixed;left:-9999px;top:0;width:794px;background:#fff;font-family:'Pretendard',sans-serif}
+.pdf-wrap{padding:48px 52px;font-size:13px;color:#111;line-height:1.5}
+.pdf-title-row{text-align:center;margin-bottom:32px}
+.pdf-title{font-size:28px;font-weight:800;letter-spacing:12px;border-bottom:3px solid #111;display:inline-block;padding-bottom:6px}
+.pdf-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:24px;border:1px solid #ccc}
+.pdf-info-left{padding:16px 20px;border-right:1px solid #ccc}
+.pdf-info-right{padding:16px 20px;text-align:right}
+.pdf-info-row{margin-bottom:6px;font-size:13px}
+.pdf-info-row .lbl{color:#555;font-weight:600;min-width:110px;display:inline-block}
+.pdf-divider{border:none;border-top:2px solid #333;margin:16px 0}
+.pdf-bpk-box{background:#f8f9fa;border:1px solid #ddd;border-radius:6px;padding:16px 20px;margin-bottom:20px;font-size:12px;line-height:1.8;color:#444}
+.pdf-bpk-name{font-size:16px;font-weight:800;color:#1d4ed8;margin-bottom:6px}
+.pdf-total-box{background:#1d4ed8;color:#fff;border-radius:8px;padding:18px 22px;margin-bottom:20px}
+.pdf-total-korean{font-size:18px;font-weight:700;margin-bottom:6px}
+.pdf-total-num{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.pdf-total-vat{font-size:12px;opacity:.8;margin-top:4px}
+.pdf-process-name{font-size:14px;font-weight:700;margin-bottom:16px;padding:10px 14px;background:#f1f5f9;border-radius:6px;border-left:4px solid #1d4ed8}
+.pdf-table{width:100%;border-collapse:collapse;margin-bottom:16px}
+.pdf-table th{background:#334155;color:#fff;padding:10px 12px;font-size:12px;font-weight:700;text-align:center;border:1px solid #334155}
+.pdf-table th:first-child{text-align:left}
+.pdf-table td{padding:9px 12px;border:1px solid #ddd;font-size:12px;vertical-align:middle}
+.pdf-table td:first-child{font-weight:600}
+.pdf-table td:not(:first-child){text-align:center}
+.pdf-table td.price{text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600;color:#1d4ed8}
+.pdf-table tr.total-row{background:#f1f5f9;font-weight:700}
+.pdf-table tr.install-row td{color:#555;font-style:italic}
+.pdf-note{font-size:12px;color:#555;border-top:1px solid #ddd;padding-top:12px;line-height:1.8}
+.pdf-footer{margin-top:20px;text-align:center;font-size:11px;color:#888;border-top:1px solid #ddd;padding-top:12px}
+
+@media(max-width:640px){
+  .hdr{padding:0 16px;height:60px}
+  .choice-sec{grid-template-columns:1fr;padding:28px 16px 40px;gap:16px}
+  .apply-wrap,.lookup-wrap{padding:0 16px;margin:20px auto}
+  .panel{padding:24px 20px}
+  .frow{grid-template-columns:1fr}
+  .st-lbl{display:none}
+  .hero-title{font-size:24px}
+  .hero{padding:40px 16px 36px}
+  .lookup-panel{padding:28px 20px}
+  .c-card{padding:32px 24px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <a class="logo-wrap" onclick="showView('landing');return false" href="#">
+    <div class="logo-icon">BPK</div>
+    <div>
+      <div class="logo-name">(주)비피케이</div>
+      <div class="logo-sub">포장자동화 전문기업</div>
+    </div>
+  </a>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div id="api-status-hdr"></div>
+    <div class="hdr-badge">2026 스마트 제조 지원사업</div>
+  </div>
+</header>
+
+<!-- ============================================================ LANDING -->
+<div id="view-landing" class="view active">
+  <div class="hero">
+    <div class="hero-tag">2026 스마트 제조 지원사업</div>
+    <div class="hero-title">식품 포장 자동화 장비<br>도입 지원 신청</div>
+    <div class="hero-sub">AI 기반 장비 매칭으로 최적의 포장 자동화 솔루션을 찾아드립니다.<br>신청 후 2~3 영업일 내 담당자가 연락드립니다.</div>
+  </div>
+  <div class="choice-sec">
+    <div class="c-card apply" onclick="showView('apply')">
+      <span class="c-icon">📋</span>
+      <div class="c-title">신규 장비 신청</div>
+      <div class="c-desc">처음 신청하시는 분<br>기업정보 입력 → 태그 매칭 → 신청 완료<br>까지 5단계로 간편하게 진행하세요.</div>
+      <button class="c-btn">신청하기 →</button>
+    </div>
+    <div class="c-card lookup" onclick="showView('lookup')">
+      <span class="c-icon">🔍</span>
+      <div class="c-title">신청 현황 조회</div>
+      <div class="c-desc">이미 신청하신 분<br>신청 진행 상태 확인 및 확정 후<br>견적서 PDF를 다운로드하세요.</div>
+      <button class="c-btn">조회하기 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ APPLY VIEW -->
+<div id="view-apply" class="view">
+  <div class="back-bar">
+    <button class="back-btn" onclick="showView('landing')">← 처음으로</button>
+    <span class="back-title">신규 장비 신청</span>
+  </div>
+  <!-- STEP BAR -->
+  <div class="step-bar">
+    <div class="steps">
+      <div class="st-item"><div class="st-num active" id="sn1">1</div><div class="st-lbl active" id="sl1">기업정보</div></div>
+      <div class="st-line" id="ln1"></div>
+      <div class="st-item"><div class="st-num" id="sn2">2</div><div class="st-lbl" id="sl2">도입 희망 장비</div></div>
+      <div class="st-line" id="ln2"></div>
+      <div class="st-item"><div class="st-num" id="sn3">3</div><div class="st-lbl" id="sl3">장비 매칭 결과</div></div>
+      <div class="st-line" id="ln3"></div>
+      <div class="st-item"><div class="st-num" id="sn4">4</div><div class="st-lbl" id="sl4">신청 확인</div></div>
+      <div class="st-line" id="ln4"></div>
+      <div class="st-item"><div class="st-num" id="sn5">5</div><div class="st-lbl" id="sl5">완료</div></div>
+    </div>
+  </div>
+
+  <div class="apply-wrap">
+    <!-- STEP 1 -->
+    <div class="page active" id="page1">
+      <div class="panel">
+        <div class="panel-title">🏢 기업 정보 입력</div>
+        <div class="panel-desc">스마트 제조 지원사업 장비 신청을 위한 기업 정보를 입력해 주세요.</div>
+        <div class="sec-hd">기본 정보</div>
+        <div class="frow">
+          <div class="fg" id="fg-company"><label>기업명 <span class="req">*</span></label><input class="fc" id="f-company" placeholder="주식회사 ○○○" autocomplete="off"/><span class="err-msg">기업명을 입력해 주세요.</span></div>
+          <div class="fg" id="fg-bizno"><label>사업자 등록번호 <span class="req">*</span></label><input class="fc" id="f-bizno" placeholder="000-00-00000" maxlength="12" autocomplete="off"/><span class="err-msg">올바른 사업자등록번호를 입력해 주세요.</span></div>
+        </div>
+        <div class="frow full">
+          <div class="fg" id="fg-addr"><label>사업장 주소 <span class="req">*</span></label><input class="fc" id="f-addr" placeholder="시/도 시/군/구 읍/면/동 상세주소" autocomplete="off"/><span class="err-msg">주소를 입력해 주세요.</span></div>
+        </div>
+        <div class="sec-hd" style="margin-top:8px">담당자 정보</div>
+        <div class="frow">
+          <div class="fg" id="fg-ceo"><label>대표자명 <span class="req">*</span></label><input class="fc" id="f-ceo" placeholder="홍길동" autocomplete="off"/><span class="err-msg">대표자명을 입력해 주세요.</span></div>
+          <div class="fg" id="fg-manager"><label>담당자명 <span class="req">*</span></label><input class="fc" id="f-manager" placeholder="담당자 성함" autocomplete="off"/><span class="err-msg">담당자명을 입력해 주세요.</span></div>
+        </div>
+        <div class="frow">
+          <div class="fg" id="fg-phone"><label>휴대폰 번호 <span class="req">*</span></label><input class="fc" id="f-phone" placeholder="010-0000-0000" maxlength="13" autocomplete="off"/><span class="err-msg">올바른 휴대폰 번호를 입력해 주세요.</span></div>
+          <div class="fg" id="fg-email"><label>이메일 <span class="req">*</span></label><input class="fc" id="f-email" placeholder="example@company.com" autocomplete="off"/><span class="err-msg">올바른 이메일을 입력해 주세요.</span></div>
+        </div>
+        <div class="sec-hd" style="margin-top:8px">개인정보 수집 동의</div>
+        <div class="consent-box">
+          <strong>개인정보 수집·이용 동의서</strong><br><br>
+          수집 항목: 기업명, 사업자등록번호, 대표자명, 담당자명, 휴대폰번호, 이메일, 사업장 주소<br>
+          수집 주체: (주)비피케이<br>
+          수집 목적: 2026년도 스마트 제조 지원사업 장비 도입 신청 접수 및 결과 안내<br>
+          보유 기간: 사업 종료 후 3년<br><br>
+          귀하는 동의하지 않을 권리가 있으나, 미동의 시 서비스 이용이 제한됩니다.
+        </div>
+        <label class="consent-chk" id="consent-lbl">
+          <input type="checkbox" id="f-consent"/>
+          위 개인정보 수집·이용에 동의합니다. (필수)
+        </label>
+        <div class="btn-row"><button class="btn btn-primary" onclick="goStep2()">다음 단계 →</button></div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="page" id="page2">
+      <div class="panel">
+        <div class="panel-title">⚙️ 도입 희망 장비 정보</div>
+        <div class="panel-desc">현재 생산 제품과 공정 환경을 입력하시면 태그 매칭으로 최적의 장비를 추천해 드립니다.</div>
+        <div class="info-tip">💡 <strong>입력 팁:</strong> 정확한 정보를 입력할수록 더 정밀한 장비 추천이 가능합니다.</div>
+        <div class="sec-hd">제품 정보</div>
+        <div class="frow">
+          <div class="fg" id="fg-pname"><label>생산 제품명 <span class="req">*</span></label><input class="fc" id="f-pname" placeholder="예: 된장, 고추장, 소스류, 건나물"/><span class="err-msg">제품명을 입력해 주세요.</span></div>
+          <div class="fg" id="fg-weight"><label>포장 수량/단위 <span class="req">*</span></label><div style="display:flex;gap:8px"><input class="fc" id="f-weight-num" type="number" min="0.1" step="0.1" placeholder="수량 (예: 500)" style="flex:1"/><select class="fc" id="f-weight-unit" style="flex:0 0 80px"><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="L">L</option><option value="ea">ea</option><option value="box">box</option><option value="pac">pac</option></select></div><span class="err-msg">수량을 입력해 주세요.</span></div>
+          <div class="fg"><label>일 생산 목표 수량</label><div style="display:flex;align-items:center;gap:8px"><input class="fc" id="f-qty" type="number" min="1" placeholder="예: 5000" style="flex:1"/><span style="font-size:14px;color:var(--g500);white-space:nowrap">개/일</span></div></div>
+        </div>
+        <div class="frow full">
+          <div class="fg"><label>제품 사진 (선택)</label>
+            <div class="upload-zone" onclick="document.getElementById('f-photo').click()" id="upload-zone">
+              <input type="file" id="f-photo" accept="image/*" multiple onchange="handlePhoto(this)"/>
+              <div class="upload-icon">📷</div>
+              <div class="upload-lbl">클릭하여 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 3장</small></div>
+            </div>
+          </div>
+        </div>
+        <div class="sec-hd" style="margin-top:8px">제품형태(물성) 및 포장 형태</div>
+        <div class="frow full">
+          <div class="fg" id="fg-texture">
+            <label>제품형태(물성) <span class="req">*</span></label>
+            <div class="chip-grp-3" id="texture-grp">
+              <label class="chip chip-v"><input type="radio" name="texture" value="액체류"/><span class="ci">💧</span><div><div class="chip-lbl">액체류</div><div class="chip-ex">주스·소스·간장·우유·참기름</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="분말류"/><span class="ci">🌾</span><div><div class="chip-lbl">분말류</div><div class="chip-ex">밀가루·커피가루·조미료</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="점액질"/><span class="ci">🍯</span><div><div class="chip-lbl">점액질/고점도</div><div class="chip-ex">꿀·케찹·마요네즈·크림</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="유동물질"/><span class="ci">🥣</span><div><div class="chip-lbl">유동성 반고체</div><div class="chip-ex">요거트·죽·스프·소스</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="고형물"/><span class="ci">🍱</span><div><div class="chip-lbl">고형물</div><div class="chip-ex">과자·빵·떡·냉동식품</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="반죽"/><span class="ci">🍞</span><div><div class="chip-lbl">반죽류</div><div class="chip-ex">밀가루 반죽·떡 반죽</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="과립"/><span class="ci">🌰</span><div><div class="chip-lbl">과립/견과류</div><div class="chip-ex">콩·시리얼·씨앗류</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="혼합형"/><span class="ci">🍲</span><div><div class="chip-lbl">혼합형</div><div class="chip-ex">김치·국·탕류·건더기 스프</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="점착형"/><span class="ci">🍬</span><div><div class="chip-lbl">점착·부착형</div><div class="chip-ex">카라멜 팝콘·젤리·초콜릿</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="깨짐형"/><span class="ci">🍪</span><div><div class="chip-lbl">깨짐/부서짐</div><div class="chip-ex">과자·시리얼·건조식품</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="기타"/><span class="ci">📦</span><div><div class="chip-lbl">기타</div><div class="chip-ex">위 항목에 해당 없는 경우</div></div></label>
+            </div>
+            <span class="err-msg" id="texture-err">제품형태(물성)을 선택해 주세요.</span>
+          </div>
+        </div>
+        <div class="frow full">
+          <div class="fg" id="fg-pkgtype">
+            <label>포장지 형태 <span class="req">*</span></label>
+            <div class="chip-grp" id="pkg-grp">
+              <label class="chip"><input type="checkbox" name="pkgtype" value="스탠드파우치"/> 스탠드 파우치</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="지퍼파우치"/> 지퍼 파우치</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="M형파우치"/> M형 파우치</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="삼면포장"/> 롤 삼면포장</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="사면포장"/> 롤 사면포장</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="스틱포장"/> 스틱 포장</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="트레이실링"/> 트레이 실링</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="컵용기"/> 컵/용기</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="진공포장"/> 진공 포장</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="MAP포장"/> 가스치환(MAP)</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="병용기"/> 병/용기</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="박스"/> 박스</label>
+              <label class="chip"><input type="checkbox" name="pkgtype" value="기타포장"/> 기타</label>
+            </div>
+            <span class="err-msg" id="pkg-err">포장지 형태를 선택해 주세요.</span>
+          </div>
+        </div>
+        <div class="sec-hd" style="margin-top:8px">현재 공정의 문제점</div>
+        <div class="frow full">
+          <div class="fg">
+            <label>장비 도입 목적을 선택해 주세요 <span class="req">*</span></label>
+            <div class="prob-type-row">
+              <label class="prob-type-btn" id="ptb-replace" onclick="showProblemSub('replace',this)">
+                <input type="radio" name="problem_type" value="구형장비교체"/>
+                <span class="ptb-icon">🔄</span>
+                <span class="ptb-title">구형 장비 교체</span>
+                <span class="ptb-sub">기존 노후 장비<br>교체 필요</span>
+              </label>
+              <label class="prob-type-btn" id="ptb-new" onclick="showProblemSub('new',this)">
+                <input type="radio" name="problem_type" value="신규도입"/>
+                <span class="ptb-icon">✨</span>
+                <span class="ptb-title">신규 도입 필요</span>
+                <span class="ptb-sub">없던 공정·장비<br>새로 도입</span>
+              </label>
+            </div>
+
+            <!-- 구형 장비 교체 서브 옵션 -->
+            <div id="problem-sub-replace" class="prob-detail-wrap" style="display:none">
+              <div class="prob-detail-title">구형 장비의 문제점 — 해당 항목을 모두 선택하세요</div>
+              <div class="prob-detail-list">
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="생산속도느림"/>
+                  <span class="pi-num">1</span>
+                  <span class="pi-text">생산속도 느림</span>
+                </label>
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="잦은고장-납기지연"/>
+                  <span class="pi-num">2</span>
+                  <span class="pi-text">잦은 고장으로 납기 지연</span>
+                </label>
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="품질불균일"/>
+                  <span class="pi-num">3</span>
+                  <span class="pi-text">품질 불균일</span>
+                </label>
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="작업자의존"/>
+                  <span class="pi-num">4</span>
+                  <span class="pi-text">작업자 의존</span>
+                </label>
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="기타(교체)"/>
+                  <span class="pi-num">5</span>
+                  <span class="pi-text">기타</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- 신규 도입 서브 옵션 -->
+            <div id="problem-sub-new" class="prob-detail-wrap" style="display:none">
+              <div class="prob-detail-title">신규 도입이 필요한 이유 — 해당 항목을 모두 선택하세요</div>
+              <div class="prob-detail-list">
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="외주공정-내재화필요"/>
+                  <span class="pi-num">1</span>
+                  <span class="pi-text">현재 외부 업체에 맡기고 있는 공정으로, 직접 처리할 수 있도록 구축이 필요함<small>납기 준수, 원가 절감, 신제품 개발 등</small></span>
+                </label>
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="수작업-생산속도느림"/>
+                  <span class="pi-num">2</span>
+                  <span class="pi-text">수작업으로 생산속도 느림</span>
+                </label>
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="품질문제발생"/>
+                  <span class="pi-num">3</span>
+                  <span class="pi-text">품질 문제 발생<small>누액, 파손, 불량 등</small></span>
+                </label>
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="위생문제"/>
+                  <span class="pi-num">4</span>
+                  <span class="pi-text">위생 문제 (이물질 혼입)</span>
+                </label>
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="신규공정도입"/>
+                  <span class="pi-num">5</span>
+                  <span class="pi-text">신규 공정 도입<small>신제품 개발 등</small></span>
+                </label>
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="작업환경개선"/>
+                  <span class="pi-num">6</span>
+                  <span class="pi-text">작업환경 개선<small>근골격계 질환, 분진 등 작업장 문제</small></span>
+                </label>
+                <label class="prob-item" onclick="toggleProbItem(this)">
+                  <input type="checkbox" name="problem_detail" value="기타(신규)"/>
+                  <span class="pi-num">7</span>
+                  <span class="pi-text">기타</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sec-hd" style="margin-top:8px">개선 공정 및 생산 속도</div>
+        <div class="frow full">
+          <div class="fg" id="fg-process">
+            <label>개선 희망 공정 <span class="req">*</span> <small style="color:var(--g400);font-weight:400">(중복 선택 가능)</small></label>
+            <div class="chip-grp" id="process-grp">
+              <label class="chip"><input type="checkbox" name="process" value="계량"/> ⚖️ 계량</label>
+              <label class="chip"><input type="checkbox" name="process" value="이송"/> 🚚 이송·공급</label>
+              <label class="chip"><input type="checkbox" name="process" value="포장"/> 📦 포장·밀봉</label>
+              <label class="chip"><input type="checkbox" name="process" value="충진"/> 🧴 충진·충전</label>
+              <label class="chip"><input type="checkbox" name="process" value="라벨링"/> 🏷️ 라벨링</label>
+              <label class="chip"><input type="checkbox" name="process" value="검사"/> 🔍 검사·선별</label>
+              <label class="chip"><input type="checkbox" name="process" value="혼합"/> 🌀 혼합·교반</label>
+              <label class="chip"><input type="checkbox" name="process" value="성형"/> 🍡 성형·분할</label>
+              <label class="chip"><input type="checkbox" name="process" value="테이핑"/> 📎 테이핑</label>
+              <label class="chip"><input type="checkbox" name="process" value="제함"/> 📬 제함</label>
+            </div>
+            <span class="err-msg" id="process-err">개선 희망 공정을 선택해 주세요.</span>
+          </div>
+        </div>
+        <div class="frow full">
+          <div class="fg">
+            <label>분당 목표 생산 속도</label>
+            <div class="speed-presets">
+              <button type="button" class="speed-btn" data-speed="5" onclick="setSpeed(5,this)">
+                <span class="sp-icon">🐌</span>
+                <span class="sp-name">소량</span>
+                <span class="sp-val">5개/분</span>
+                <span class="sp-desc">수작업 보조</span>
+              </button>
+              <button type="button" class="speed-btn" data-speed="15" onclick="setSpeed(15,this)">
+                <span class="sp-icon">🚶</span>
+                <span class="sp-name">저속</span>
+                <span class="sp-val">15개/분</span>
+                <span class="sp-desc">소규모 생산</span>
+              </button>
+              <button type="button" class="speed-btn on" data-speed="30" onclick="setSpeed(30,this)">
+                <span class="sp-icon">🏃</span>
+                <span class="sp-name">중속</span>
+                <span class="sp-val">30개/분</span>
+                <span class="sp-desc">일반 생산</span>
+              </button>
+              <button type="button" class="speed-btn" data-speed="50" onclick="setSpeed(50,this)">
+                <span class="sp-icon">🚀</span>
+                <span class="sp-name">고속</span>
+                <span class="sp-val">50개/분</span>
+                <span class="sp-desc">대량 생산</span>
+              </button>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:12px">
+              <span style="font-size:14px;color:var(--g500);flex-shrink:0">직접 입력:</span>
+              <input type="number" id="f-speed" min="1" max="60" value="30" class="fc" style="width:90px;text-align:center;font-size:18px;font-weight:700;height:44px" oninput="syncSpeed(this.value)"/>
+              <span style="font-size:15px;font-weight:600;color:var(--g600)">개/분</span>
+            </div>
+          </div>
+        </div>
+        <div class="sec-hd" style="margin-top:8px">설치 환경 정보</div>
+
+        <div class="frow full">
+          <div class="fg">
+            <label>전기 사용 유형 <span style="color:var(--g400);font-size:12px;font-weight:400">(복수 선택 가능)</span></label>
+            <div class="chip-grp" id="electric-grp" style="margin-top:8px">
+              <label class="chip"><input type="checkbox" name="electric" value="220V"/> ⚡ 220V 단상</label>
+              <label class="chip"><input type="checkbox" name="electric" value="380V3상"/> ⚡ 380V 3상 (산업용)</label>
+            </div>
+            <div style="font-size:12px;color:var(--g400);margin-top:6px">단상(220V)은 소·중형 장비, 3상(380V)은 중·대형 산업용 장비에 주로 사용됩니다.</div>
+          </div>
+        </div>
+
+        <div class="frow full">
+          <div class="fg">
+            <label>공압(에어컴프레서) 설치 여부</label>
+            <div class="chip-grp" style="margin-top:8px">
+              <label class="chip"><input type="radio" name="air_yn" value="유"/> 🔧 있음</label>
+              <label class="chip"><input type="radio" name="air_yn" value="무"/> 🚫 없음</label>
+            </div>
+            <div id="air-flow-wrap" style="display:none;margin-top:12px;padding:14px 16px;background:var(--primary-50);border-radius:8px;border:1.5px solid var(--primary-l)">
+              <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:10px">공압 유량 <span style="font-size:11px;font-weight:400;color:var(--g500)">(설치된 컴프레서 용량 기준)</span></div>
+              <div class="chip-grp">
+                <label class="chip"><input type="radio" name="air_flow" value="저유량"/> 🟢 0 ~ 150 NL/Min<br><small style="color:var(--g500)">소형 장비용</small></label>
+                <label class="chip"><input type="radio" name="air_flow" value="중유량"/> 🟡 150 ~ 350 NL/Min<br><small style="color:var(--g500)">중형 장비용</small></label>
+                <label class="chip"><input type="radio" name="air_flow" value="고유량"/> 🔴 350 ~ 700 NL/Min<br><small style="color:var(--g500)">대형 장비용</small></label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="frow">
+          <div class="fg">
+            <label>설치 공간 크기 <span style="color:var(--g400);font-size:12px;font-weight:400">(단위: m)</span></label>
+            <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+              <input class="fc" id="f-space-w" type="number" min="0.1" step="0.1" placeholder="가로 (m)" style="flex:1;text-align:center" oninput="updateSpaceArea()"/>
+              <span style="font-size:20px;font-weight:700;color:var(--g300);flex-shrink:0">×</span>
+              <input class="fc" id="f-space-h" type="number" min="0.1" step="0.1" placeholder="세로 (m)" style="flex:1;text-align:center" oninput="updateSpaceArea()"/>
+            </div>
+            <div id="space-area-hint" style="font-size:12px;color:var(--g400);margin-top:6px">예: 가로 5m × 세로 8m = 40㎡</div>
+          </div>
+          <div class="fg">
+            <label>설치 공간 사진 <span style="color:var(--g400);font-size:12px;font-weight:400">(선택, 최대 2장)</span></label>
+            <div class="upload-zone" onclick="document.getElementById('f-space-photo').click()" id="space-upload-zone" style="margin-top:8px">
+              <input type="file" id="f-space-photo" accept="image/*" multiple onchange="handleSpacePhoto(this)"/>
+              <div class="upload-icon">📐</div>
+              <div class="upload-lbl">공간 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 2장</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="frow full">
+          <div class="fg"><label>추가 요청 사항 (선택)</label><textarea class="fc" id="f-memo" placeholder="현재 공정의 어려움, 특이 사항, 도입 예산 등을 자유롭게 입력해 주세요."></textarea></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="goPage(1)">← 이전</button>
+          <button class="btn btn-primary" onclick="goStep3()">🎯 매칭 시작</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="page" id="page3">
+      <div class="panel">
+        <div class="panel-title">🎯 장비 매칭 결과</div>
+        <div class="panel-desc">AI가 분석한 추천 장비와 전체 장비 목록에서 도입을 희망하는 장비를 선택해 주세요.</div>
+        <div id="ai-loading" class="ai-loading">
+          <div class="spinner"></div>
+          <div class="ai-txt">태그 기반으로 장비를 분석 중입니다...</div>
+          <div class="ai-sub">물성, 포장 형태, 생산 속도를 종합적으로 검토하고 있습니다</div>
+        </div>
+        <div id="ai-result" style="display:none">
+          <!-- 선택 요약 바 -->
+          <div class="sel-bar">
+            <div class="sel-bar-info">선택한 장비 &nbsp;<span class="sel-bar-count" id="sel-bar-count">0</span>&nbsp; 개</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline" onclick="goPage(2)" style="height:40px;padding:0 16px;font-size:13px;background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.3);color:#fff">← 다시 입력</button>
+              <button class="btn btn-primary" onclick="goStep4()" style="height:40px;padding:0 20px">선택 완료 →</button>
+            </div>
+            <div id="sel-bar-list" style="display:none;width:100%;flex-wrap:wrap;gap:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,.2)"></div>
+          </div>
+          <!-- 탭 -->
+          <div class="eq-tab-bar">
+            <button class="eq-tab on" id="tab-match" onclick="switchEqTab('match',this)">
+              <span class="eq-tab-icon">🎯</span>
+              <span class="eq-tab-title">AI 추천 장비</span>
+              <span class="eq-tab-sub">내 조건에 맞는 추천</span>
+              <span class="eq-tab-badge" id="badge-match">0개</span>
+            </button>
+            <button class="eq-tab" id="tab-all" onclick="switchEqTab('all',this)">
+              <span class="eq-tab-icon">📦</span>
+              <span class="eq-tab-title">전체 장비 직접 선택</span>
+              <span class="eq-tab-sub">원하는 장비 직접 찾기</span>
+              <span class="eq-tab-badge" id="badge-all">0개</span>
+            </button>
+          </div>
+          <!-- AI 추천 탭 -->
+          <div id="tab-content-match">
+            <div class="match-hdr"><div class="mh-icon">✅</div><div><div class="mh-title" id="match-title">매칭 완료</div><div class="mh-desc" id="match-summary"></div></div></div>
+            <div id="eq-list"></div>
+            <div style="margin-top:8px;padding:14px 18px;background:var(--g50);border-radius:8px;font-size:14px;color:var(--g500)">💡 여러 장비를 선택하면 통합 라인 구성이 가능합니다. 원하는 장비가 없으면 <button class="link-btn" onclick="switchEqTab('all',document.getElementById('tab-all'))">전체 장비 목록 →</button></div>
+          </div>
+          <!-- 전체 목록 탭 -->
+          <div id="tab-content-all" style="display:none">
+            <div class="eq-search-wrap">
+              <span class="eq-search-icon">🔍</span>
+              <input type="text" id="eq-search-inp" class="fc eq-search-inp"
+                placeholder="장비명, 용도, 키워드로 검색 (예: 분말, 파우치, 소스, 고속…)"
+                oninput="searchAllEq(this.value)"/>
+            </div>
+            <div class="cat-filter">
+              <button class="cat-tab on" onclick="filterAllEq('전체',this)">전체</button>
+              <button class="cat-tab" onclick="filterAllEq('통합',this)">통합라인</button>
+              <button class="cat-tab" onclick="filterAllEq('포장',this)">포장기</button>
+              <button class="cat-tab" onclick="filterAllEq('계량',this)">계량기</button>
+              <button class="cat-tab" onclick="filterAllEq('충진',this)">충진기</button>
+              <button class="cat-tab" onclick="filterAllEq('인쇄',this)">인쇄·라벨</button>
+              <button class="cat-tab" onclick="filterAllEq('이송',this)">이송·물류</button>
+              <button class="cat-tab" onclick="filterAllEq('검사',this)">검사·선별</button>
+            </div>
+            <div class="eq-grid" id="all-eq-list"></div>
+          </div>
+        </div>
+        <div id="step3-btns" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="page" id="page4">
+      <div class="panel">
+        <div class="panel-title">📋 신청 내용 확인</div>
+        <div class="panel-desc">입력하신 정보와 선택하신 장비를 최종 확인해 주세요.</div>
+        <div class="sec-hd">기업 정보</div>
+        <div class="sum-block"><div id="company-sum"></div></div>
+        <div class="sec-hd">설치 환경 정보</div>
+        <div class="sum-block" id="env-sum"></div>
+        <div class="sec-hd">도입 희망 장비</div>
+        <div class="sum-block" id="eq-sum"></div>
+        <div id="total-wrap"></div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="goPage(3)">← 장비 재선택</button>
+          <button class="btn btn-success" onclick="goStep5()">✔ 신청 확정하기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="page" id="page5">
+      <div class="panel">
+        <div class="suc-screen">
+          <span class="suc-icon">🎉</span>
+          <div class="suc-title">신청이 완료되었습니다!</div>
+          <div class="suc-desc">장비 도입 신청이 정상적으로 접수되었습니다.<br>담당자가 검토 후 <strong>2~3 영업일 내</strong>에 입력하신 연락처로<br>상세 안내 및 견적서를 전달해 드립니다.</div>
+          <div class="receipt-box">
+            <div class="receipt-note" id="receipt-note"></div>
+          </div>
+          <div class="btn-row" style="justify-content:center;margin-top:24px;border-top:none;padding-top:0">
+            <button class="btn btn-outline" onclick="showView('lookup')">📋 신청 현황 조회</button>
+            <button class="btn btn-primary" onclick="location.reload()">처음으로</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ LOOKUP VIEW -->
+<div id="view-lookup" class="view">
+  <div class="back-bar">
+    <button class="back-btn" onclick="showView('landing')">← 처음으로</button>
+    <span class="back-title">신청 현황 조회</span>
+  </div>
+  <div class="lookup-wrap">
+    <div class="lookup-panel">
+      <div class="lookup-title">🔍 신청 현황 조회</div>
+      <div class="lookup-desc">신청 시 입력하신 정보로 진행 현황을 확인하세요.<br>확정 완료 후 견적서 PDF를 다운로드할 수 있습니다.</div>
+      <div class="frow full" style="margin-bottom:16px">
+        <div class="fg" id="fg-lc"><label>회사명 <span class="req">*</span></label><input class="fc" id="l-company" placeholder="신청 시 입력한 기업명"/><span class="err-msg">회사명을 입력해 주세요.</span></div>
+      </div>
+      <div class="frow">
+        <div class="fg" id="fg-lb"><label>사업자 등록번호 <span class="req">*</span></label><input class="fc" id="l-bizno" placeholder="000-00-00000" maxlength="12"/><span class="err-msg">사업자등록번호를 입력해 주세요.</span></div>
+        <div class="fg" id="fg-lp"><label>휴대폰 번호 <span class="req">*</span></label><input class="fc" id="l-phone" placeholder="010-0000-0000" maxlength="13"/><span class="err-msg">휴대폰 번호를 입력해 주세요.</span></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;height:52px;font-size:16px;margin-top:8px" onclick="doLookup()">🔍 조회하기</button>
+      <div id="lookup-result"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 장비 상세 모달 -->
+<div class="eq-modal-ov" id="eq-modal-ov">
+  <div class="eq-modal-box">
+    <div class="eq-modal-hdr">
+      <div>
+        <div class="eq-modal-name" id="em-name"></div>
+        <div class="eq-modal-model" id="em-model"></div>
+      </div>
+      <button class="eq-modal-close" onclick="closeEqModal()">✕</button>
+    </div>
+    <div class="eq-modal-photos" id="em-photos"></div>
+    <div class="eq-modal-body">
+      <div class="eq-modal-price" id="em-price"></div>
+      <div class="eq-modal-desc" id="em-desc"></div>
+      <div id="em-photos-pkg-wrap" style="display:none;margin-top:16px">
+        <div style="font-size:12px;font-weight:700;color:#1d4ed8;letter-spacing:.8px;padding:6px 10px;background:#dbeafe;border-radius:6px;margin-bottom:10px;display:inline-flex;align-items:center;gap:6px">📦 포장 제품 사진</div>
+        <div id="em-photos-pkg" class="eq-modal-photos" style="display:block"></div>
+      </div>
+      <div id="em-videos-wrap" style="display:none;margin-top:16px">
+        <div style="font-size:12px;font-weight:700;color:#1d4ed8;letter-spacing:.8px;padding:6px 10px;background:#dbeafe;border-radius:6px;margin-bottom:10px;display:inline-flex;align-items:center;gap:6px">▶ 관련 영상</div>
+        <div id="em-videos"></div>
+      </div>
+      <div class="eq-modal-tags" id="em-tags"></div>
+      <div id="em-spec-wrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--g100)">
+        <div style="font-size:12px;font-weight:700;color:#1d4ed8;letter-spacing:.8px;padding:6px 10px;background:#dbeafe;border-radius:6px;margin-bottom:10px;display:inline-flex;align-items:center;gap:6px">📋 장비 사양</div>
+        <table id="em-spec-table" style="width:100%;border-collapse:collapse;font-size:12px"></table>
+      </div>
+      <button class="eq-modal-sel-btn" id="em-sel-btn" onclick="toggleFromModal()"></button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF TEMPLATE (hidden) -->
+<div id="pdf-tpl">
+  <div class="pdf-wrap" id="pdf-content"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// STORAGE KEYS
+// ═══════════════════════════════════════════
+const SK = { EQ:'bpk_eq_v2', APP:'bpk_app_v1', QT:'bpk_qt_v1' };
+
+// ═══════════════════════════════════════════
+// DEFAULT EQUIPMENT (60 items from xlsx)
+// ═══════════════════════════════════════════
+const DEFAULT_EQ = [
+  {id:1,name:'자동계량&포장 통합라인',model:'BPK-VP420-LS',price:45000000,category:'통합',desc:'식품 원료를 자동 계량 후 파우치·비닐 등에 정량 포장하는 통합 자동화 설비로, 인건비 절감 및 생산성 향상에 적합한 스마트 포장라인입니다.',tag_texture:'분말,과립,액체,고형물',tag_pkg:'파우치,비닐포장',tag_process:'계량,포장,이송',tag_product:'식품원료,건식품,소스류,농식품',tag_feature:'통합라인,자동화,중속,고속',tag_space:'대형공간,라인구성',tag_electric:'380V3상,고전력',tag_air:'공압필수,중유량',tag_keyword:'자동계량,정량포장,파우치포장,비닐포장,포장라인,스마트포장',tags:'분말,과립,액체,고형물,파우치,계량,포장,이송,통합라인,자동화,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:2,name:'분말 자동계량&포장 시스템',model:'BPK-VP320-PW',price:45000000,category:'통합',desc:'고춧가루·곡물분말·스프분말 등 분말류를 정밀 계량 후 자동 포장하는 설비로 위생적이고 균일한 중량 관리가 가능합니다.',tag_texture:'분말',tag_pkg:'파우치,비닐포장',tag_process:'계량,포장',tag_product:'고춧가루,곡물분말,스프분말,파우더',tag_feature:'분말전용,정량,위생,자동화',tag_space:'중형공간,대형공간',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'분말,가루,파우더,고춧가루,곡물분말,스프분말,오거,정량계량',tags:'분말,파우치,계량,포장,분말전용,중형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:3,name:'액상류 자동충진수직사면포장기',model:'BPK-FS4-150',price:18000000,category:'포장',desc:'소스·육수·조미액 등 액상 제품을 사면 밀봉 형태로 자동 포장하는 설비로 누액 방지와 밀봉 안정성',tag_texture:'액체,점액질',tag_pkg:'사면포장,스틱포장,필름포장',tag_process:'충진,포장,밀봉',tag_product:'소스,육수,조미액,액상식품',tag_feature:'누액방지,소용량,자동화',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'액상,소스,육수,조미액,사면포장,스틱포장,액상충진',tags:'액체,점액질,사면포장,충진,포장,밀봉,중형공간,공압필수',photos:[],status:'active'},
+  {id:4,name:'액상류 자동충진수직삼면포장기',model:'BPK-FS3-150',price:18000000,category:'포장',desc:'액상·반액상 제품을 삼면 밀봉 포장하는 설비로 소용량 스틱형 포장에 적합합니다.',tag_texture:'액체,점액질',tag_pkg:'삼면포장,스틱포장,필름포장',tag_process:'충진,포장,밀봉',tag_product:'액상식품,반액상,소스류',tag_feature:'소용량,자동화',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'액상,반액상,삼면포장,스틱형,액상충진',tags:'액체,점액질,삼면포장,충진,포장,밀봉,중형공간,공압필수',photos:[],status:'active'},
+  {id:5,name:'수평형 자동포장기(250)',model:'BPK-MRP-2500',price:25000000,category:'포장',desc:'과자·떡·빵·냉동식품 등 고형 식품을 수평 삼면 방식으로 자동 포장하는 설비로, 다양한 규격 대응이 가능합니다.',tag_texture:'고형물,반죽',tag_pkg:'삼면포장,필름포장,수평포장',tag_process:'포장,밀봉,이송',tag_product:'과자,떡,빵,냉동식품',tag_feature:'수평형,중속,자동화',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'수평포장,삼면포장,과자,떡,빵,냉동식품,고형식품',tags:'고형물,반죽,삼면포장,수평포장,포장,중형공간,공압필수',photos:[],status:'active'},
+  {id:6,name:'수평형 자동포장기(350)',model:'BPK-MRP-3500',price:28000000,category:'포장',desc:'과자·떡·빵·냉동식품 등 고형 식품을 수평 삼면 방식으로 자동 포장하는 설비로, 다양한 규격 대응이 가능합니다.',tag_texture:'고형물,반죽',tag_pkg:'삼면포장,필름포장,수평포장',tag_process:'포장,밀봉,이송',tag_product:'과자,떡,빵,냉동식품',tag_feature:'수평형,중속,자동화',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'수평포장,삼면포장,고형식품,떡,빵,냉동식품',tags:'고형물,반죽,삼면포장,수평포장,포장,중형공간,공압필수',photos:[],status:'active'},
+  {id:7,name:'수평형 자동포장기(450)',model:'BPK-MRP-4500',price:32000000,category:'포장',desc:'과자·떡·빵·냉동식품 등 고형 식품을 수평 삼면 방식으로 자동 포장하는 설비로, 다양한 규격 대응이 가능합니다.',tag_texture:'고형물,반죽',tag_pkg:'삼면포장,필름포장,수평포장',tag_process:'포장,밀봉,이송',tag_product:'과자,떡,빵,냉동식품,대형제품',tag_feature:'수평형,중대형,자동화',tag_space:'중형공간,대형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'수평포장,대형제품,삼면포장,고형식품',tags:'고형물,삼면포장,수평포장,포장,대형공간,공압필수',photos:[],status:'active'},
+  {id:8,name:'수평형 자동 포장기(600)',model:'BPK-MRP-6000',price:38000000,category:'포장',desc:'과자·떡·빵·냉동식품 등 고형 식품을 수평 삼면 방식으로 자동 포장하는 설비로, 다양한 규격 대응이 가능합니다.',tag_texture:'고형물,반죽',tag_pkg:'삼면포장,필름포장,수평포장',tag_process:'포장,밀봉,이송',tag_product:'대용량식품,대형제품,냉동식품',tag_feature:'수평형,대용량,자동화',tag_space:'대형공간',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'수평포장,대용량,대형포장,고형식품',tags:'고형물,삼면포장,수평포장,대용량,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:9,name:'수평형 자동 포장기(700)',model:'BPK-MRP-7000',price:42000000,category:'포장',desc:'과자·떡·빵·냉동식품 등 고형 식품을 수평 삼면 방식으로 자동 포장하는 설비로, 다양한 규격 대응이 가능합니다.',tag_texture:'고형물,반죽',tag_pkg:'삼면포장,필름포장,수평포장',tag_process:'포장,밀봉,이송',tag_product:'대형제품,대용량식품',tag_feature:'수평형,대용량,고속,자동화',tag_space:'대형공간',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'수평포장,최대규격,대형제품,대용량',tags:'고형물,수평포장,대용량,고속,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:10,name:'소형 삼면포장기',model:'BPK-H280-3S',price:7000000,category:'포장',desc:'소량 생산 식품 및 간식류에 적합한 경제형 자동 포장기입니다',tag_texture:'고형물,과립,분말',tag_pkg:'삼면포장,필름포장',tag_process:'포장,밀봉',tag_product:'소량식품,간식류',tag_feature:'소형,경제형,반자동가능',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'소형삼면포장,소량생산,간식류,경제형',tags:'고형물,삼면포장,포장,소형,소형공간,220V,저유량',photos:[],status:'active'},
+  {id:11,name:'로터리 파우치 자동포장기',model:'BPK-MRP-2500',price:50000000,category:'포장',desc:'스탠딩 파우치·지퍼 파우치 등에 자동으로 충진·밀봉하는 고급형 설비로, 소스·반찬류·건강식품에 적합합니다.',tag_texture:'액체,점액질,고형물,과립',tag_pkg:'스탠드파우치,M형파우치,지퍼파우치',tag_process:'충진,포장,밀봉,공급',tag_product:'소스,반찬류,건강식품,파우치식품',tag_feature:'로터리,고급형,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'로터리,파우치,스탠딩파우치,지퍼파우치,충진,밀봉',tags:'액체,점액질,스탠드파우치,M형파우치,충진,포장,로터리,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:12,name:'간장류(소스) 자동 계량&액상충진 시스템',model:'BPK-LFAT-100',price:45000000,category:'통합',desc:'간장·소스류를 정량 계량 및 자동 충진하는 설비로 점도 제품 대응이 가능합니다.',tag_texture:'액체,점액질',tag_pkg:'병용기,파우치',tag_process:'계량,충진',tag_product:'간장,소스,액상식품,고점도식품',tag_feature:'정량,점도대응,자동화라인',tag_space:'중형공간,대형공간',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'간장,소스,액상충진,정량계량,점도',tags:'액체,점액질,계량,충진,정량,중형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:13,name:'자동 병 라벨기',model:'BPK-BR100',price:20000000,category:'인쇄',desc:'식품 병 제품에 라벨을 자동 부착하여 외관 품질과 생산성을 향상시키는 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'라벨링,인쇄',tag_product:'병제품,식품병,용기제품',tag_feature:'자동,외관품질',tag_space:'중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'병라벨기,자동라벨,라벨부착,원형병',tags:'병용기,라벨링,인쇄,자동,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:14,name:'반자동 라벨기',model:'BPK-SABR100',price:15000000,category:'인쇄',desc:'소규모 생산에 적합한 수동 보조형 라벨 부착 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'라벨링,인쇄',tag_product:'병제품,소규모생산',tag_feature:'반자동,소형',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'반자동라벨기,소규모,라벨부착',tags:'병용기,라벨링,반자동,소형,소형공간,220V',photos:[],status:'active'},
+  {id:15,name:'자동캡핑기',model:'BPK-ATCS',price:10000000,category:'캡핑기',desc:'병·용기 캡을 자동 체결하는 설비로 충진라인과 연동 가능합니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'캡핑,체결',tag_product:'병제품,용기제품',tag_feature:'자동,라인연동',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압필수,저유량',tag_keyword:'자동캡핑,캡체결,병뚜껑,용기캡',tags:'병용기,캡핑,자동,라인연동,220V,공압필수',photos:[],status:'active'},
+  {id:16,name:'반자동 캡핑기',model:'BPK-SMCS',price:5000000,category:'캡핑기',desc:'소규모 생산 대응 캡 체결 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'캡핑,체결',tag_product:'병제품,소규모생산',tag_feature:'반자동,소형',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'반자동캡핑,캡체결,소규모',tags:'병용기,캡핑,반자동,소형공간,220V,저유량',photos:[],status:'active'},
+  {id:17,name:'에어세병기',model:'BPK-AIRBT',price:6000000,category:'세병',desc:'충진 전 병 내부를 공압 세척하여 위생성을 확보하는 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'세척,위생,충진전처리',tag_product:'병제품,용기제품',tag_feature:'위생,HACCP,공압세척',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압필수,중유량',tag_keyword:'에어세병,병세척,공압세척,충진전세척',tags:'병용기,세척,위생,HACCP,220V,공압필수,중유량',photos:[],status:'active'},
+  {id:18,name:'교반탱크(리본타입)',model:'BPK-MXT',price:15000000,category:'교반',desc:'분말·액상 원료를 균일하게 혼합하는 식품용 교반 설비입니다.',tag_texture:'분말,액체,점액질',tag_pkg:'탱크,원료혼합',tag_process:'혼합,교반',tag_product:'식품원료,분말원료,액상원료',tag_feature:'리본타입,위생',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압불필요',tag_keyword:'교반탱크,리본믹서,혼합기,액상혼합,분말혼합',tags:'분말,액체,혼합,교반,탱크,중형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:19,name:'분말 교반기',model:'BPK-PMXT',price:15000000,category:'교반',desc:'분말 원료 혼합에 적합한 위생형 설비입니다.',tag_texture:'분말',tag_pkg:'원료혼합',tag_process:'혼합,교반',tag_product:'분말원료,파우더',tag_feature:'분말전용,위생',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압불필요',tag_keyword:'분말교반기,분말혼합기,파우더믹서',tags:'분말,혼합,교반,분말전용,중형공간,공압불필요',photos:[],status:'active'},
+  {id:20,name:'반죽소분기',model:'BPK-MXFF',price:10000000,category:'소분',desc:'반죽·떡·제과류를 일정 중량으로 자동 분할하는 설비입니다',tag_texture:'반죽,고형물',tag_pkg:'소분,분할',tag_process:'성형,분할,계량',tag_product:'반죽,떡,제과류,베이커리',tag_feature:'소분,정량,소형',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'반죽소분,반죽분할,떡분할,제과소분',tags:'반죽,고형물,성형,분할,소분,220V,공압권장',photos:[],status:'active'},
+  {id:21,name:'금속검출기',model:'BPK-MTCH',price:7000000,category:'검사',desc:'식품 내 금속 이물질을 검출하여 품질 및 HACCP 기준에 대응하는 설비입니다.',tag_texture:'공통',tag_pkg:'검사장비',tag_process:'검사,금속검출,품질관리',tag_product:'식품,HACCP,이물검사',tag_feature:'HACCP,품질,안전',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'금속검출기,이물검사,HACCP,식품안전',tags:'검사,금속검출,HACCP,품질관리,220V,공압불필요',photos:[],status:'active'},
+  {id:22,name:'중량선별기',model:'BPK-WHCH',price:9000000,category:'검사',desc:'설정 중량 기준으로 제품을 자동 선별하는 설비입니다.',tag_texture:'공통',tag_pkg:'선별장비',tag_process:'검사,중량선별,선별',tag_product:'식품,완제품검사',tag_feature:'품질,자동선별',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'중량선별기,체크웨이어,무게검사,자동선별',tags:'검사,중량선별,선별,품질,220V,공압권장',photos:[],status:'active'},
+  {id:23,name:'금속&중량 선별 콤비형',model:'BPK-MWCH2',price:18000000,category:'검사',desc:'금속검출과 중량선별을 동시에 수행하는 통합 설비입니다.',tag_texture:'공통',tag_pkg:'검사장비,선별장비',tag_process:'검사,금속검출,중량선별,선별',tag_product:'식품,HACCP,완제품검사',tag_feature:'콤비형,통합검사,HACCP',tag_space:'중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'금속검출,중량선별,콤비형,체크웨이어,HACCP',tags:'검사,금속검출,중량선별,콤비형,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:24,name:'농수산물 자동계량,포장라인 시스템',model:'BPK-ATW100',price:45000000,category:'통합',desc:'농수산물·건조식품을 자동 계량 및 포장하는 스마트 생산라인입니다.',tag_texture:'고형물,과립,농수산물,건식품',tag_pkg:'파우치,비닐포장',tag_process:'계량,포장,이송',tag_product:'농수산물,건조식품,건나물,견과류',tag_feature:'스마트라인,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'농수산물,자동계량,건조식품,포장라인,건나물',tags:'농수산물,건식품,계량,포장,자동화라인,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:25,name:'액상 충진,스틱포장 시스템',model:'BPK-ATF',price:25000000,category:'충진',desc:'액상 제품을 충진 후 스틱형으로 자동 포장하는 통합 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'스틱포장,필름포장',tag_process:'충진,포장,밀봉',tag_product:'액상제품,소스,스틱액상',tag_feature:'통합,자동화',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'액상충진,스틱포장,스틱액상,액상파우치',tags:'액체,점액질,스틱포장,충진,포장,중형공간,공압필수',photos:[],status:'active'},
+  {id:26,name:'자동 제함,테이핑 포장 시스템',model:'BPK-BXTL',price:45000000,category:'통합',desc:'포장 완료 제품을 자동 박스 성형 및 밀봉하는 설비입니다.',tag_texture:'공통',tag_pkg:'박스,케이스',tag_process:'제함,테이핑,포장,밀봉',tag_product:'완제품포장,물류포장',tag_feature:'자동화라인,물류자동화',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'제함기,테이핑기,박스성형,박스밀봉,카톤',tags:'박스,제함,테이핑,포장,물류자동화,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:27,name:'충진,캡핑,라벨링 포장 시스템',model:'BPK-FCL10',price:45000000,category:'통합',desc:'병 제품의 충진부터 라벨 부착까지 자동화한 생산라인입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'충진,캡핑,라벨링,포장',tag_product:'병제품,소스병,음료,용기제품',tag_feature:'통합라인,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'충진캡핑라벨링,병충진라인,용기포장라인',tags:'병용기,충진,캡핑,라벨링,통합라인,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:28,name:'호퍼로드 이송기',model:'BPK-HP200',price:5000000,category:'이송',desc:'식품 원료를 자동으로 이송하는 공급 설비입니다.',tag_texture:'분말,과립,고형물',tag_pkg:'원료공급',tag_process:'이송,공급',tag_product:'식품원료,분말원료,건식품',tag_feature:'보조설비,라인연동',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'호퍼로더,원료이송,자동공급,분말이송',tags:'이송,공급,원료공급,소형공간,220V,공압권장',photos:[],status:'active'},
+  {id:29,name:'탈산소제 투입기',model:'BPK-SKAF',price:12000000,category:'기타',desc:'파우치 포장 시 탈산소제를 자동 삽입하는 설비입니다.',tag_texture:'공통',tag_pkg:'파우치',tag_process:'포장,투입,보존',tag_product:'파우치포장,신선식품,건식품',tag_feature:'신선도,부자재투입',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압필수,저유량',tag_keyword:'탈산소제,산소흡수제,자동투입,파우치부자재',tags:'파우치,포장,부자재투입,신선도,소형공간,220V,공압필수',photos:[],status:'active'},
+  {id:30,name:'작업용 턴테이블',model:'BPK-FPTT',price:3000000,category:'이송',desc:'포장 및 검사 작업을 보조하는 회전형 설비입니다.',tag_texture:'공통',tag_pkg:'보조작업대',tag_process:'이송,검사보조,포장보조',tag_product:'완제품,작업보조',tag_feature:'보조설비,소형',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'턴테이블,작업대,회전테이블,포장보조',tags:'이송,보조,작업용,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:31,name:'완제품 배출 컨베이어',model:'BPK-FPBC',price:3000000,category:'이송',desc:'포장 완료 제품을 자동 이송하는 설비입니다.',tag_texture:'공통',tag_pkg:'컨베이어',tag_process:'이송,배출',tag_product:'완제품,포장완료품',tag_feature:'보조설비,라인연동',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'배출컨베이어,완제품이송,컨베이어',tags:'이송,컨베이어,배출,라인연동,220V,공압불필요',photos:[],status:'active'},
+  {id:32,name:'조합식계량기2Head',model:'BPK-FPBC',price:8000000,category:'계량',desc:'과립·견과·건식품 등을 고속·정밀 계량하는 다중헤드 설비입니다.',tag_texture:'과립,고형물,건식품',tag_pkg:'계량기',tag_process:'계량',tag_product:'견과류,건식품,과립,스낵',tag_feature:'2Head,소형,정밀',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'조합식계량기,멀티헤드,2헤드,견과류계량',tags:'과립,고형물,계량,2Head,소형공간,220V,공압권장',photos:[],status:'active'},
+  {id:33,name:'조합식계량기4Head',model:'BPK-WH4',price:16000000,category:'계량',desc:'과립·견과·건식품 등을 고속·정밀 계량하는 다중헤드 설비입니다.',tag_texture:'과립,고형물,건식품',tag_pkg:'계량기',tag_process:'계량',tag_product:'견과류,건식품,과립,스낵',tag_feature:'4Head,중속,정밀',tag_space:'중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'조합식계량기,멀티헤드,4헤드,견과류계량',tags:'과립,고형물,계량,4Head,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:34,name:'조합식계량기10Head',model:'BPK-WH10',price:30000000,category:'계량',desc:'과립·견과·건식품 등을 고속·정밀 계량하는 다중헤드 설비입니다.',tag_texture:'과립,고형물,건식품',tag_pkg:'계량기',tag_process:'계량',tag_product:'견과류,건식품,과립,스낵',tag_feature:'10Head,고속,정밀',tag_space:'중형공간,대형공간',tag_electric:'220V,380V3상',tag_air:'공압권장,중유량',tag_keyword:'조합식계량기,멀티헤드,10헤드,고속계량',tags:'과립,고형물,계량,10Head,고속,대형공간,380V3상,공압권장',photos:[],status:'active'},
+  {id:35,name:'조합식계량기14Head',model:'BPK-WH14',price:32000000,category:'계량',desc:'과립·견과·건식품 등을 고속·정밀 계량하는 다중헤드 설비입니다.',tag_texture:'과립,고형물,건식품',tag_pkg:'계량기',tag_process:'계량',tag_product:'견과류,건식품,과립,스낵',tag_feature:'14Head,고속,정밀',tag_space:'대형공간',tag_electric:'380V3상',tag_air:'공압권장,중유량',tag_keyword:'조합식계량기,멀티헤드,14헤드,고속계량',tags:'과립,고형물,계량,14Head,고속,대형공간,380V3상,공압권장',photos:[],status:'active'},
+  {id:36,name:'오거식 분말 자동계량기',model:'BPK-ARAW',price:20000000,category:'계량',desc:'분말 제품을 정량 계량하는 스크류 방식 설비입니다.',tag_texture:'분말',tag_pkg:'계량기',tag_process:'계량',tag_product:'분말제품,가루,파우더',tag_feature:'오거식,스크류,정량',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압권장,저유량',tag_keyword:'오거,스크류계량,분말계량,파우더계량',tags:'분말,계량,오거식,스크류,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:37,name:'원두 드립백 올인원 포장시스템',model:'BPK-CFAI',price:45000000,category:'통합',desc:'커피 드립백을 자동 충진 및 포장하는 설비입니다.',tag_texture:'분말,과립',tag_pkg:'드립백,티백,필터포장',tag_process:'충진,포장,계량',tag_product:'커피,원두,드립백',tag_feature:'올인원,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'원두드립백,커피포장,드립백포장,커피충진',tags:'분말,과립,드립백,충진,포장,계량,올인원,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:38,name:'피스톤 자동충진기',model:'BPK-LFSA',price:5000000,category:'충진',desc:'액상 및 고점도 식품을 정량 충진하는 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기,파우치',tag_process:'충진',tag_product:'소스,액상식품,고점도식품',tag_feature:'피스톤,소형,정량',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압필수,저유량',tag_keyword:'피스톤충진기,액상충진,고점도충진,소스충진',tags:'액체,점액질,충진,피스톤,소형공간,220V,공압필수',photos:[],status:'active'},
+  {id:39,name:'펌프형 고점도 자동충진기',model:'BPK-LFMP',price:20000000,category:'충진',desc:'액상 및 고점도 식품을 정량 충진하는 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기,파우치',tag_process:'충진',tag_product:'고점도식품,소스,페이스트',tag_feature:'펌프형,고점도,정량',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'펌프충진기,고점도충진,페이스트,소스충진',tags:'액체,점액질,충진,고점도,펌프형,중형공간,공압필수',photos:[],status:'active'},
+  {id:40,name:'2구 액상자동충진기(Bottle형)',model:'BPK-2HLF',price:16000000,category:'충진',desc:'액상 및 고점도 식품을 정량 충진하는 설비입니다.',tag_texture:'액체,점액질',tag_pkg:'병용기',tag_process:'충진',tag_product:'병제품,소스병,액상식품',tag_feature:'2구,자동,정량',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'2구충진기,병충진,액상자동충진,소스병',tags:'액체,점액질,병용기,충진,2구,중형공간,공압필수',photos:[],status:'active'},
+  {id:41,name:'스킨팩포장기',model:'BPK-SKP',price:25000000,category:'포장',desc:'진공 밀착 포장으로 신선도 유지에 적합한 설비입니다.',tag_texture:'고형물,신선식품',tag_pkg:'스킨팩,진공포장,트레이',tag_process:'포장,진공,밀봉',tag_product:'육류,수산물,밀키트,신선식품',tag_feature:'신선도,진공밀착',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'스킨팩,진공밀착포장,신선포장,트레이포장',tags:'진공포장,스킨팩,트레이,포장,신선도,중형공간,공압필수',photos:[],status:'active'},
+  {id:42,name:'단식진공포장기',model:'BPK-1VP',price:5000000,category:'포장',desc:'식품 신선도 유지 및 보관성 향상을 위한 진공 포장 설비입니다.',tag_texture:'고형물,액체,공통',tag_pkg:'진공포장',tag_process:'포장,진공,밀봉',tag_product:'식품,소량생산,보관식품',tag_feature:'단식,소형,보관성',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'단식진공포장기,진공포장,소형진공',tags:'진공포장,포장,소형,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:43,name:'복식진공포장기',model:'BPK-2VP',price:10000000,category:'포장',desc:'식품 신선도 유지 및 보관성 향상을 위한 진공 포장 설비입니다.',tag_texture:'고형물,액체,공통',tag_pkg:'진공포장',tag_process:'포장,진공,밀봉',tag_product:'식품,중형생산,보관식품',tag_feature:'복식,중형,보관성',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압불필요',tag_keyword:'복식진공포장기,진공포장,중형진공',tags:'진공포장,포장,중형,중형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:44,name:'자동 박스 제함기',model:'BPK-BT',price:30000000,category:'제함기',desc:'박스 성형·테이핑·스티로폼 밀봉 등 물류 자동화 설비입니다',tag_texture:'공통',tag_pkg:'박스,케이스',tag_process:'제함,포장,물류',tag_product:'박스포장,물류자동화,카톤',tag_feature:'자동,물류자동화',tag_space:'대형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'박스제함기,카톤성형,박스성형,자동제함',tags:'박스,제함,물류자동화,대형공간,공압필수',photos:[],status:'active'},
+  {id:45,name:'자동 박스 테이핑기',model:'BPK-BTS',price:5000000,category:'테이핑기',desc:'박스 성형·테이핑·스티로폼 밀봉 등 물류 자동화 설비입니다',tag_texture:'공통',tag_pkg:'박스,케이스',tag_process:'테이핑,포장,밀봉,물류',tag_product:'박스포장,카톤',tag_feature:'자동,물류보조',tag_space:'소형공간,중형공간',tag_electric:'220V',tag_air:'공압권장,저유량',tag_keyword:'박스테이핑기,카톤테이핑,자동테이핑',tags:'박스,테이핑,포장,소형공간,220V,공압권장',photos:[],status:'active'},
+  {id:46,name:'스티로폼 사이드 테이핑기',model:'BPK-STST',price:25000000,category:'테이핑기',desc:'박스 성형·테이핑·스티로폼 밀봉 등 물류 자동화 설비입니다',tag_texture:'공통',tag_pkg:'박스,스티로폼',tag_process:'테이핑,포장,밀봉',tag_product:'스티로폼박스,수산물,신선물류',tag_feature:'사이드테이핑,물류자동화',tag_space:'중형공간,대형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'스티로폼테이핑,사이드테이핑,박스테이핑',tags:'박스,스티로폼,테이핑,중형공간,공압필수',photos:[],status:'active'},
+  {id:47,name:'자동 파렛트 랩핑기',model:'BPK-FRM',price:5000000,category:'랩핑기',desc:'파렛트 적재 후 자동 랩핑하는 물류 설비입니다.',tag_texture:'공통',tag_pkg:'파렛트,랩핑',tag_process:'랩핑,포장,물류',tag_product:'파렛트,창고,물류',tag_feature:'물류자동화,보조설비',tag_space:'대형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'파렛트랩핑기,스트레치랩,물류랩핑',tags:'랩핑,물류,파렛트,대형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:48,name:'작업용 완제품 턴테이블',model:'BPK-FTT',price:5000000,category:'이송',desc:'검수 및 포장 보조 설비입니다.',tag_texture:'공통',tag_pkg:'보조작업대',tag_process:'이송,검수보조,포장보조',tag_product:'완제품,검수작업',tag_feature:'보조설비,소형',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'완제품턴테이블,검수테이블,회전작업대',tags:'이송,검수보조,보조설비,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:49,name:'컨베이어 통합 이송 시스템',model:'BPK-CSV1',price:10000000,category:'이송',desc:'라인 구성에 필요한 이송 자동화 설비입니다.',tag_texture:'공통',tag_pkg:'컨베이어,라인',tag_process:'이송,공급,배출',tag_product:'식품라인,포장라인,완제품',tag_feature:'통합이송,라인연동',tag_space:'중형공간,대형공간,라인구성',tag_electric:'220V,380V3상',tag_air:'공압불필요',tag_keyword:'컨베이어시스템,이송라인,통합이송,라인구성',tags:'이송,컨베이어,라인연동,라인구성,220V,공압불필요',photos:[],status:'active'},
+  {id:50,name:'자동컵씰러 2구,4구형',model:'BPK-CS2R4',price:15000000,category:'포장',desc:'컵 제품 밀봉 자동화 설비입니다.',tag_texture:'액체,고형물,점액질',tag_pkg:'컵,트레이실링',tag_process:'포장,밀봉,실링',tag_product:'컵제품,디저트,반찬,소스컵',tag_feature:'2구,4구,자동',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압필수,중유량',tag_keyword:'컵씰러,컵실링,트레이실링,컵밀봉',tags:'트레이실링,컵,포장,밀봉,중형공간,공압필수',photos:[],status:'active'},
+  {id:51,name:'자동 필름 공급,롤러,패킹 시스템',model:'BPK-FRPS',price:40000000,category:'통합',desc:'포장 필름 자동 공급&포장&계량 ',tag_texture:'공통',tag_pkg:'필름포장,롤필름',tag_process:'필름공급,포장,계량,패킹',tag_product:'포장필름,롤러패킹',tag_feature:'통합시스템,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'필름공급,롤러,패킹,자동포장,계량통합',tags:'필름포장,포장,계량,패킹,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:52,name:'자동 로봇 포장 패킹 시스템',model:'BPK-RFS',price:35000000,category:'통합',desc:'로봇 기반 자동 포장 및 적재 설비입니다.',tag_texture:'공통',tag_pkg:'박스,파우치,패킹',tag_process:'로봇포장,패킹,적재,포장',tag_product:'완제품,물류,자동적재',tag_feature:'로봇,고속,자동화라인',tag_space:'대형공간,라인구성',tag_electric:'380V3상,고전력',tag_air:'공압필수,중유량',tag_keyword:'로봇포장,로봇패킹,자동적재,피킹',tags:'로봇,포장,패킹,적재,고속,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:53,name:'수축포장기 시스템',model:'BPK-SHTP',price:20000000,category:'포장',desc:'열수축 방식 포장 설비입니다.',tag_texture:'공통',tag_pkg:'수축포장,필름포장',tag_process:'포장,수축,열수축',tag_product:'완제품,세트포장',tag_feature:'열수축,자동',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압권장,저유량',tag_keyword:'수축포장기,열수축,슈링크포장,필름수축',tags:'수축포장,열수축,포장,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:54,name:'티백 포장기계 자동 시스템',model:'BPK-TBAP',price:45000000,category:'포장',desc:'티백 제품 자동 충진 및 포장 설비입니다.',tag_texture:'분말,과립',tag_pkg:'티백,필터포장',tag_process:'충진,포장,계량',tag_product:'차,티백,분말차,허브티',tag_feature:'자동화라인,소형포장',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'티백포장,티백충진,차포장,필터포장',tags:'분말,과립,티백,충진,포장,계량,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:55,name:'떡 성형기',model:'BPK-RC',price:15000000,category:'성형',desc:'떡 제품을 일정 형태로 자동 성형하는 설비입니다.',tag_texture:'반죽,고형물',tag_pkg:'성형제품',tag_process:'성형,분할',tag_product:'떡,떡류,반죽제품',tag_feature:'성형,식품전용',tag_space:'중형공간',tag_electric:'220V,380V3상',tag_air:'공압권장,저유량',tag_keyword:'떡성형기,떡제조,반죽성형,식품성형',tags:'반죽,고형물,성형,떡,중형공간,220V,공압권장',photos:[],status:'active'},
+  {id:56,name:'자동 액상류 충진&캠핑&로터리 포장시스템',model:'BPK-LFCR',price:45000000,category:'통합',desc:'스텐드,캡파우치 형태의  봉투 자동충진&공급&캡핑 포장설비입니다.',tag_texture:'액체,점액질',tag_pkg:'스탠드파우치,캡파우치,파우치',tag_process:'충진,공급,캡핑,포장,밀봉',tag_product:'소스,액상식품,파우치식품',tag_feature:'로터리,자동화라인,고급형',tag_space:'대형공간,라인구성',tag_electric:'380V3상',tag_air:'공압필수,중유량',tag_keyword:'액상로터리,캡파우치,스탠드파우치,파우치충진,캡핑',tags:'액체,점액질,스탠드파우치,캡파우치,충진,캡핑,로터리,대형공간,380V3상,공압필수',photos:[],status:'active'},
+  {id:57,name:'열전사프린터',model:'BPK-TTO32',price:8000000,category:'인쇄',desc:'필름에 제조일자/유통기한/LOT를 고해상도로 인쇄(포장기와 연동).',tag_texture:'공통',tag_pkg:'필름,파우치',tag_process:'인쇄,날짜인쇄,마킹',tag_product:'제조일자,유통기한,LOT,필름',tag_feature:'고해상도,포장기연동',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'열전사프린터,TTO,날짜인쇄,유통기한,LOT,필름인쇄',tags:'인쇄,날짜,LOT,필름,포장기연동,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:58,name:'잉크젯프린터',model:'BPK-TIJ',price:3000000,category:'인쇄',desc:'파우치/박스에 날짜·LOT·바코드 인쇄(소모품 카트리지 방식)',tag_texture:'공통',tag_pkg:'파우치,박스,용기',tag_process:'인쇄,마킹,바코드',tag_product:'날짜,LOT,바코드,박스인쇄',tag_feature:'소형,카트리지',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'잉크젯프린터,TIJ,바코드인쇄,날짜인쇄,LOT',tags:'인쇄,바코드,날짜,LOT,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:59,name:'수직,수평 밴드씰러',model:'BPK-BSV',price:3500000,category:'포장',desc:'수평,수직 이송 방식 연속 실링(대형 봉투/내포장에 유리).',tag_texture:'공통',tag_pkg:'봉투,내포장,필름포장',tag_process:'실링,밀봉,포장',tag_product:'대형봉투,내포장,식품봉투',tag_feature:'수직수평,연속실링,소형',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압불필요',tag_keyword:'밴드씰러,연속실링,봉투실링,수평실링,수직실링',tags:'실링,밀봉,포장,봉투,소형공간,220V,공압불필요',photos:[],status:'active'},
+  {id:60,name:'트레이 실링기',model:'BPK-TRSEAL',price:7000000,category:'포장',desc:'반찬/밀키트 트레이 밀봉(상면 필름 씰링',tag_texture:'고형물,액체,점액질',tag_pkg:'트레이실링,트레이',tag_process:'포장,밀봉,실링',tag_product:'반찬,밀키트,트레이식품',tag_feature:'소형,상면필름',tag_space:'소형공간',tag_electric:'220V',tag_air:'공압필수,저유량',tag_keyword:'트레이실링기,밀키트실링,반찬트레이,상면필름',tags:'트레이실링,트레이,포장,밀봉,밀키트,소형공간,220V,공압필수',photos:[],status:'active'},
+];
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let EQUIPMENT = [];
+let selectedEq = new Set();
+let formData = {};
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+(async function init(){
+  if(API_ENABLED){
+    showApiLoading('장비 정보를 불러오는 중...');
+    try{
+      const res=await apiCall('getEq');
+      if(res&&res.data&&res.data.length>0){
+        EQUIPMENT=res.data;
+        localStorage.setItem(SK.EQ,JSON.stringify(EQUIPMENT));
+      } else {
+        const stored=localStorage.getItem(SK.EQ);
+        EQUIPMENT=stored?JSON.parse(stored):DEFAULT_EQ;
+      }
+    }catch(e){ const stored=localStorage.getItem(SK.EQ); EQUIPMENT=stored?JSON.parse(stored):DEFAULT_EQ; }
+    finally{ hideApiLoading(); }
+  } else {
+    const stored = localStorage.getItem(SK.EQ);
+    EQUIPMENT = stored ? JSON.parse(stored) : DEFAULT_EQ;
+  }
+  initApiStatus('api-status-hdr');
+  // Auto-format inputs
+  document.getElementById('f-bizno').addEventListener('input', function(){ this.value = fmtBizno(this.value); });
+  document.getElementById('f-phone').addEventListener('input', function(){ this.value = fmtPhone(this.value); });
+  document.getElementById('l-bizno').addEventListener('input', function(){ this.value = fmtBizno(this.value); });
+  document.getElementById('l-phone').addEventListener('input', function(){ this.value = fmtPhone(this.value); });
+  // Chip click handlers
+  document.querySelectorAll('.chip').forEach(c => {
+    c.addEventListener('click', function(){
+      const inp = this.querySelector('input');
+      if(inp.type==='radio'){
+        document.querySelectorAll(`.chip input[name="${inp.name}"]`).forEach(r => r.closest('.chip').classList.remove('on'));
+        inp.checked = true;
+        this.classList.add('on');
+        if(inp.name==='air_yn') toggleAirFlow(inp.value);
+      } else {
+        inp.checked = !inp.checked;
+        this.classList.toggle('on', inp.checked);
+      }
+    });
+  });
+  // Storage change listener (for real-time equipment sync)
+  window.addEventListener('storage', e => {
+    if(e.key === SK.EQ) EQUIPMENT = JSON.parse(e.newValue || '[]') || DEFAULT_EQ;
+  });
+})();
+
+// ═══════════════════════════════════════════
+// VIEW MANAGEMENT
+// ═══════════════════════════════════════════
+function showView(name){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ═══════════════════════════════════════════
+// FORMATTING
+// ═══════════════════════════════════════════
+function fmtBizno(v){ v=v.replace(/\D/g,''); if(v.length>=6) return v.slice(0,3)+'-'+v.slice(3,5)+'-'+v.slice(5,10); if(v.length>=4) return v.slice(0,3)+'-'+v.slice(3); return v; }
+function fmtPhone(v){ v=v.replace(/\D/g,''); if(v.length>=8) return v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7,11); if(v.length>=4) return v.slice(0,3)+'-'+v.slice(3); return v; }
+function val(id){ return (document.getElementById(id)?.value||'').trim(); }
+function clearErr(){ document.querySelectorAll('.fg').forEach(f=>f.classList.remove('has-err')); }
+function setErr(id){ document.getElementById('fg-'+id)?.classList.add('has-err'); }
+function showProblemSub(type, labelEl){
+  // 타입 버튼 active 상태
+  document.querySelectorAll('.prob-type-btn').forEach(b=>b.classList.remove('on'));
+  if(labelEl) labelEl.classList.add('on');
+  // 서브 패널 전환 (이전 선택 초기화)
+  const replEl=document.getElementById('problem-sub-replace');
+  const newEl=document.getElementById('problem-sub-new');
+  document.querySelectorAll('input[name="problem_detail"]').forEach(cb=>cb.checked=false);
+  document.querySelectorAll('.prob-item').forEach(it=>it.classList.remove('on'));
+  replEl.style.display = type==='replace' ? 'block' : 'none';
+  newEl.style.display  = type==='new'     ? 'block' : 'none';
+  // 라디오 체크
+  const radio=document.querySelector(`input[name="problem_type"][value="${type==='replace'?'구형장비교체':'신규도입'}"]`);
+  if(radio) radio.checked=true;
+}
+function toggleProbItem(labelEl){
+  // 브라우저가 먼저 checkbox를 토글 → requestAnimationFrame으로 클래스 동기화
+  requestAnimationFrame(()=>{
+    const cb=labelEl.querySelector('input[type="checkbox"]');
+    if(cb) labelEl.classList.toggle('on', cb.checked);
+  });
+}
+function syncSpeed(v){
+  v=Math.min(60,Math.max(1,parseInt(v)||1));
+  document.getElementById('f-speed').value=v;
+  // 프리셋 버튼 active 상태 업데이트
+  document.querySelectorAll('.speed-btn').forEach(btn=>{
+    btn.classList.toggle('on',parseInt(btn.dataset.speed)===v);
+  });
+}
+function setSpeed(v,btnEl){
+  document.getElementById('f-speed').value=v;
+  document.querySelectorAll('.speed-btn').forEach(b=>b.classList.remove('on'));
+  if(btnEl) btnEl.classList.add('on');
+}
+let _productPhotos=[];
+function handlePhoto(inp){
+  const z=document.getElementById('upload-zone');
+  _productPhotos=[];
+  if(!inp.files.length){ z.innerHTML=`<div class="upload-icon">📷</div><div class="upload-lbl">클릭하여 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 3장</small></div>`; return; }
+  const files=[...inp.files].slice(0,3);
+  z.innerHTML=`<div style="font-size:13px;color:var(--accent);font-weight:600">📷 ${files.map(f=>f.name).join(', ')} (${files.length}장)</div>`;
+  files.forEach(f=>{ const r=new FileReader(); r.onload=e=>_productPhotos.push(e.target.result); r.readAsDataURL(f); });
+}
+
+function toggleAirFlow(val){
+  document.getElementById('air-flow-wrap').style.display=val==='유'?'block':'none';
+}
+
+function updateSpaceArea(){
+  const w=parseFloat(document.getElementById('f-space-w').value)||0;
+  const h=parseFloat(document.getElementById('f-space-h').value)||0;
+  const hint=document.getElementById('space-area-hint');
+  if(w>0&&h>0){
+    const area=(w*h).toFixed(1);
+    let label='';
+    if(w*h<=12) label='소형 공간';
+    else if(w*h<=35) label='중형 공간';
+    else if(w*h<=80) label='대형 공간';
+    else label='대형 공간 (라인구성 가능)';
+    hint.innerHTML=`가로 ${w}m × 세로 ${h}m = <strong style="color:var(--primary)">${area}㎡</strong> · ${label}`;
+  } else {
+    hint.textContent='예: 가로 5m × 세로 8m = 40㎡';
+  }
+}
+
+let _spacePhotos=[];
+function handleSpacePhoto(inp){
+  const z=document.getElementById('space-upload-zone');
+  _spacePhotos=[];
+  if(!inp.files.length){ z.innerHTML=`<div class="upload-icon">📐</div><div class="upload-lbl">공간 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 2장</small></div>`; return; }
+  const files=[...inp.files].slice(0,2);
+  const names=files.map(f=>f.name).join(', ');
+  z.innerHTML=`<div style="font-size:13px;color:var(--accent);font-weight:600">📐 ${names} (${files.length}장)</div>`;
+  files.forEach(f=>{
+    const reader=new FileReader();
+    reader.onload=e=>_spacePhotos.push(e.target.result);
+    reader.readAsDataURL(f);
+  });
+}
+
+// ═══════════════════════════════════════════
+// STEP BAR
+// ═══════════════════════════════════════════
+function goPage(n){
+  closeEqModal();
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page'+n).classList.add('active');
+  window.scrollTo(0,0);
+  for(let i=1;i<=5;i++){
+    const num=document.getElementById('sn'+i), lbl=document.getElementById('sl'+i);
+    num.className='st-num'; lbl.className='st-lbl';
+    if(i<n){ num.classList.add('done'); num.textContent='✓'; lbl.classList.add('done'); }
+    else if(i===n){ num.classList.add('active'); num.textContent=i; lbl.classList.add('active'); }
+    else { num.textContent=i; }
+    if(i<5){ const ln=document.getElementById('ln'+i); ln.className='st-line'+(i<n?' done':''); }
+  }
+}
+
+// ═══════════════════════════════════════════
+// STEP 1 → 2
+// ═══════════════════════════════════════════
+function goStep2(){
+  clearErr(); let ok=true;
+  if(!val('f-company')){ setErr('company'); ok=false; }
+  if(val('f-bizno').replace(/\D/g,'').length!==10){ setErr('bizno'); ok=false; }
+  if(!val('f-addr')){ setErr('addr'); ok=false; }
+  if(!val('f-ceo')){ setErr('ceo'); ok=false; }
+  if(!val('f-manager')){ setErr('manager'); ok=false; }
+  if(val('f-phone').replace(/\D/g,'').length<10){ setErr('phone'); ok=false; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val('f-email'))){ setErr('email'); ok=false; }
+  if(!document.getElementById('f-consent').checked){ document.getElementById('consent-lbl').style.color='var(--danger)'; ok=false; }
+  if(ok){
+    formData.company=val('f-company'); formData.bizno=val('f-bizno');
+    formData.address=val('f-addr'); formData.ceo=val('f-ceo');
+    formData.manager=val('f-manager'); formData.phone=val('f-phone'); formData.email=val('f-email');
+    goPage(2);
+  }
+}
+
+// ═══════════════════════════════════════════
+// STEP 2 → 3 (AI MATCHING)
+// ═══════════════════════════════════════════
+function goStep3(){
+  clearErr(); let ok=true;
+  if(!val('f-pname')){ setErr('pname'); ok=false; }
+  if(!document.getElementById('f-weight-num').value){ setErr('weight'); ok=false; }
+  const tex=document.querySelector('input[name="texture"]:checked');
+  if(!tex){ document.getElementById('texture-err').style.display='block'; ok=false; } else document.getElementById('texture-err').style.display='none';
+  const pkgs=[...document.querySelectorAll('input[name="pkgtype"]:checked')];
+  if(!pkgs.length){ document.getElementById('pkg-err').style.display='block'; ok=false; } else document.getElementById('pkg-err').style.display='none';
+  const procs=[...document.querySelectorAll('input[name="process"]:checked')];
+  if(!procs.length){ document.getElementById('process-err').style.display='block'; ok=false; } else document.getElementById('process-err').style.display='none';
+  if(!ok) return;
+  formData.pname=val('f-pname'); formData.weight=document.getElementById('f-weight-num').value+document.getElementById('f-weight-unit').value;
+  formData.qty=document.getElementById('f-qty').value||'';
+  formData.texture=tex.value; formData.pkgtypes=pkgs.map(p=>p.value);
+  formData.processes=procs.map(p=>p.value); formData.speed=document.getElementById('f-speed').value; formData.memo=val('f-memo');
+  formData.product_photos=_productPhotos.slice();
+  const probType=document.querySelector('input[name="problem_type"]:checked');
+  formData.problem_type=probType?probType.value:'';
+  formData.problem_points=[...document.querySelectorAll('input[name="problem_detail"]:checked')].map(e=>e.value);
+  // 설치 환경
+  formData.electric=[...document.querySelectorAll('input[name="electric"]:checked')].map(e=>e.value);
+  const airYnEl=document.querySelector('input[name="air_yn"]:checked');
+  formData.air_yn=airYnEl?.value||'';
+  formData.air_flow=formData.air_yn==='유'?(document.querySelector('input[name="air_flow"]:checked')?.value||''):'';
+  formData.space_w=document.getElementById('f-space-w').value||'';
+  formData.space_h=document.getElementById('f-space-h').value||'';
+  formData.space_photos=_spacePhotos.slice();
+  goPage(3); runScoring();
+}
+
+// ═══════════════════════════════════════════
+// TAG-BASED SCORING
+// ═══════════════════════════════════════════
+function splitTag(str){ return (str||'').split(',').map(t=>t.trim()).filter(Boolean); }
+
+const TEXTURE_MAP_G={
+  '액체류':['액체'],'분말류':['분말'],
+  '점액질':['점액질','고점도'],
+  '유동물질':['유동물질','액체','점액질'],
+  '고형물':['고형물','과립','건식품'],
+  '반죽':['반죽','고형물'],
+  '과립':['과립','고형물','건식품'],
+  '혼합형':['액체','고형물','점액질'],
+  '점착형':['고형물','점액질','과립'],
+  '깨짐형':['고형물','과립','건식품'],
+  '기타':['공통']
+};
+const PKG_MAP_G={
+  '스탠드파우치':['스탠드파우치','파우치'],
+  '지퍼파우치':['지퍼파우치','스탠드파우치','파우치'],
+  'M형파우치':['M형파우치','파우치'],
+  '삼면포장':['삼면포장','필름포장','수평포장'],
+  '사면포장':['사면포장','스틱포장','필름포장'],
+  '스틱포장':['스틱포장','사면포장','필름포장'],
+  '트레이실링':['트레이실링','트레이','컵'],
+  '컵용기':['컵','트레이실링','컵용기'],
+  '진공포장':['진공포장','스킨팩'],
+  'MAP포장':['MAP','가스치환','진공포장'],
+  '병용기':['병용기'],
+  '박스':['박스','케이스'],
+  '기타포장':['공통']
+};
+const PROC_MAP_G={
+  '계량':['계량'],'이송':['이송','공급','배출'],
+  '포장':['포장','밀봉','실링'],'충진':['충진'],
+  '라벨링':['라벨링','인쇄'],'검사':['검사','선별','금속검출'],
+  '혼합':['혼합','교반'],'성형':['성형','분할','소분'],
+  '테이핑':['테이핑'],'제함':['제함','박스']
+};
+const PROC_ICON_G={
+  '계량':'⚖️','이송':'🚚','포장':'📦','충진':'🧴','라벨링':'🏷️',
+  '검사':'🔍','혼합':'🌀','성형':'🍡','테이핑':'📎','제함':'📬'
+};
+
+const DEFAULT_SCORING_CFG={
+  w_texture:40, w_pkg:30, w_proc:20, w_speed:5,
+  w_electric:3, w_air:2, w_space:2,
+  w_tong_proc:5, w_tong_cat:3,
+  p_texture:35, p_electric:15, p_air:20, p_space:10,
+  p_threshold:30,
+  top_per_proc:3, top_integrated:3
+};
+
+function getScoringCFG(){
+  try{ return Object.assign({},DEFAULT_SCORING_CFG,JSON.parse(localStorage.getItem('bpk_scoring_cfg')||'{}')); }
+  catch(e){ return Object.assign({},DEFAULT_SCORING_CFG); }
+}
+
+function runScoring(){
+  document.getElementById('ai-loading').style.display='block';
+  document.getElementById('ai-result').style.display='none';
+  document.getElementById('step3-btns').style.display='none';
+
+  const CFG=getScoringCFG();
+  const userTexture=TEXTURE_MAP_G[formData.texture]||[formData.texture];
+  const processes=formData.processes||[];
+  const pkgtypes=formData.pkgtypes||[];
+  const userElectric=formData.electric||[];
+  const userAirYn=formData.air_yn||'';
+  const userAirFlow=formData.air_flow||'';
+  const spaceArea=(formData.space_w&&formData.space_h)
+    ?parseFloat(formData.space_w)*parseFloat(formData.space_h):null;
+  const activeEq=EQUIPMENT.filter(e=>!e.status||e.status==='active');
+
+  const scored=activeEq.map(eq=>{
+    const texTags=splitTag(eq.tag_texture);
+    const pkgTags=splitTag(eq.tag_pkg);
+    const procTags=splitTag(eq.tag_process);
+    const allTags=splitTag(eq.tags);
+    const electricTags=splitTag(eq.tag_electric);
+    const airTags=splitTag(eq.tag_air);
+    const spaceTags=splitTag(eq.tag_space);
+    let score=0, penalty=0, reasons=[], matchedProcCount=0;
+
+    // ── 1. 물성 일치 / 불일치 패널티 (공통 태그 장비 제외)
+    const isCommon=allTags.some(t=>t.includes('공통'));
+    const textureMatch=!isCommon&&userTexture.some(ut=>texTags.some(t=>t.includes(ut)||ut.includes(t)));
+    if(textureMatch){ score+=CFG.w_texture; reasons.push('물성('+formData.texture+')'); }
+    else if(!isCommon){ penalty+=CFG.p_texture; }
+
+    // ── 2. 포장형태 일치 (cap)
+    if(pkgtypes.length>0){
+      let hits=0;
+      pkgtypes.forEach(up=>{
+        const ps=PKG_MAP_G[up]||[up];
+        if(ps.some(p=>pkgTags.some(t=>t.includes(p)||p.includes(t))||allTags.some(t=>t.includes(p)))){
+          hits++; reasons.push(up);
+        }
+      });
+      score+=Math.min(CFG.w_pkg,Math.round((hits/pkgtypes.length)*CFG.w_pkg));
+    }
+
+    // ── 3. 공정 일치 (cap)
+    if(processes.length>0){
+      let hits=0;
+      processes.forEach(up=>{
+        const ps=PROC_MAP_G[up]||[up];
+        if(ps.some(p=>procTags.some(t=>t.includes(p)||p.includes(t)))){
+          hits++; matchedProcCount++; reasons.push(up+'공정');
+        }
+      });
+      score+=Math.min(CFG.w_proc,Math.round((hits/processes.length)*CFG.w_proc));
+    }
+
+    // ── 4. 통합 보너스
+    if(matchedProcCount>=2){ score+=CFG.w_tong_proc; }
+    if(eq.category==='통합'){ score+=CFG.w_tong_cat; }
+
+    // ── 5. 전기 적합
+    if(userElectric.length>0){
+      const eMatch=userElectric.some(ev=>electricTags.some(t=>t.includes(ev)||ev.includes(t)));
+      if(eMatch){ score+=CFG.w_electric; reasons.push('전기('+userElectric.join('/')+')'); }
+    }
+
+    // ── 6. 전기 패널티: 380V 전용인데 220V만 있는 경우
+    const needs380=electricTags.some(t=>(t.includes('380')||t.includes('삼상'))&&(t.includes('전용')||t.includes('필수')));
+    const only220=userElectric.length>0&&!userElectric.includes('380V3상');
+    if(needs380&&only220){ penalty+=CFG.p_electric; }
+
+    // ── 7. 공압 적합
+    if(userAirYn==='유'){
+      const airReq=airTags.some(t=>t.includes('공압필수')||t.includes('공압권장'));
+      if(airReq){ score+=Math.floor(CFG.w_air/2); reasons.push('공압'); }
+      if(userAirFlow){
+        const flowMap={저유량:['저유량'],중유량:['중유량','저유량'],고유량:['중유량','고유량']};
+        if((flowMap[userAirFlow]||[]).some(f=>airTags.some(t=>t.includes(f)))){ score+=Math.ceil(CFG.w_air/2); }
+      }
+    } else if(userAirYn==='무'){
+      if(airTags.some(t=>t.includes('공압불필요'))){ score+=CFG.w_air; }
+    }
+
+    // ── 8. 공압 패널티: 공압 없음인데 공압필수
+    if(userAirYn==='무'&&airTags.some(t=>t.includes('공압필수'))){ penalty+=CFG.p_air; }
+
+    // ── 9. 공간 적합
+    if(spaceArea!==null){
+      const sTag=spaceArea<=12?'소형공간':spaceArea<=35?'중형공간':'대형공간';
+      if(spaceTags.some(t=>t.includes(sTag))){ score+=CFG.w_space; reasons.push('공간('+sTag+')'); }
+      else if(spaceArea>80&&spaceTags.some(t=>t.includes('라인구성'))){ score+=CFG.w_space; }
+      if(spaceArea<20&&spaceTags.some(t=>t.includes('대형공간'))){ penalty+=CFG.p_space; }
+    }
+
+    // ── 10. 생산속도 적합
+    if(formData.speed){
+      const userSpeed=Number(formData.speed);
+      if(userSpeed>0&&eq.spec_speed){
+        const nums=(eq.spec_speed.match(/[\d,]+/g)||[]).map(n=>Number(n.replace(/,/g,'')));
+        if(nums.length){
+          const maxSpec=Math.max(...nums);
+          if(maxSpec>0&&userSpeed<=maxSpec*1.2){ score+=1; reasons.push('속도적합'); }
+          else if(maxSpec>0&&userSpeed>maxSpec*2){ penalty+=1; }
+        }
+      }
+    }
+
+    // ── 패널티 임계값 초과 → 제외
+    if(penalty>CFG.p_threshold){ return null; }
+
+    const maxScore=CFG.w_texture+CFG.w_pkg+CFG.w_proc+CFG.w_electric+CFG.w_air+CFG.w_space+CFG.w_tong_proc+CFG.w_tong_cat;
+    const finalScore=Math.max(0,score-penalty);
+    const matchRate=Math.min(99,Math.round((finalScore/maxScore)*100));
+    return{eq,score:finalScore,matchRate,reasons,matchedProcCount};
+  }).filter(Boolean);
+
+  // ── 공정별 그룹핑
+  const processGroups={};
+  processes.forEach(proc=>{
+    const mapped=PROC_MAP_G[proc]||[proc];
+    processGroups[proc]=scored
+      .filter(s=>s.score>0)
+      .filter(s=>{ const pt=splitTag(s.eq.tag_process); return mapped.some(p=>pt.some(t=>t.includes(p)||p.includes(t))); })
+      .sort((a,b)=>b.score-a.score)
+      .slice(0,CFG.top_per_proc);
+  });
+
+  // ── 통합 추천: 공정 2개 이상 선택 시에만 표시
+  const integratedItems=processes.length>=2
+    ?scored
+      .filter(s=>s.score>0&&(s.matchedProcCount>=2||s.eq.category==='통합'))
+      .sort((a,b)=>b.score-a.score)
+      .slice(0,CFG.top_integrated)
+    :[];
+
+  setTimeout(()=>renderScoreMatch(processGroups,integratedItems),400);
+}
+
+let _currentModalEqId=null;
+
+function renderScoreMatch(processGroups,integratedItems){
+  document.getElementById('ai-loading').style.display='none';
+  document.getElementById('ai-result').style.display='block';
+  const processes=formData.processes||[];
+  const totalCount=integratedItems.length+Object.values(processGroups).reduce((s,a)=>s+a.length,0);
+  document.getElementById('match-title').textContent=`${totalCount}개 장비 추천 완료`;
+  document.getElementById('match-summary').textContent=
+    `${formData.pname} 제품의 ${processes.join('·')} 공정에 최적화된 장비를 공정별로 추천합니다.`;
+  const list=document.getElementById('eq-list'); list.innerHTML='';
+
+  function makeCard({eq,matchRate,reasons,matchedProcCount}){
+    const card=document.createElement('div'); card.className='eq-card'+(selectedEq.has(eq.id)?' on':'');
+    card.dataset.id=eq.id;
+    const barColor=matchRate>=70?'var(--accent)':matchRate>=40?'var(--warn)':'var(--g400)';
+    const isTong=matchedProcCount>=2||eq.category==='통합';
+    const reasonStr=reasons.length?`<div class="eq-reason"><strong>🎯</strong> ${reasons.join(' · ')}</div>`:'';
+    const photoHtml=eq.photos&&eq.photos[0]?`<img class="eq-photo-thumb" src="${eq.photos[0]}" alt="${eq.name}" />`:'';
+    const selOn=selectedEq.has(eq.id);
+    card.innerHTML=`
+      <div class="eq-top">
+        <div style="flex:1;min-width:0">
+          <div class="eq-name">${eq.name}${isTong?'<span class="badge-tong">통합</span>':''}</div>
+          <div class="eq-model">${eq.model}</div>
+        </div>
+        <div class="eq-price" style="margin-left:8px;flex-shrink:0">${(eq.price/10000).toLocaleString('ko-KR')}만원</div>
+      </div>
+      <div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--g500);margin-bottom:3px"><span>매칭률</span><span style="font-weight:700;color:${barColor}">${matchRate}%</span></div><div style="height:5px;background:var(--g200);border-radius:3px"><div style="height:100%;width:${matchRate}%;background:${barColor};border-radius:3px"></div></div></div>
+      ${photoHtml}
+      <div class="eq-desc">${eq.desc}</div>
+      ${reasonStr}
+      <div class="eq-card-btns">
+        <button class="eq-detail-btn" data-id="${eq.id}">🔍 상세 보기</button>
+        <button class="sel-btn${selOn?' on':''}">
+          ${selOn?'✓ 선택됨':'＋ 선택하기'}
+        </button>
+      </div>`;
+    card.querySelector('.eq-detail-btn').addEventListener('click',e=>{ e.stopPropagation(); openEqModal(eq.id); });
+    card.querySelector('.sel-btn').addEventListener('click',e=>{ e.stopPropagation(); toggleSelectCard(eq.id,card); });
+    return card;
+  }
+
+  // 통합 섹션
+  if(integratedItems.length&&processes.length>1){
+    const sec=document.createElement('div'); sec.className='proc-sec';
+    sec.innerHTML=`<div class="proc-sec-hd">🔗 통합 공정 추천 <span style="font-size:11px;opacity:.7;font-weight:400">(복수 공정 동시 커버)</span></div>`;
+    const grid=document.createElement('div'); grid.className='eq-grid';
+    integratedItems.forEach(item=>grid.appendChild(makeCard(item)));
+    sec.appendChild(grid); list.appendChild(sec);
+  }
+
+  // 공정별 섹션
+  processes.forEach(proc=>{
+    const items=processGroups[proc]||[];
+    if(!items.length) return;
+    const icon=PROC_ICON_G[proc]||'⚙️';
+    const sec=document.createElement('div'); sec.className='proc-sec';
+    sec.innerHTML=`<div class="proc-sec-hd">${icon} ${proc} 공정 추천</div>`;
+    const grid=document.createElement('div'); grid.className='eq-grid';
+    items.forEach(item=>grid.appendChild(makeCard(item)));
+    sec.appendChild(grid); list.appendChild(sec);
+  });
+
+  if(!list.children.length){
+    list.innerHTML='<div style="text-align:center;padding:40px;color:var(--g400)">매칭된 장비가 없습니다. 조건을 변경해 보세요.</div>';
+  }
+
+  // 탭 배지 업데이트
+  const activeEq=EQUIPMENT.filter(e=>!e.status||e.status==='active');
+  document.getElementById('badge-match').textContent=totalCount+'개';
+  document.getElementById('badge-all').textContent=activeEq.length+'개';
+  filterAllEq('전체',document.querySelector('#tab-content-all .cat-tab'));
+}
+
+function makeAllEqCard(eq){
+  const catKey=eq.category||'기타';
+  const card=document.createElement('div');
+  card.className='eq-card'+(selectedEq.has(eq.id)?' on':'');
+  card.dataset.id=eq.id;
+  const photoHtml=eq.photos&&eq.photos[0]?`<img class="eq-photo-thumb" src="${eq.photos[0]}" alt="${eq.name}" />`:'';
+  const selOn=selectedEq.has(eq.id);
+  card.innerHTML=`
+    <div class="eq-top">
+      <div style="flex:1;min-width:0">
+        <div style="margin-bottom:5px"><span class="all-eq-cat-badge cat-badge-${catKey}">${catKey}</span></div>
+        <div class="eq-name">${eq.name}</div>
+        <div class="eq-model">${eq.model}</div>
+      </div>
+      <div class="eq-price" style="margin-left:8px;flex-shrink:0">${(eq.price/10000).toLocaleString('ko-KR')}만원</div>
+    </div>
+    ${photoHtml}
+    <div class="eq-desc">${eq.desc}</div>
+    <div class="eq-card-btns">
+      <button class="eq-detail-btn" data-id="${eq.id}">🔍 상세 보기</button>
+      <button class="sel-btn${selOn?' on':''}">
+        ${selOn?'✓ 선택됨':'＋ 선택하기'}
+      </button>
+    </div>`;
+  card.querySelector('.eq-detail-btn').addEventListener('click',e=>{ e.stopPropagation(); openEqModal(eq.id); });
+  card.querySelector('.sel-btn').addEventListener('click',e=>{ e.stopPropagation(); toggleSelectCard(eq.id,card); });
+  return card;
+}
+
+function filterAllEq(cat,btnEl){
+  if(btnEl){
+    document.querySelectorAll('#tab-content-all .cat-tab').forEach(b=>b.classList.remove('on'));
+    btnEl.classList.add('on');
+  }
+  const si=document.getElementById('eq-search-inp'); if(si) si.value='';
+  const activeEq=EQUIPMENT.filter(e=>!e.status||e.status==='active');
+  const filtered=cat==='전체'?activeEq:activeEq.filter(e=>e.category&&e.category.includes(cat));
+  const grid=document.getElementById('all-eq-list');
+  grid.innerHTML='';
+  filtered.forEach(eq=>grid.appendChild(makeAllEqCard(eq)));
+  if(!filtered.length){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:32px;color:var(--g400)">해당 카테고리에 장비가 없습니다.</div>';
+  }
+}
+
+function searchAllEq(q){
+  const query=q.trim().toLowerCase();
+  // 카테고리 필터 초기화
+  document.querySelectorAll('#tab-content-all .cat-tab').forEach(b=>b.classList.remove('on'));
+  const firstTab=document.querySelector('#tab-content-all .cat-tab');
+  if(firstTab) firstTab.classList.add('on');
+  const activeEq=EQUIPMENT.filter(e=>!e.status||e.status==='active');
+  const filtered=!query ? activeEq : activeEq.filter(e=>[
+    e.name, e.desc, e.category, e.tags, e.tag_keyword,
+    e.tag_texture, e.tag_pkg, e.tag_process, e.tag_product, e.model
+  ].some(f=>(f||'').toLowerCase().includes(query)));
+  const grid=document.getElementById('all-eq-list');
+  grid.innerHTML='';
+  filtered.forEach(eq=>grid.appendChild(makeAllEqCard(eq)));
+  document.getElementById('badge-all').textContent=filtered.length+'개';
+  if(!filtered.length){
+    grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:40px 24px;color:var(--g400)">
+      <div style="font-size:36px;margin-bottom:12px">🔍</div>
+      <div style="font-size:15px;font-weight:600;color:var(--g600);margin-bottom:6px">'${q}' 검색 결과가 없습니다</div>
+      <div style="font-size:13px;margin-bottom:16px">다른 키워드로 검색해 보세요</div>
+      <button class="btn btn-outline" style="height:36px;padding:0 16px;font-size:13px"
+        onclick="document.getElementById('eq-search-inp').value='';searchAllEq('')">전체 목록 보기</button>
+    </div>`;
+  }
+}
+
+function toggleSelectCard(eqId,card){
+  const selected=!selectedEq.has(eqId);
+  if(selected) selectedEq.add(eqId); else selectedEq.delete(eqId);
+  // 모든 동일 장비 카드 동기화
+  document.querySelectorAll(`.eq-card[data-id="${eqId}"]`).forEach(c=>{
+    c.classList.toggle('on',selected);
+    const btn=c.querySelector('.sel-btn');
+    if(btn){ btn.classList.toggle('on',selected); btn.textContent=selected?'✓ 선택됨':'＋ 선택하기'; }
+  });
+  updateSelBar();
+  if(_currentModalEqId===eqId) updateModalSelBtn(eqId);
+}
+function updateSelBar(){
+  const el=document.getElementById('sel-bar-count');
+  if(el) el.textContent=selectedEq.size;
+  const listEl=document.getElementById('sel-bar-list');
+  if(!listEl) return;
+  const items=[...selectedEq].map(id=>EQUIPMENT.find(e=>String(e.id)===String(id))).filter(Boolean);
+  if(items.length){
+    listEl.innerHTML=items.map(e=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;background:rgba(255,255,255,.18);border-radius:20px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap">✓ ${e.name}</span>`).join('');
+    listEl.style.display='flex';
+  } else {
+    listEl.innerHTML='';
+    listEl.style.display='none';
+  }
+}
+function switchEqTab(tab,btnEl){
+  document.querySelectorAll('.eq-tab').forEach(b=>b.classList.remove('on'));
+  if(btnEl) btnEl.classList.add('on');
+  document.getElementById('tab-content-match').style.display=tab==='match'?'':'none';
+  document.getElementById('tab-content-all').style.display=tab==='all'?'':'none';
+  if(tab==='all') filterAllEq('전체',document.querySelector('#tab-content-all .cat-tab.on')||document.querySelector('#tab-content-all .cat-tab'));
+}
+
+function openEqModal(eqId){
+  const eq=EQUIPMENT.find(e=>e.id===eqId); if(!eq) return;
+  _currentModalEqId=eqId;
+  document.getElementById('em-name').textContent=eq.name;
+  document.getElementById('em-model').textContent=eq.model;
+  document.getElementById('em-price').textContent=(eq.price/10000).toLocaleString('ko-KR')+'만원 (VAT 별도)';
+  document.getElementById('em-desc').textContent=eq.desc;
+  // 사진
+  const photos=eq.photos&&eq.photos.length?eq.photos:[];
+  const photosEl=document.getElementById('em-photos');
+  if(photos.length){
+    photosEl.style.display='block';
+    if(photos.length===1){
+      photosEl.innerHTML=`<img class="eq-modal-img main" src="${photos[0]}" alt="${eq.name}" />`;
+    } else {
+      photosEl.innerHTML=`<div class="eq-modal-slider">${photos.map(p=>`<img class="eq-modal-img" src="${p}" alt="${eq.name}" />`).join('')}</div>`;
+    }
+  } else {
+    photosEl.style.display='none';
+    photosEl.innerHTML='';
+  }
+  // 포장 제품 사진
+  const pkgPhotos=eq.photos_pkg&&eq.photos_pkg.length?eq.photos_pkg:[];
+  const pkgWrap=document.getElementById('em-photos-pkg-wrap');
+  const pkgEl=document.getElementById('em-photos-pkg');
+  if(pkgPhotos.length){
+    pkgEl.innerHTML=pkgPhotos.length===1
+      ?`<img class="eq-modal-img main" src="${pkgPhotos[0]}" alt="포장제품"/>`
+      :`<div class="eq-modal-slider">${pkgPhotos.map(p=>`<img class="eq-modal-img" src="${p}" alt="포장제품"/>`).join('')}</div>`;
+    pkgWrap.style.display='block';
+  } else {
+    pkgEl.innerHTML=''; pkgWrap.style.display='none';
+  }
+  // YouTube 영상
+  const videos=eq.videos&&eq.videos.length?eq.videos:[];
+  const vidWrap=document.getElementById('em-videos-wrap');
+  const vidEl=document.getElementById('em-videos');
+  if(videos.length){
+    vidEl.innerHTML=videos.map(url=>{
+      const m=url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|v\/))([a-zA-Z0-9_-]{11})/);
+      const vid=m?m[1]:null;
+      return vid?`<div style="margin-bottom:12px;border-radius:8px;overflow:hidden;background:#000;position:relative;padding-top:56.25%"><iframe style="position:absolute;top:0;left:0;width:100%;height:100%;border:none" src="https://www.youtube.com/embed/${vid}" allowfullscreen loading="lazy"></iframe></div>`:'';
+    }).filter(Boolean).join('');
+    vidWrap.style.display=vidEl.innerHTML?'block':'none';
+  } else {
+    vidEl.innerHTML=''; vidWrap.style.display='none';
+  }
+  // 태그
+  const tags=splitTag(eq.tags);
+  document.getElementById('em-tags').innerHTML=tags.map(t=>`<span class="tag tag-b">${t}</span>`).join('');
+  // 스펙 정보
+  const specDefs=[['생산속도',eq.spec_speed],['소비전력',eq.spec_power],['포장재 종류',eq.spec_packing],
+    ['외형 치수',eq.spec_dimension],['장비 중량',eq.spec_weight],['공압 조건',eq.spec_air],['전원 사양',eq.spec_voltage]];
+  const hasSpec=specDefs.some(([,v])=>v);
+  const specWrap=document.getElementById('em-spec-wrap');
+  if(hasSpec){
+    document.getElementById('em-spec-table').innerHTML=specDefs.filter(([,v])=>v).map(([k,v])=>
+      `<tr><td style="padding:6px 10px;background:#f8fafc;border:1px solid #e2e8f0;font-weight:700;width:110px;color:#374151">${k}</td><td style="padding:6px 10px;border:1px solid #e2e8f0;color:#111">${v}</td></tr>`
+    ).join('');
+    specWrap.style.display='block';
+  } else { specWrap.style.display='none'; }
+  updateModalSelBtn(eqId);
+  document.getElementById('eq-modal-ov').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function updateModalSelBtn(eqId){
+  const btn=document.getElementById('em-sel-btn');
+  if(selectedEq.has(eqId)){
+    btn.textContent='✓ 선택 해제하기'; btn.className='eq-modal-sel-btn deselect';
+  } else {
+    btn.textContent='+ 도입 장비로 선택하기'; btn.className='eq-modal-sel-btn select';
+  }
+}
+
+function toggleFromModal(){
+  if(!_currentModalEqId) return;
+  const card=document.querySelector(`.eq-card[data-id="${_currentModalEqId}"]`);
+  if(card){ toggleSelectCard(_currentModalEqId,card); }
+  else {
+    if(selectedEq.has(_currentModalEqId)) selectedEq.delete(_currentModalEqId);
+    else selectedEq.add(_currentModalEqId);
+    updateSelBar();
+    updateModalSelBtn(_currentModalEqId);
+  }
+}
+
+function closeEqModal(){
+  document.getElementById('eq-modal-ov').classList.remove('open');
+  document.body.style.overflow='';
+  _currentModalEqId=null;
+}
+// 모달 오버레이 클릭으로 닫기
+document.getElementById('eq-modal-ov').addEventListener('click',e=>{
+  if(e.target===document.getElementById('eq-modal-ov')) closeEqModal();
+});
+
+// ═══════════════════════════════════════════
+// STEP 3 → 4
+// ═══════════════════════════════════════════
+function goStep4(){
+  if(selectedEq.size===0){ alert('도입 희망 장비를 1개 이상 선택해 주세요.'); return; }
+  const cs=document.getElementById('company-sum');
+  cs.innerHTML=[['기업명',formData.company],['사업자번호',formData.bizno],['사업장 주소',formData.address],['대표자명',formData.ceo],['담당자명',formData.manager],['연락처',formData.phone],['이메일',formData.email]].map(([k,v])=>`<div class="s-row"><span class="s-key">${k}</span><span class="s-val">${v}</span></div>`).join('');
+  // 설치 환경 요약
+  const envRows=[];
+  if(formData.electric&&formData.electric.length) envRows.push(['전기 사용',formData.electric.join(', ')]);
+  if(formData.air_yn) envRows.push(['공압 설치',formData.air_yn+(formData.air_flow?' · '+formData.air_flow+'':'')]);
+  if(formData.space_w&&formData.space_h){
+    const area=(parseFloat(formData.space_w)*parseFloat(formData.space_h)).toFixed(1);
+    envRows.push(['설치 공간',`${formData.space_w}m × ${formData.space_h}m = ${area}㎡`]);
+  }
+  if(formData.space_photos&&formData.space_photos.length) envRows.push(['공간 사진',`${formData.space_photos.length}장 첨부됨`]);
+  document.getElementById('env-sum').innerHTML=envRows.length
+    ?envRows.map(([k,v])=>`<div class="s-row"><span class="s-key">${k}</span><span class="s-val">${v}</span></div>`).join('')
+    :`<div style="color:var(--g400);font-size:13px;padding:8px 0">입력된 환경 정보가 없습니다.</div>`;
+  const eqItems=[...selectedEq].map(id=>EQUIPMENT.find(e=>String(e.id)===String(id))).filter(Boolean);
+  document.getElementById('eq-sum').innerHTML=`<div class="sum-title">선택 장비 (${eqItems.length}개)</div>`+eqItems.map(eq=>`<div class="s-row"><span class="s-key">${eq.name}<br><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--g400)">${eq.model}</span></span><span class="s-val" style="font-family:'JetBrains Mono',monospace;font-size:13px">${eq.price.toLocaleString('ko-KR')}원</span></div>`).join('');
+  const total=eqItems.reduce((s,e)=>s+e.price,0);
+  document.getElementById('total-wrap').innerHTML=`<div class="total-box"><div><div class="total-lbl">총 예상 금액 (VAT 별도)</div><div class="total-sub">* 실제 견적은 공급기업 확인 후 안내드립니다</div></div><div class="total-amt">${total.toLocaleString('ko-KR')}원</div></div>`;
+  goPage(4);
+}
+
+// ═══════════════════════════════════════════
+// STEP 4 → 5 (SUBMIT)
+// ═══════════════════════════════════════════
+async function goStep5(){
+  const _now=new Date();
+  const _pad=n=>String(n).padStart(2,'0');
+  const _yy=String(_now.getFullYear()).slice(-2);
+  const _dc=_yy+_pad(_now.getMonth()+1)+_pad(_now.getDate());
+  const _seq=String(1000+Math.floor(Math.random()*9000));
+  const id=`NO-${_dc}-${_seq}`;
+  const dateStr=`${_now.getFullYear()}-${_pad(_now.getMonth()+1)}-${_pad(_now.getDate())} ${_pad(_now.getHours())}:${_pad(_now.getMinutes())}`;
+  const app={id,status:'신청접수',date:dateStr,...formData,equipment:[...selectedEq]};
+
+  // 공간 사진: API 사용 시 Drive에 업로드 후 URL로 교체
+  if(API_ENABLED && app.space_photos && app.space_photos.length>0){
+    showApiLoading('공간 사진을 업로드하는 중...');
+    try{
+      app.space_photos = await apiUploadPhotos(
+        app.space_photos, `space_${id}`,
+        { type: 'space', company: formData.company }
+      );
+    }catch(e){ console.warn('사진 업로드 실패, base64 유지'); }
+    finally{ hideApiLoading(); }
+  }
+  // 제품 사진: API 사용 시 Drive에 업로드
+  if(API_ENABLED && app.product_photos && app.product_photos.length>0){
+    showApiLoading('제품 사진을 업로드하는 중...');
+    try{
+      app.product_photos = await apiUploadPhotos(
+        app.product_photos, `product_${id}`,
+        { type: 'product', company: formData.company }
+      );
+    }catch(e){ console.warn('제품 사진 업로드 실패, base64 유지'); }
+    finally{ hideApiLoading(); }
+  }
+
+  if(API_ENABLED){
+    // API 사용 시: Sheets에만 저장 (다른 사용자에게 로컬 데이터 노출 방지)
+    showApiLoading('신청 내용을 접수하는 중...');
+    try{ await apiCall('saveApp',app); }
+    catch(e){
+      // 서버 저장 실패 시 로컬 임시 저장 (조회 시 활용)
+      const apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
+      apps.push(app);
+      localStorage.setItem(SK.APP,JSON.stringify(apps));
+      console.warn('서버 저장 실패, 로컬 임시 저장됨');
+    }
+    finally{ hideApiLoading(); }
+  } else {
+    // API 미사용 시: localStorage에 저장
+    const apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
+    apps.push(app);
+    localStorage.setItem(SK.APP,JSON.stringify(apps));
+  }
+
+  document.getElementById('receipt-note').innerHTML=`기업명: <strong>${formData.company}</strong><br>담당자: ${formData.manager} (${formData.phone})<br>선택 장비: ${selectedEq.size}개<br>접수일시: ${app.date}<br><br>담당자 이메일(${formData.email})로 접수 확인 안내가 발송됩니다.`;
+  goPage(5);
+}
+
+// ═══════════════════════════════════════════
+// LOOKUP
+// ═══════════════════════════════════════════
+async function doLookup(){
+  const company=val('l-company'), bizno=val('l-bizno'), phone=val('l-phone');
+  let ok=true;
+  ['lc','lb','lp'].forEach(id=>document.getElementById('fg-'+id)?.classList.remove('has-err'));
+  if(!company){ document.getElementById('fg-lc').classList.add('has-err'); ok=false; }
+  if(!bizno){ document.getElementById('fg-lb').classList.add('has-err'); ok=false; }
+  if(!phone){ document.getElementById('fg-lp').classList.add('has-err'); ok=false; }
+  if(!ok) return;
+
+  let apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
+  // API 사용 시 서버에서 최신 데이터 조회
+  if(API_ENABLED){
+    showApiLoading('신청 내역을 조회하는 중...');
+    try{
+      const res=await apiCall('getApps');
+      if(res&&res.data) apps=res.data;
+    }catch(e){ console.warn('API lookup 실패, 로컬 데이터 사용'); }
+    finally{ hideApiLoading(); }
+  }
+  const app=apps.find(a=>a.company===company && a.bizno===bizno && a.phone===phone);
+  const res=document.getElementById('lookup-result');
+  if(!app){
+    res.innerHTML=`<div class="lookup-result"><div class="not-found"><span class="not-found-icon">🔍</span><div class="not-found-txt">신청 내역을 찾을 수 없습니다.</div><div class="not-found-sub">회사명, 사업자등록번호, 휴대폰 번호를 정확히 입력해 주세요.</div></div></div>`;
+    return;
+  }
+  let quotesAll=JSON.parse(localStorage.getItem(SK.QT)||'[]');
+  if(API_ENABLED){ try{ const qr=await apiCall('getQts'); if(qr&&qr.data) quotesAll=qr.data; }catch(e){} }
+  const quote=quotesAll.find(q=>q.appId===app.id);
+  const statuses=['신청접수','검토중','수정중','확정'];
+  const icons=['📬','🔍','✏️','✅'];
+  const curIdx=statuses.indexOf(app.status);
+  const tlHtml=statuses.map((s,i)=>{
+    const cls=i<curIdx?'done':i===curIdx?'cur':'';
+    return `<div class="stl-item"><div class="stl-dot ${cls}">${icons[i]}</div><div class="stl-lbl ${cls}">${s}</div></div>${i<3?`<div class="stl-line ${i<curIdx?'done':''}"></div>`:''}`;
+  }).join('');
+  const eqItems=(app.equipment||[]).map(id=>{const eq=EQUIPMENT.find(e=>e.id===id);return eq;}).filter(Boolean);
+  const total=eqItems.reduce((s,e)=>s+e.price,0);
+  const isConfirmed=app.status==='확정';
+  res.innerHTML=`<div class="lookup-result">
+    <div class="res-company">${app.company}</div>
+    <div class="res-id">접수번호: ${app.id} · 접수일시: ${app.date}</div>
+    <div class="status-tl">${tlHtml}</div>
+    <div style="margin-bottom:18px">
+      <div class="sum-title" style="margin-bottom:10px">선택 장비 (${eqItems.length}개)</div>
+      ${eqItems.map(eq=>`<div class="res-eq-item"><span class="res-eq-name">${eq.name}</span><span class="res-eq-price">${eq.price.toLocaleString('ko-KR')}원</span></div>`).join('')}
+    </div>
+    <div class="res-total"><span class="res-total-lbl">총 예상 금액 (VAT 별도)</span><span class="res-total-amt">${total.toLocaleString('ko-KR')}원</span></div>
+    ${isConfirmed && quote
+      ? `<div style="text-align:center"><button class="pdf-btn" onclick="downloadPDF('${app.id}')">📄 견적서 PDF 다운로드</button></div>`
+      : `<button class="pdf-btn-locked" disabled>🔒 견적서 확정 후 다운로드 가능</button>
+         <div class="status-msg info" style="margin-top:12px">현재 상태: <strong>${app.status}</strong> — 담당자 확정 후 견적서를 다운로드할 수 있습니다.</div>`
+    }
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// PDF GENERATION
+// ═══════════════════════════════════════════
+function numToKorean(num){
+  if(!num) return '금 영원정';
+  const ko=['','일','이','삼','사','오','육','칠','팔','구'];
+  const u1=['','십','백','천'];
+  const u2=['','만','억','조'];
+  let result=''; let gi=0; let n=num;
+  while(n>0){
+    const chunk=n%10000;
+    if(chunk!==0){
+      let cs=''; let c=chunk;
+      for(let i=0;i<4;i++){
+        const d=c%10;
+        if(d!==0) cs=(d===1&&i>0?'':ko[d])+u1[i]+cs;
+        c=Math.floor(c/10);
+      }
+      result=cs+u2[gi]+result;
+    }
+    gi++; n=Math.floor(n/10000);
+  }
+  return '금 '+result+'원정';
+}
+
+async function downloadPDF(appId){
+  let apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
+  if(API_ENABLED){ try{ const r=await apiCall('getApps'); if(r?.data) apps=r.data; }catch(e){} }
+  const app=apps.find(a=>a.id===appId); if(!app) return;
+  let quotesAll=JSON.parse(localStorage.getItem(SK.QT)||'[]');
+  if(API_ENABLED){ try{ const r=await apiCall('getQts'); if(r?.data) quotesAll=r.data; }catch(e){} }
+  const quote=quotesAll.find(q=>q.appId===appId);
+  const eqItems=(app.equipment||[]).map(id=>EQUIPMENT.find(e=>e.id===id)).filter(Boolean);
+  const total=quote?quote.total:eqItems.reduce((s,e)=>s+e.price,0);
+  const items=quote?quote.items:eqItems.map(eq=>({name:eq.name,model:eq.model||'',qty:1,unit:'SET',price:eq.price}));
+  const quoteDate=quote?quote.date:new Date().toISOString().slice(0,10);
+  const processes=(app.processes||[]).join('·');
+  const memoExtra=quote?.memo?`<br>· ${quote.memo}`:'';
+  const jikin=typeof JIKINTB64!=='undefined'?JIKINTB64:'';
+  const stampHtml=jikin
+    ?`<img src="${jikin}" style="width:62px;height:62px;object-fit:contain;margin-left:6px" />`
+    :`<span style="display:inline-block;width:52px;height:52px;border-radius:50%;border:2.5px solid #cc0000;text-align:center;line-height:52px;font-size:10px;font-weight:900;color:#cc0000;transform:rotate(-8deg);margin-left:6px">(인)</span>`;
+  const _td=(s,st='')=>`<td style="padding:5px 8px;border:1px solid #bbb;${st}">${s}</td>`;
+  const _th=(s,st='')=>`<th style="padding:6px 8px;background:#222;color:#fff;border:1px solid #444;text-align:center;font-weight:700;${st}">${s}</th>`;
+  const itemRows=items.map(it=>`<tr>
+    ${_td(`${it.name}${it.model&&it.model!=='-'?`<div style='font-size:10px;color:#666;margin-top:1px'>${it.model}</div>`:''}`)}
+    ${_td(it.qty,'text-align:center')}
+    ${_td(it.unit||'SET','text-align:center')}
+    ${_td((it.qty*it.price).toLocaleString('ko-KR')+'원','text-align:right')}
+  </tr>`).join('');
+
+  document.getElementById('pdf-content').innerHTML=`
+<div style="padding:22px 46px 14px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:12.5px;line-height:1.4">
+  <div style="text-align:center;font-size:28px;font-weight:900;letter-spacing:20px;margin-bottom:18px">見　積　書</div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+    <div style="line-height:1.95;font-size:12.5px">
+      <div>수신 : <strong style="font-size:13.5px">${app.company}</strong> 貴中</div>
+      <div>사업자등록번호 : ${app.bizno||'-'}</div>
+      <div>연락처 : ${app.phone||'-'}</div>
+    </div>
+    <div style="text-align:right;line-height:1.7;font-size:11.5px">
+      <div style="margin-bottom:5px">날짜 : ${quoteDate}</div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:3px">
+        <span style="font-size:15px;font-weight:900;letter-spacing:1px">주식회사 비피케이</span>${stampHtml}
+      </div>
+      <div>본사 : 대구광역시 달서구 문화회관 11길 61(장기동)</div>
+      <div>TEL:(053)716-7600 / FAX:(053)716-7670 / bpk90@naver.com</div>
+      <div>사업자등록번호 : 275-88-01197</div>
+    </div>
+  </div>
+  <div style="font-size:14px;font-weight:700;margin:8px 0 10px">下記 와 같이 見積 합니다</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;border:2px solid #111;padding:8px 16px;margin-bottom:10px">
+    <div style="font-weight:900;text-decoration:underline;font-size:13px">合計金額 : ${numToKorean(total)}</div>
+    <div style="font-weight:900;font-size:14px">₩ ${total.toLocaleString('ko-KR')} 원 <span style="font-size:10.5px;font-weight:400">(부가세 별도)</span></div>
+  </div>
+  <div style="font-size:12.5px;margin-bottom:2px"><span style="font-weight:700">도입장비명 :</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${processes} 장비</div>
+  <div style="font-size:11.5px;font-weight:700;margin-bottom:4px">구성 장비 내역</div>
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr>${_th('품&nbsp;&nbsp;&nbsp;&nbsp;명')}${_th('수&nbsp;량','width:13%')}${_th('단&nbsp;위','width:13%')}${_th('합&nbsp;&nbsp;&nbsp;&nbsp;계','width:27%')}</tr></thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <tr>${_td(`1.&nbsp;${processes||'포장자동화'}&nbsp;자동화`)}${_td('1','text-align:center;width:13%')}${_td('SET','text-align:center;width:13%')}${_td(total.toLocaleString('ko-KR')+'원','text-align:right;width:27%')}</tr>
+    <tr>${_td('2.&nbsp;설치 및 시운전경비, 전제반비용')}${_td('1','text-align:center')}${_td('식','text-align:center')}${_td('포&nbsp;&nbsp;함','text-align:center')}</tr>
+    <tr style="background:#efefef"><td colspan="3" style="padding:6px 8px;text-align:center;border:1px solid #bbb;font-weight:800">TOTAL</td>${_td(total.toLocaleString('ko-KR')+'원','text-align:right;font-weight:800')}</tr>
+  </table>
+  <div style="margin-top:10px;border:1px solid #bbb;display:flex;min-height:85px">
+    <div style="padding:10px 12px;min-width:54px;border-right:1px solid #bbb;font-weight:700;font-size:12.5px;display:flex;align-items:center;justify-content:center">비&nbsp;&nbsp;고</div>
+    <div style="padding:10px 14px;flex:1;font-size:10.5px;line-height:1.75;color:#222">
+      · 본 견적은 장비 공급 및 설치 기준 금액이며, 현장 여건에 따른 전기, 공압, 설비배관, 기초 공사 비용은 포함되어 있지 않습니다.<br>
+      · 견적서의 유효기간은 발행일로부터 30일간 유효합니다.<br>
+      · 유지보수 기간은 5년이며, 무상A/S기간은 2년입니다. 무상A/S기간 내라도 귀사의 귀책사유(사용상 과실 등) 또는 천재지변에 의한 경우에는 유상 처리 될 수 있습니다.<br>
+      · 상기 금액은 VAT 별도 금액입니다.${memoExtra}
+    </div>
+  </div>
+  <div style="margin-top:8px;text-align:center;font-size:9.5px;color:#999;border-top:1px solid #e5e5e5;padding-top:6px">
+    (주)비피케이 &nbsp;|&nbsp; TEL (053)716-7600 &nbsp;|&nbsp; bpk90@naver.com &nbsp;|&nbsp; 대구광역시 달서구 문화회관 11길 61(장기동)
+  </div>
+</div>`;
+
+  const tpl=document.getElementById('pdf-tpl');
+  tpl.style.left='0'; tpl.style.top='0'; tpl.style.zIndex='-1';
+  try{
+    const canvas=await html2canvas(tpl,{scale:2,useCORS:true,logging:false});
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const w=pdf.internal.pageSize.getWidth();
+    const h=pdf.internal.pageSize.getHeight();
+    const imgH=canvas.height*(w/canvas.width);
+    // 항상 1페이지 강제: 넘치면 A4 높이에 맞게 압축
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,w,Math.min(imgH,h));
+    pdf.save(`BPK_견적서_${app.company}_${appId}.pdf`);
+    showToast('📄 견적서 PDF 다운로드 완료');
+  } finally {
+    tpl.style.left='-9999px'; tpl.style.zIndex='';
+  }
+}
+</script>
+</body>
+</html>

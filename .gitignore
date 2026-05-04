@@ -1,0 +1,8 @@
+jikin.js
+*.xlsx
+*.pdf
+jikin_url.txt
+excel_quote_full.txt
+PROJECT_STATUS.md
+.claude/
+견적서 샘플/직인_b64.txt
