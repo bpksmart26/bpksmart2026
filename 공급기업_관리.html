@@ -1096,7 +1096,7 @@ function renderProds(){
   }).join(''):`<tr><td colspan="8"><div class="empty"><span class="empty-icon">📦</span><div class="empty-txt">조건에 맞는 물품이 없습니다.</div></div></td></tr>`;
 }
 
-function openEditProd(id){
+async function openEditProd(id){
   const p=id?equipment.find(x=>x.id===id):null;
   editProdId=id||null;
   document.getElementById('m-prod-title').textContent=id?'물품 수정':'물품 추가';
@@ -1124,25 +1124,27 @@ function openEditProd(id){
   document.getElementById('p-spec-weight').value=p?.spec_weight||'';
   document.getElementById('p-spec-air').value=p?.spec_air||'';
   document.getElementById('p-spec-voltage').value=p?.spec_voltage||'';
+  // Drive URL → base64 변환 후 모달에 표시 (원본 Drive URL은 data-drive-url 보존)
+  const resolvedPhotos    = await apiResolvePhotos([...(p?.photos||[])]);
+  const resolvedPhotosPkg = await apiResolvePhotos([...(p?.photos_pkg||[])]);
+
+  function buildPhotoGrid(gridEl, origUrls, resolvedUrls){
+    gridEl.innerHTML='';
+    origUrls.forEach((orig,i)=>{
+      if(!orig) return;
+      const d=document.createElement('div'); d.className='photo-th';
+      const display=resolvedUrls[i]||orig;
+      d.innerHTML=`<img src="${display}" data-drive-url="${orig}"/><div class="photo-del" onclick="this.parentElement.remove()">✕</div>`;
+      gridEl.appendChild(d);
+    });
+  }
   const grid=document.getElementById('p-photos');
-  grid.innerHTML='';
-  (p?.photos||[]).forEach(src=>{
-    if(!src) return;
-    const d=document.createElement('div'); d.className='photo-th';
-    d.innerHTML=`<img src="${src}"/><div class="photo-del" onclick="this.parentElement.remove()">✕</div>`;
-    grid.appendChild(d);
-  });
+  buildPhotoGrid(grid, p?.photos||[], resolvedPhotos);
   const addBtn=document.createElement('div'); addBtn.className='photo-th add-btn'; addBtn.textContent='+'; addBtn.onclick=()=>document.getElementById('p-photo-inp').click();
   grid.appendChild(addBtn);
-  // Load packaging photos
+
   const gridPkg=document.getElementById('p-photos-pkg');
-  gridPkg.innerHTML='';
-  (p?.photos_pkg||[]).forEach(src=>{
-    if(!src) return;
-    const d=document.createElement('div'); d.className='photo-th';
-    d.innerHTML=`<img src="${src}"/><div class="photo-del" onclick="this.parentElement.remove()">✕</div>`;
-    gridPkg.appendChild(d);
-  });
+  buildPhotoGrid(gridPkg, p?.photos_pkg||[], resolvedPhotosPkg);
   const addBtnPkg=document.createElement('div'); addBtnPkg.className='photo-th add-btn'; addBtnPkg.textContent='+'; addBtnPkg.onclick=()=>document.getElementById('p-photo-pkg-inp').click();
   gridPkg.appendChild(addBtnPkg);
   // Load videos
@@ -1251,9 +1253,10 @@ async function saveProd(){
   const tag_keyword=document.getElementById('p-tag-keyword').value.trim();
   const tags=document.getElementById('p-tags').value.trim();
   const photoEls=[...document.getElementById('p-photos').querySelectorAll('.photo-th:not(.add-btn) img')];
-  let photos=photoEls.map(img=>img.src).filter(s=>s&&!s.startsWith('data:,'));
+  // data-drive-url 있으면 원본 Drive URL 사용 (재업로드 방지), 없으면 src(base64)
+  let photos=photoEls.map(img=>img.dataset.driveUrl||img.src).filter(s=>s&&!s.startsWith('data:,'));
   const pkgEls=[...document.getElementById('p-photos-pkg').querySelectorAll('.photo-th:not(.add-btn) img')];
-  let photos_pkg=pkgEls.map(img=>img.src).filter(s=>s&&!s.startsWith('data:,'));
+  let photos_pkg=pkgEls.map(img=>img.dataset.driveUrl||img.src).filter(s=>s&&!s.startsWith('data:,'));
   const videoEls=[...document.getElementById('p-videos').querySelectorAll('.video-inp')];
   const videos=videoEls.map(inp=>inp.value.trim()).filter(v=>v&&getYouTubeId(v));
   if(!name){ alert('물품명을 입력해 주세요.'); return; }
@@ -1281,16 +1284,24 @@ async function saveProd(){
   const specData={spec_speed,spec_power,spec_packing,spec_dimension,spec_weight,spec_air,spec_voltage};
   const tagData={tag_texture,tag_pkg,tag_process,tag_product,tag_feature,tag_space,tag_electric,tag_air,tag_keyword,tags};
   let targetEq;
+  const commonFields={name,model,price,category:cat,desc,status,videos,...tagData,...specData};
   if(editProdId){
     const p=equipment.find(x=>x.id===editProdId);
-    if(p){ Object.assign(p,{name,model,price,category:cat,desc,status,photos,photos_pkg,videos,...tagData,...specData}); targetEq=p; }
+    if(p){ Object.assign(p,{...commonFields,photos,photos_pkg}); targetEq=p; }
   } else {
     const newId=Math.max(...equipment.map(e=>e.id),0)+1;
-    targetEq={id:newId,name,model,price,category:cat,desc,status,photos,photos_pkg,videos,...tagData,...specData};
+    targetEq={id:newId,...commonFields,photos,photos_pkg};
     equipment.push(targetEq);
   }
-  closeModal('modal-prod'); renderProds();
+  closeModal('modal-prod');
+  // Sheets에 Drive URL로 저장
   if(targetEq) await syncEq(targetEq); else saveEq();
+  // 화면 표시용: Drive URL → base64 (캐시 사용)
+  if(targetEq){
+    targetEq.photos     = targetEq.photos.map(u=>resolvePhotoSrc(u));
+    targetEq.photos_pkg = targetEq.photos_pkg.map(u=>resolvePhotoSrc(u));
+  }
+  renderProds();
   showToast('물품 정보가 저장되었습니다. 신청 화면에 즉시 반영됩니다.');
 }
 

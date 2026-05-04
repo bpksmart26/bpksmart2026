@@ -22,6 +22,12 @@ async function apiCall(action, data = {}) {
 // ── Drive URL → base64 캐시 (페이지 세션 동안 유지)
 const _b64Cache = {};
 
+// ── 캐시에서 동기적으로 base64 반환 (없으면 원본 URL 그대로)
+function resolvePhotoSrc(url) {
+  if (!url) return '';
+  return _b64Cache[url] || url;
+}
+
 function _isDriveUrl(url) {
   return url && typeof url === 'string' && url.startsWith('https://drive.google.com');
 }
