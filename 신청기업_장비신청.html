@@ -1051,8 +1051,6 @@ let formData = {};
         const stored=localStorage.getItem(SK.EQ);
         EQUIPMENT=stored?JSON.parse(stored):DEFAULT_EQ;
       }
-      // Drive URL → base64 변환 (사진 표시)
-      EQUIPMENT = await apiResolveEquipmentPhotos(EQUIPMENT);
     }catch(e){ const stored=localStorage.getItem(SK.EQ); EQUIPMENT=stored?JSON.parse(stored):DEFAULT_EQ; }
     finally{ hideApiLoading(); }
   } else {

@@ -87,8 +87,6 @@ function doPost(e) {
       case 'saveCfg':     result = saveCfg(data); break;
 
       case 'uploadPhoto':    result = uploadPhoto(data); break;
-      case 'getPhotoBase64': result = getPhotoBase64(data); break;
-      case 'getPhotosBase64':result = getPhotosBase64(data); break;
 
       default: result = { ok:false, error:'Unknown action: ' + action };
     }
@@ -308,46 +306,6 @@ function uploadPhoto(data) {
 
   const file = target.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  return { ok:true, url: 'https://drive.google.com/uc?export=view&id=' + file.getId() };
-}
-
-// ============================================================
-// Drive 파일 → base64 변환
-// ============================================================
-function _driveFileIdFromUrl(url) {
-  if (!url) return '';
-  const m = url.match(/[?&]id=([^&\s]+)/) || url.match(/\/file\/d\/([^/?]+)/);
-  return m ? m[1] : '';
-}
-
-function getPhotoBase64(data) {
-  try {
-    const fileId = data.fileId || _driveFileIdFromUrl(data.url || '');
-    if (!fileId) return { ok:false, error:'fileId 없음' };
-    const file = DriveApp.getFileById(fileId);
-    const blob = file.getBlob();
-    const mime = blob.getContentType() || 'image/jpeg';
-    return { ok:true, base64: 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes()) };
-  } catch(e) {
-    return { ok:false, error: e.toString() };
-  }
-}
-
-// 여러 Drive URL을 한 번에 base64로 변환 (배치)
-function getPhotosBase64(data) {
-  const urls = data.urls || [];
-  const result = {};
-  urls.forEach(url => {
-    try {
-      const fileId = _driveFileIdFromUrl(url);
-      if (!fileId) { result[url] = null; return; }
-      const file = DriveApp.getFileById(fileId);
-      const blob = file.getBlob();
-      const mime = blob.getContentType() || 'image/jpeg';
-      result[url] = 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes());
-    } catch(e) {
-      result[url] = null;
-    }
-  });
-  return { ok:true, data: result };
+  const fileId = file.getId();
+  return { ok:true, url: 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w600' };
 }
