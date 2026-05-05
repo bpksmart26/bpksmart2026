@@ -1189,6 +1189,19 @@ async function preloadImages(el){
   }));
 }
 
+// Drive 썸네일 URL → base64 (PDF 생성 전 선행 변환용)
+async function resolvePhoto(url){
+  if(!url) return null;
+  if(url.startsWith('data:')) return url;
+  if(url.startsWith('https://drive.google.com')&&API_ENABLED){
+    try{
+      const res=await apiCall('getPhotoBase64',{url});
+      return (res&&res.ok&&res.base64)?res.base64:null;
+    }catch(e){ return null; }
+  }
+  return null;
+}
+
 function addProdPhoto(inp,gridId,maxCount){
   if(!inp.files.length) return;
   const gId=gridId||'p-photos';
@@ -1573,7 +1586,9 @@ async function genPDF(qtId){
     eTpl.style.left='0';eTpl.style.top='0';eTpl.style.zIndex='-1';
     for(const eq of eqInfoList){
       pdf.addPage();
-      const photo=(eq.photos&&eq.photos[0])||null;
+      showApiLoading(`사진 로딩 중... ${eq.name}`);
+      const photo=await resolvePhoto((eq.photos&&eq.photos[0])||null);
+      hideApiLoading();
       const specDefs=[
         ['생산속도',eq.spec_speed],
         ['소비전력 (Total Power)',eq.spec_power],
@@ -1607,7 +1622,6 @@ async function genPDF(qtId){
   </div>
 </div>`;
 
-      await preloadImages(eTpl);
       const ec=await html2canvas(eTpl,{scale:2,useCORS:true,logging:false});
       const eh=ec.height*(pgW/ec.width);
       pdf.addImage(ec.toDataURL('image/png'),'PNG',0,0,pgW,Math.min(eh,pgH));
@@ -1622,9 +1636,12 @@ async function genPDF(qtId){
       for(let ci=0;ci<photos.length;ci+=4){
         const chunk=photos.slice(ci,ci+4);
         const pageLabel=photos.length>4?` (${Math.floor(ci/4)+1}/${Math.ceil(photos.length/4)})`:'';
+        showApiLoading(`${title} 로딩 중...`);
+        const resolved=await Promise.all(chunk.map(u=>resolvePhoto(u)));
+        hideApiLoading();
         const rows=[];
         for(let r=0;r<2;r++){
-          const p1=chunk[r*2]||null; const p2=chunk[r*2+1]||null;
+          const p1=resolved[r*2]||null; const p2=resolved[r*2+1]||null;
           if(!p1) break;
           rows.push(`<tr>
             <td style="width:50%;text-align:center;padding:8px;border:1px solid #e2e8f0;background:#f8fafc">${p1?`<img src="${p1}" style="max-width:330px;max-height:255px;object-fit:contain"/>`:''}</td>
@@ -1647,7 +1664,6 @@ async function genPDF(qtId){
     (주)비피케이 &nbsp;|&nbsp; TEL (053)716-7600 &nbsp;|&nbsp; bpk90@naver.com &nbsp;|&nbsp; 대구광역시 달서구 문화회관 11길 61(장기동)
   </div>
 </div>`;
-        await preloadImages(eTpl);
         pdf.addPage();
         const pec=await html2canvas(eTpl,{scale:2,useCORS:true,logging:false});
         const peh=pec.height*(pgW/pec.width);
@@ -1702,7 +1718,9 @@ async function genEquipPDF(qtId){
   for(const eq of eqList){
     if(!firstPage) pdf.addPage();
     firstPage=false;
-    const photo=(eq.photos&&eq.photos[0])||null;
+    showApiLoading(`사진 로딩 중... ${eq.name}`);
+    const photo=await resolvePhoto((eq.photos&&eq.photos[0])||null);
+    hideApiLoading();
     const specDefs=[
       ['생산속도',eq.spec_speed],['소비전력 (Total Power)',eq.spec_power],
       ['포장재 종류 (Packing material)',eq.spec_packing],['외형 치수 (Dimension)',eq.spec_dimension],
@@ -1733,7 +1751,6 @@ async function genEquipPDF(qtId){
   </div>
 </div>`;
 
-    await preloadImages(eTpl);
     const ec=await html2canvas(eTpl,{scale:2,useCORS:true,logging:false});
     const eh=ec.height*(pgW/ec.width);
     pdf.addImage(ec.toDataURL('image/png'),'PNG',0,0,pgW,Math.min(eh,pgH));
