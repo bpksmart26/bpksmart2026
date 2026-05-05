@@ -1612,6 +1612,48 @@ async function genPDF(qtId){
       const eh=ec.height*(pgW/ec.width);
       pdf.addImage(ec.toDataURL('image/png'),'PNG',0,0,pgW,Math.min(eh,pgH));
     }
+    // 신청기업 제품·설치장소 사진 페이지
+    const _photoSections=[
+      {photos:(a.product_photos||[]).filter(Boolean), title:'제품 사진'},
+      {photos:(a.space_photos||[]).filter(Boolean),   title:'설치 장소 사진'}
+    ];
+    for(const {photos,title} of _photoSections){
+      if(!photos.length) continue;
+      for(let ci=0;ci<photos.length;ci+=4){
+        const chunk=photos.slice(ci,ci+4);
+        const pageLabel=photos.length>4?` (${Math.floor(ci/4)+1}/${Math.ceil(photos.length/4)})`:'';
+        const rows=[];
+        for(let r=0;r<2;r++){
+          const p1=chunk[r*2]||null; const p2=chunk[r*2+1]||null;
+          if(!p1) break;
+          rows.push(`<tr>
+            <td style="width:50%;text-align:center;padding:8px;border:1px solid #e2e8f0;background:#f8fafc">${p1?`<img src="${p1}" style="max-width:330px;max-height:255px;object-fit:contain"/>`:''}</td>
+            <td style="width:50%;text-align:center;padding:8px;border:1px solid #e2e8f0;background:#f8fafc">${p2?`<img src="${p2}" style="max-width:330px;max-height:255px;object-fit:contain"/>`:'&nbsp;'}</td>
+          </tr>`);
+        }
+        eTpl.innerHTML=`
+<div style="padding:36px 50px 20px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1d4ed8;padding-bottom:10px;margin-bottom:20px">
+    <div>
+      <div style="font-size:10px;color:#6b7280;margin-bottom:4px">${q.company} 신청 자료 · ${q.id}</div>
+      <div style="font-size:20px;font-weight:900">${title}${pageLabel}</div>
+    </div>
+    <div style="font-size:11px;color:#94a3b8;text-align:right;line-height:1.8">(주)비피케이<br>TEL (053)716-7600</div>
+  </div>
+  <table style="width:100%;border-collapse:separate;border-spacing:10px">
+    ${rows.join('')}
+  </table>
+  <div style="text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:8px;margin-top:14px">
+    (주)비피케이 &nbsp;|&nbsp; TEL (053)716-7600 &nbsp;|&nbsp; bpk90@naver.com &nbsp;|&nbsp; 대구광역시 달서구 문화회관 11길 61(장기동)
+  </div>
+</div>`;
+        await preloadImages(eTpl);
+        pdf.addPage();
+        const pec=await html2canvas(eTpl,{scale:2,useCORS:true,logging:false});
+        const peh=pec.height*(pgW/pec.width);
+        pdf.addImage(pec.toDataURL('image/png'),'PNG',0,0,pgW,Math.min(peh,pgH));
+      }
+    }
     eTpl.style.left='-9999px';eTpl.style.zIndex='';
 
     const fileName=`BPK_견적서_${q.company}_${q.id}.pdf`;
