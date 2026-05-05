@@ -1,6 +1,6 @@
 # BPK Smart 2026 — 프로젝트 작업 현황
 
-> 마지막 업데이트: 2026-05-05 (8차 세션)  
+> 마지막 업데이트: 2026-05-05 (9차 세션)  
 > 작업 디렉토리: `C:\bpksmart2026\`  
 > GitHub: `https://github.com/bpksmart26/bpksmart2026.git`  
 > Apps Script URL: `https://script.google.com/macros/s/AKfycbx8nPCdXAquqKdtohklR29_OOKPuBQE4P9cAGqGxJnONY42OpaCeFQorUPN8O91qqGb/exec`
@@ -44,6 +44,19 @@ function getPhotoBase64(data) {
 ```
 
 추가 후 **배포 → 배포 관리 → 새 버전 업데이트** → 새 URL을 `config.js`에 반영.
+
+---
+
+## ✅ 9차 세션 완료 작업
+
+### PDF 사진 출력 완전 해결
+- **원인**: html2canvas가 이미지 디코딩 전에 캡처 → 빈칸 발생
+- **해결**: html2canvas 템플릿에서 img 태그 제거, `pdf.addImage()`로 사진 직접 삽입
+  - 장비 사양 페이지: spacer div + `getBoundingClientRect()`로 위치 계산 후 `pdf.addImage()`
+  - 제품/설치장소 사진 페이지: 헤더 텍스트만 html2canvas, 사진 4장 모두 `pdf.addImage()`
+  - `genEquipPDF` 동일 방식 적용
+- Apps Script 재배포 및 `config.js` URL 업데이트
+- GitHub push 완료
 
 ---
 
@@ -108,12 +121,7 @@ function getPhotoBase64(data) {
 
 ## 🔲 미완료 / 다음 작업
 
-### 1. ⚠️ PDF 사진 출력 테스트 (최우선)
-- Apps Script에 `getPhotoBase64` 함수 추가 확인 후
-- 견적서 PDF에서 장비 사진, 제품 사진, 설치 장소 사진이 출력되는지 확인
-- 사진이 여전히 빈칸이면: Apps Script 에디터에서 `getPhotoBase64` 함수 실행 테스트
-
-### 2. 공급기업_관리.html — 견적서 확인 기능
+### 1. 공급기업_관리.html — 견적서 확인 기능
 - 신청기업이 확정 버튼 누르면 상태 변경되는 흐름
 - 견적서 미리보기 (모달 내 PDF 미리보기)
 
@@ -167,11 +175,11 @@ function getPhotoBase64(data) {
 ### PDF 생성 방식
 - `html2canvas` + `jsPDF` (CDN)
 - `genPDF(qtId)`:
-  - 1페이지: 見積書 (직인 포함)
-  - 2페이지~: 장비별 사양 (사진 + 스펙 테이블)
-  - 이후: 제품 사진 페이지, 설치 장소 사진 페이지
-- `genEquipPDF(qtId)`: 장비사양 PDF 단독
-- `resolvePhoto(url)`: Drive URL → Apps Script `getPhotoBase64` → base64 변환 (PDF 생성 전 선행)
+  - 1페이지: 見積書 (직인 포함) — html2canvas
+  - 2페이지~: 장비별 사양 — html2canvas(텍스트/표) + `pdf.addImage()`(사진)
+  - 이후: 제품/설치장소 사진 페이지 — html2canvas(헤더) + `pdf.addImage()`(사진 4장)
+- `genEquipPDF(qtId)`: 장비사양 PDF 단독 (동일 방식)
+- `resolvePhoto(url)`: Drive URL → Apps Script `getPhotoBase64` → base64 반환
 
 ### 사진 저장 흐름
 ```
@@ -204,6 +212,7 @@ PDF 생성 시:
 | 6차 | 신청기업 장비매칭 탭/선택UX 전면개선, 공정문제점 체크리스트, 속도프리셋, API/Sheets 연동 |
 | 7차 | 견적서 PDF 전면 재설계(직인/레이아웃), 장비사양 PDF, jikin.js, 스펙 7개 필드 |
 | 8차 | GitHub 연동, Drive 썸네일 URL 방식, PDF CORS 해결(resolvePhoto), 견적서에 신청기업 사진 추가 |
+| 9차 | PDF 사진 출력 완전 해결 — pdf.addImage() 직접 삽입으로 html2canvas 이미지 렌더 이슈 우회 |
 
 ---
 
