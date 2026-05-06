@@ -84,6 +84,10 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 .content.active{display:block}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse-badge{0%,100%{transform:scale(1)}50%{transform:scale(1.25);box-shadow:0 0 0 6px rgba(220,38,38,.25)}}
+.refresh-btn{width:36px;height:36px;border:1.5px solid var(--g200);background:#fff;border-radius:8px;cursor:pointer;font-size:15px;color:var(--g600);transition:all .15s;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.refresh-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-50)}
+.refresh-btn:active{transform:scale(.95)}
 .content.active{animation:fadeUp .25s ease}
 
 /* ─── STAT CARDS ─── */
@@ -381,6 +385,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
       <div class="topbar-title" id="topbar-title">신청 업체 관리</div>
       <div class="topbar-right">
         <div id="api-status-top"></div>
+        <button class="refresh-btn" onclick="manualRefresh()" title="데이터 새로고침">🔄</button>
         <div class="topbar-date" id="topbar-date"></div>
         <div class="topbar-user">🔧 관리자</div>
       </div>
@@ -801,6 +806,7 @@ async function doLogin(e){
 }
 function doLogout(){
   if(!confirm('로그아웃 하시겠습니까?')) return;
+  _stopAutoPoll();
   sessionStorage.removeItem('bpk_auth');
   location.reload();
 }
@@ -822,6 +828,10 @@ async function loadData(){
 
 async function _backgroundRefresh(){
   _setSyncing(true);
+  // 변경 감지용: 갱신 전 상태 스냅샷
+  const _prevAppIds = new Set(applications.map(a => a.id));
+  const _prevAppCount = applications.length;
+  const _prevQtConfirmedIds = new Set(quotes.filter(q=>q.status==='확정').map(q=>q.id));
   try{
     const [eqRes,appRes,qtRes,cfgRes] = await Promise.all([
       apiCall('getEq'), apiCall('getApps'), apiCall('getQts'), apiCall('getCfg')
@@ -855,11 +865,59 @@ async function _backgroundRefresh(){
 
     // 조용히 재렌더 (모달이 열려있어도 리스트만 갱신되므로 안전)
     renderApps(); renderProds(); renderQuotes(); renderDashboard();
+
+    // 새 신청 감지 → 토스트 알림 (첫 로드는 제외)
+    if(_prevAppCount > 0){
+      const newApps = applications.filter(a => !_prevAppIds.has(a.id));
+      if(newApps.length > 0){
+        showToast(`📬 새 신청 ${newApps.length}건이 도착했습니다`);
+        // 사이드바 신규 배지에 시각 강조 (3초 깜빡)
+        const badge = document.getElementById('badge-new');
+        if(badge){
+          badge.style.animation = 'pulse-badge 1s ease-in-out 3';
+          setTimeout(() => { badge.style.animation = ''; }, 3500);
+        }
+      }
+    }
   }catch(err){
     console.warn('백그라운드 데이터 갱신 실패, localStorage 유지', err);
   }finally{
     _setSyncing(false);
   }
+}
+
+// ═══════════════════════════════════════════
+// AUTO POLLING — 60초마다 자동 갱신, 탭 비가시면 정지
+// ═══════════════════════════════════════════
+const POLL_INTERVAL_MS = 60 * 1000;
+let _pollTimerId = null;
+
+function _startAutoPoll(){
+  if(_pollTimerId) return;
+  _pollTimerId = setInterval(() => {
+    if(document.visibilityState === 'visible' && API_ENABLED){
+      _backgroundRefresh();
+    }
+  }, POLL_INTERVAL_MS);
+}
+function _stopAutoPoll(){
+  if(_pollTimerId){ clearInterval(_pollTimerId); _pollTimerId = null; }
+}
+
+// 탭 가시성 변경: 보이게 되면 즉시 1회 갱신 + 폴링 시작, 숨겨지면 폴링 정지
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && sessionStorage.getItem('bpk_auth') === '1'){
+    if(API_ENABLED) _backgroundRefresh();
+    _startAutoPoll();
+  } else {
+    _stopAutoPoll();
+  }
+});
+
+// 수동 갱신 (topbar 새로고침 버튼)
+function manualRefresh(){
+  if(!API_ENABLED){ showToast('로컬 모드에서는 갱신할 데이터가 없습니다.', 'warn'); return; }
+  _backgroundRefresh();
 }
 
 // 동기화 인디케이터 (작은 배지, 차단 없음)
@@ -937,6 +995,8 @@ async function showMain(){
   initApiStatus('api-status-top');
   if(API_ENABLED){ const sb=document.getElementById('sync-all-btn'); if(sb) sb.style.display=''; }
   renderApps(); renderProds(); renderQuotes(); renderDashboard();
+  // 자동 폴링 시작 (60초 주기, 탭 보일 때만)
+  _startAutoPoll();
 }
 
 // ═══════════════════════════════════════════
