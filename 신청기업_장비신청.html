@@ -1018,6 +1018,8 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 let EQUIPMENT = [];
 let selectedEq = new Set();
 let formData = {};
+// 장비 데이터 백그라운드 로딩 추적 — runScoring 시점에 await
+let _equipmentReady = null;
 
 // ═══════════════════════════════════════════
 // 테스트용 샘플 데이터 자동입력 (5종)
@@ -1053,23 +1055,26 @@ function fillSample(idx){
 // INIT
 // ═══════════════════════════════════════════
 (async function init(){
+  // 1) 즉시 localStorage / DEFAULT_EQ 로 채워서 UI 진입 막지 않음
+  const stored = localStorage.getItem(SK.EQ);
+  EQUIPMENT = stored ? JSON.parse(stored) : DEFAULT_EQ;
+
+  // 2) API 모드면 백그라운드에서 신선한 데이터 fetch (사용자 알림 없음)
   if(API_ENABLED){
-    showApiLoading('장비 정보를 불러오는 중...');
-    try{
-      const res=await apiCall('getEq');
-      if(res&&res.data&&res.data.length>0){
-        EQUIPMENT=res.data;
-        localStorage.setItem(SK.EQ,JSON.stringify(EQUIPMENT));
-      } else {
-        const stored=localStorage.getItem(SK.EQ);
-        EQUIPMENT=stored?JSON.parse(stored):DEFAULT_EQ;
+    _equipmentReady = (async () => {
+      try {
+        const res = await apiCall('getEq');
+        if(res && res.data && res.data.length > 0){
+          EQUIPMENT = res.data;
+          localStorage.setItem(SK.EQ, JSON.stringify(EQUIPMENT));
+        }
+      } catch(e) {
+        // 실패 시 이미 채워진 localStorage / DEFAULT_EQ 유지
+        console.warn('[init] 장비 데이터 백그라운드 로딩 실패, localStorage 사용', e);
       }
-    }catch(e){ const stored=localStorage.getItem(SK.EQ); EQUIPMENT=stored?JSON.parse(stored):DEFAULT_EQ; }
-    finally{ hideApiLoading(); }
-  } else {
-    const stored = localStorage.getItem(SK.EQ);
-    EQUIPMENT = stored ? JSON.parse(stored) : DEFAULT_EQ;
+    })();
   }
+
   initApiStatus('api-status-hdr');
   // Auto-format inputs
   document.getElementById('f-bizno').addEventListener('input', function(){ this.value = fmtBizno(this.value); });
@@ -1325,10 +1330,16 @@ function getScoringCFG(){
   catch(e){ return Object.assign({},DEFAULT_SCORING_CFG); }
 }
 
-function runScoring(){
+async function runScoring(){
   document.getElementById('ai-loading').style.display='block';
   document.getElementById('ai-result').style.display='none';
   document.getElementById('step3-btns').style.display='none';
+
+  // 백그라운드 로딩이 아직 안 끝났으면 여기서 짧게 대기 (보통 즉시 resolved)
+  if(_equipmentReady){
+    try { await _equipmentReady; }
+    catch(e) { /* localStorage 폴백 유지 */ }
+  }
 
   const CFG=getScoringCFG();
   const userTexture=TEXTURE_MAP_G[formData.texture]||[formData.texture];
