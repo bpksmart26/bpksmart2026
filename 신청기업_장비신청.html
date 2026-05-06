@@ -332,10 +332,8 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 .upload-banner{margin:0 auto 16px;max-width:440px;background:var(--primary-50);border:1.5px solid var(--primary-l);border-radius:12px;padding:14px 18px;transition:all .25s ease}
 .upload-banner.success{background:var(--accent-50);border-color:var(--accent-l)}
 .upload-banner.error{background:var(--danger-l);border-color:#fca5a5}
-.upload-banner-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
-.upload-icon{font-size:20px;flex-shrink:0;line-height:1}
-.upload-text{flex:1;min-width:0}
-.upload-title{font-size:13px;font-weight:700;color:var(--primary);margin-bottom:2px;line-height:1.3}
+.upload-banner-head{text-align:center;margin-bottom:10px}
+.upload-title{font-size:14px;font-weight:700;color:var(--primary);margin-bottom:3px;line-height:1.3}
 .upload-banner.success .upload-title{color:var(--accent)}
 .upload-banner.error .upload-title{color:var(--danger)}
 .upload-warn{font-size:12px;font-weight:500;color:var(--g500);line-height:1.4}
@@ -927,11 +925,8 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           <!-- 사진 업로드 진행 배너 (업로드 중에만 표시) -->
           <div class="upload-banner" id="upload-banner" style="display:none">
             <div class="upload-banner-head">
-              <span class="upload-icon">📸</span>
-              <div class="upload-text">
-                <div class="upload-title" id="upload-title">사진을 업로드하고 있습니다</div>
-                <div class="upload-warn" id="upload-warn">⚠️ 완료될 때까지 페이지를 닫지 마세요!</div>
-              </div>
+              <div class="upload-title" id="upload-title">사진을 업로드하고 있습니다</div>
+              <div class="upload-warn" id="upload-warn">완료될 때까지 페이지를 닫지 마세요</div>
             </div>
             <div class="upload-progress">
               <div class="upload-bar-track"><div class="upload-bar-fill" id="upload-bar-fill"></div></div>
@@ -1814,14 +1809,14 @@ async function goStep5(){
     if(!banner) return;
     banner.classList.remove('error');
     banner.classList.add('success');
-    if(titleEl) titleEl.textContent = msg || '✅ 업로드 + 신청 접수 완료';
+    if(titleEl) titleEl.textContent = msg || '업로드 + 신청 접수 완료';
     if(barInfo) barInfo.textContent = `${_totalPhotos} / ${_totalPhotos} 완료`;
   };
   const setBannerError = (msg) => {
     if(!banner) return;
     banner.classList.remove('success');
     banner.classList.add('error');
-    if(titleEl) titleEl.textContent = msg || '⚠️ 일부 단계 실패';
+    if(titleEl) titleEl.textContent = msg || '일부 단계 실패';
     if(barInfo) barInfo.textContent = '로컬에 임시 저장되었습니다';
   };
 
@@ -1868,13 +1863,13 @@ async function goStep5(){
       }
 
       await apiCall('saveApp', app);
-      if(_totalPhotos > 0) setBannerSuccess('✅ 사진 업로드 + 신청 접수 완료');
+      if(_totalPhotos > 0) setBannerSuccess('사진 업로드 + 신청 접수 완료');
     } catch(e) {
       const apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
       apps.push(app);
       localStorage.setItem(SK.APP,JSON.stringify(apps));
       console.warn('서버 저장 실패, 로컬 임시 저장됨', e);
-      if(_totalPhotos > 0) setBannerError('⚠️ 서버 저장 실패');
+      if(_totalPhotos > 0) setBannerError('서버 저장 실패');
       _renderReceipt(`<small style="color:#dc2626;font-weight:700">⚠️ 서버 저장에 일부 문제가 있어 로컬에 임시 저장되었습니다. 담당자가 곧 확인합니다.</small>`);
     } finally {
       if(_totalPhotos > 0) window.removeEventListener('beforeunload', _beforeUnload);
