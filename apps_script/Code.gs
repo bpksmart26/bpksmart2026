@@ -346,38 +346,89 @@ function sanitizeName(name) {
 // 사진/PDF 업로드 → Google Drive
 // data.type: 'space' | 'equipment' | 'pkg' | 'quote' | 기타
 // ============================================================
+// 폴더 결정 + 생성을 lock 으로 직렬화 (병렬 업로드 시 동일 회사 폴더 중복 생성 race 방지)
+function _resolveTargetFolder(data) {
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(8000); } catch (e) { /* lock 실패 시 그냥 진행 (구버전 호환) */ }
+  try {
+    const root = getOrCreateFolder(null, PHOTO_FOLDER);
+    if (data.type === 'space') {
+      const sub = getOrCreateFolder(root, '신청서_사진');
+      return getOrCreateFolder(sub, sanitizeName(data.company || '미분류'));
+    } else if (data.type === 'equipment' || data.type === 'pkg') {
+      const sub = getOrCreateFolder(root, '장비_사진');
+      return getOrCreateFolder(sub, sanitizeName(data.eqName || '미분류'));
+    } else if (data.type === 'product') {
+      const sub = getOrCreateFolder(root, '제품_사진');
+      return getOrCreateFolder(sub, sanitizeName(data.company || '미분류'));
+    } else if (data.type === 'quote') {
+      const sub = getOrCreateFolder(root, '견적서');
+      return getOrCreateFolder(sub, sanitizeName(data.company || '미분류'));
+    }
+    return root;
+  } finally {
+    try { lock.releaseLock(); } catch (e) {}
+  }
+}
+
 function uploadPhoto(data) {
+  // 1) 폴더 결정 (lock 으로 직렬화 — 병렬 업로드 시 폴더 중복 생성 방지)
+  const target = _resolveTargetFolder(data);
+
+  // 2) 파일 업로드 (lock 밖 — 병렬 안전, 빠름)
   const parts = data.base64.split(',');
   const mime  = parts[0].split(';')[0].replace('data:', '');
   const blob  = Utilities.newBlob(Utilities.base64Decode(parts[1]), mime, data.name || 'file');
-
-  const root = getOrCreateFolder(null, PHOTO_FOLDER);
-  let target;
-
-  if (data.type === 'space') {
-    const sub = getOrCreateFolder(root, '신청서_사진');
-    target = getOrCreateFolder(sub, sanitizeName(data.company || '미분류'));
-
-  } else if (data.type === 'equipment' || data.type === 'pkg') {
-    const sub = getOrCreateFolder(root, '장비_사진');
-    target = getOrCreateFolder(sub, sanitizeName(data.eqName || '미분류'));
-
-  } else if (data.type === 'product') {
-    const sub = getOrCreateFolder(root, '제품_사진');
-    target = getOrCreateFolder(sub, sanitizeName(data.company || '미분류'));
-
-  } else if (data.type === 'quote') {
-    const sub = getOrCreateFolder(root, '견적서');
-    target = getOrCreateFolder(sub, sanitizeName(data.company || '미분류'));
-
-  } else {
-    target = root;
-  }
-
   const file = target.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   const fileId = file.getId();
   return { ok:true, url: 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w600' };
+}
+
+// 1회성 마이그레이션: 같은 이름의 중복 회사 폴더를 첫 폴더로 통합 (Apps Script 에디터에서 직접 실행)
+// 신청서_사진 / 제품_사진 / 견적서 / 장비_사진 의 각 하위 폴더를 회사명별로 그룹핑하여
+// 2번째 이후 폴더의 파일을 첫 번째 폴더로 이동 후 빈 폴더 삭제
+function dedupePhotoFolders() {
+  const root = getOrCreateFolder(null, PHOTO_FOLDER);
+  const subs = ['신청서_사진', '제품_사진', '견적서', '장비_사진'];
+  let movedFiles = 0, deletedFolders = 0;
+
+  subs.forEach(subName => {
+    const subIter = root.getFoldersByName(subName);
+    if (!subIter.hasNext()) return;
+    const sub = subIter.next();
+
+    // 회사/장비명 기준 그룹핑
+    const groups = {};
+    const childIter = sub.getFolders();
+    while (childIter.hasNext()) {
+      const f = childIter.next();
+      const key = f.getName();
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(f);
+    }
+
+    Object.keys(groups).forEach(name => {
+      const folders = groups[name];
+      if (folders.length <= 1) return;
+      const canonical = folders[0];           // 가장 먼저 생성된 폴더를 정본으로
+      const dups = folders.slice(1);
+      dups.forEach(dup => {
+        const fileIter = dup.getFiles();
+        while (fileIter.hasNext()) {
+          const file = fileIter.next();
+          canonical.addFile(file);
+          dup.removeFile(file);
+          movedFiles++;
+        }
+        dup.setTrashed(true);                 // 빈 폴더 휴지통으로
+        deletedFolders++;
+      });
+    });
+  });
+
+  Logger.log(`완료: ${movedFiles} 파일 이동, ${deletedFolders} 중복 폴더 휴지통으로 이동`);
+  return { movedFiles, deletedFolders };
 }
 
 function _extractFileId(url) {
