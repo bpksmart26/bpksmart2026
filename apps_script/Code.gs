@@ -578,24 +578,30 @@ function getLatestQuotePdf(data) {
     files.push({ id: f.getId(), name: name, createdAt: f.getDateCreated().getTime() });
   }
 
-  if (!files.length) {
-    // appId 매칭 실패 시 fallback: 회사 폴더 내 모든 견적서 중 최신
-    if (appId) {
-      const fileIter2 = companyFolder.getFiles();
-      while (fileIter2.hasNext()) {
-        const f = fileIter2.next();
-        if (f.isTrashed()) continue;
-        const name = f.getName();
-        if (name.indexOf('BPK_견적서_') !== 0) continue;
-        files.push({ id: f.getId(), name: name, createdAt: f.getDateCreated().getTime() });
-      }
-    }
-    if (!files.length) return { ok:false, error:'견적서 PDF 파일 없음' };
+  // 회사 폴더 내 모든 견적서 PDF (appId 무관)
+  const allCompanyFiles = [];
+  const fileIter2 = companyFolder.getFiles();
+  while (fileIter2.hasNext()) {
+    const f = fileIter2.next();
+    if (f.isTrashed()) continue;
+    const name = f.getName();
+    if (name.indexOf('BPK_견적서_') !== 0) continue;
+    allCompanyFiles.push({ id: f.getId(), name: name, createdAt: f.getDateCreated().getTime() });
   }
 
-  // 최신 우선
+  if (!files.length && !allCompanyFiles.length) return { ok:false, error:'견적서 PDF 파일 없음' };
+
+  // 정렬 (최신 우선)
   files.sort((a, b) => b.createdAt - a.createdAt);
-  const latest = files[0];
+  allCompanyFiles.sort((a, b) => b.createdAt - a.createdAt);
+
+  // 보호 장치: 같은 회사 폴더에 더 최근 PDF 가 있으면 그것을 우선 사용
+  // (예: 고객이 변경 사항으로 재신청해 새 appId 가 생긴 경우 — 옛 appId 로 조회해도 최신 파일 받음)
+  const latest = (allCompanyFiles.length > 0 && (!files.length || allCompanyFiles[0].createdAt > files[0].createdAt))
+    ? allCompanyFiles[0]
+    : files[0];
+  // 디버깅용 정보
+  const fallbackUsed = files.length > 0 && latest.id !== files[0].id;
 
   const result = {
     ok: true,
@@ -603,7 +609,9 @@ function getLatestQuotePdf(data) {
     fileName: latest.name,
     downloadUrl: 'https://drive.google.com/uc?export=download&id=' + latest.id,
     viewUrl: 'https://drive.google.com/file/d/' + latest.id + '/view',
-    totalMatched: files.length
+    totalMatched: files.length,
+    totalCompanyFiles: allCompanyFiles.length,
+    fallbackToCompanyLatest: fallbackUsed
   };
 
   // base64 옵션: 클라이언트가 정확히 Drive 원본을 받기 위해 사용
