@@ -2012,7 +2012,7 @@ async function genPDF(qtId){
 </div>`;
 
   const tpl=document.getElementById('pdf-tpl');
-  tpl.style.left='0';tpl.style.top='0';tpl.style.zIndex='-1';
+  // 템플릿은 화면 밖에 유지 — html2canvas 직전에만 0,0 으로 이동 (로딩 중 백그라운드 노출 방지)
   try{
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF('p','mm','a4');
@@ -2038,14 +2038,14 @@ async function genPDF(qtId){
       spacePhotos.filter((p,i)=>spacePhotoUrls[i]&&!p).length;
     if(missing>0){
       if(!confirm(`사진 ${missing}장이 로드되지 않았습니다.\n해당 자리에 빈 공간이 들어간 채로 PDF를 생성할까요?\n\n[확인] 빈칸 상태로 발행  /  [취소] PDF 생성 중단`)){
-        tpl.style.left='-9999px'; tpl.style.zIndex='';
         showToast('PDF 생성을 취소했습니다.','warn');
         return;
       }
     }
 
+    // 이제 템플릿을 화면으로 옮김 (html2canvas 가 캡처할 수 있도록)
+    tpl.style.left='0';tpl.style.top='0';tpl.style.zIndex='-1';
     // 1페이지: 견적서 (JPEG로 변환 — P3-2)
-    // T1-5: scale 2→1.5 (시각 차이 거의 없음) + 추가 옵션으로 30-40% 단축
     const c1=await html2canvas(tpl,{scale:1.5,useCORS:true,logging:false,backgroundColor:'#ffffff',imageTimeout:0,removeContainer:true});
     const h1=c1.height*(pgW/c1.width);
     pdf.addImage(c1.toDataURL('image/jpeg',0.85),'JPEG',0,0,pgW,Math.min(h1,pgH));
