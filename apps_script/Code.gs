@@ -330,12 +330,32 @@ function saveCfg(cfg) {
 }
 
 // ============================================================
-// Drive 폴더 헬퍼
+// Drive 폴더 헬퍼 — CacheService 로 ID 캐시 (Drive 인덱스 지연 회피)
+// 생성 직후 getFoldersByName 이 빈 결과 반환하는 race 까지 막음
 // ============================================================
 function getOrCreateFolder(parent, name) {
+  const cache = CacheService.getScriptCache();
+  const parentId = parent ? parent.getId() : '__root__';
+  const cacheKey = 'fld_' + parentId + '_' + name;
+
+  // 1) 캐시 hit: ID 로 직접 가져오기 (검색 인덱스 무관)
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    try { return DriveApp.getFolderById(cached); }
+    catch (e) { /* 폴더가 삭제됐거나 권한 없음 → 아래 분기로 재생성 */ }
+  }
+
+  // 2) 캐시 미스: 검색 후 없으면 생성
   const iter = parent ? parent.getFoldersByName(name) : DriveApp.getFoldersByName(name);
-  if (iter.hasNext()) return iter.next();
-  return parent ? parent.createFolder(name) : DriveApp.createFolder(name);
+  let folder;
+  if (iter.hasNext()) {
+    folder = iter.next();
+  } else {
+    folder = parent ? parent.createFolder(name) : DriveApp.createFolder(name);
+  }
+  // 6시간 캐시 (충분히 안정 — 같은 폴더로 재계속 라우팅)
+  try { cache.put(cacheKey, folder.getId(), 21600); } catch (e) {}
+  return folder;
 }
 
 function sanitizeName(name) {
