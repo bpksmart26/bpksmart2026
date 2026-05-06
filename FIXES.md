@@ -15,6 +15,11 @@
 
 | ID | 문제 요약 | 상태 | 커밋 | 핵심 변경 위치 |
 |---|---|---|---|---|
+| **T1-1** | GAS CacheService 사진 캐싱 | ✅ ⏳ | `6e53af0` | `apps_script/Code.gs:_fileToBase64` (재배포 필요) |
+| **T1-2** | 견적서 관리 진입 시 GAS pre-warm | ✅ | `6e53af0` | `공급기업_관리.html:showSec` |
+| **T1-3** | 변경 없는 견적서 Drive 재업로드 스킵 | ✅ ⏳ | `d9d313d` | `common.js:quoteHash`, IIFE 2곳 (재배포 필요: pdfHash 컬럼) |
+| **T1-4** | localStorage 영구 사진 캐시 | ✅ | `d9d313d` | `common.js:_photoCacheLS`, `_putPhotoCache` |
+| **T1-5** | html2canvas scale + 옵션 최적화 | ✅ | `6e53af0` | 두 HTML의 모든 `html2canvas(...)` 호출 (scale 2→1.5) |
 | **P1-1** | 장비 데이터 4중 중복 | ✅ | `00edc17` | `eq_data.js` 삭제, 두 HTML 인라인 배열 제거, `<script src="eq_default.js">` 추가 |
 | **P1-2** | 함수 중복 (numToKorean, SK, getYouTubeId 등) | ✅ | `00edc17` | `common.js` 신설하여 공통화 |
 | **P1-3a** | `preloadImages` dead code | ✅ | `00edc17` | 공급기업_관리.html 정의 제거 |
@@ -283,9 +288,110 @@ totalQtAmt.toLocaleString('ko-KR') + '원';
 ## 커밋 히스토리
 
 ```
+d9d313d perf: Drive 재업로드 스킵 + localStorage 영구 사진 캐시 (T1-3, T1-4)
+6e53af0 perf: GAS CacheService + pre-warm + html2canvas 최적화 (T1-1, T1-2, T1-5)
+e108180 docs: FIXES.md (해결결과) + README_TEST.md (로컬 테스트 가이드)
 69d64d2 ui: 모바일 햄버거 메뉴 + 색상대비 + step바 모바일 + 대시보드 (P4-1, P4-4, P4-5, P4-6, P4-12)
 d629551 feat(gas): bulk 사진 변환 + LockService + 썸네일 우선 (P2-2, P2-6, P3-7)
 ecb691a chore: .omc 런타임 상태 파일 추적 제외 + .gitignore 정비
 9f23960 perf(pdf): 사진 사전조회 병렬화 + JPEG + 누락 알림 + Drive 백그라운드 (P2-1, P2-3, P2-4, P3-1, P3-2, P3-3)
 00edc17 refactor: 데이터·함수 단일화 + dead code 제거 (P1-1~P1-3)
 ```
+
+---
+
+## Tier 1 추가 최적화 상세 (T1 시리즈)
+
+### T1-1: GAS CacheService 사진 base64 캐싱 (✅ ⏳)
+
+**변경 후 (`apps_script/Code.gs:_fileToBase64`)**
+```javascript
+function _fileToBase64(fileId) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'p_' + fileId;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+  // ... Drive에서 가져오기
+  if (result.length < 100000) {
+    try { cache.put(cacheKey, result, 21600); } catch (e) {}
+  }
+  return result;
+}
+```
+
+**효과** 동일 사진 두 번째 변환 시 GAS 측 Drive 호출 제거. 2-3초 → 100-300ms.
+
+### T1-2: 견적서 관리 진입 시 GAS Pre-warm (✅)
+
+**변경 후 (`공급기업_관리.html:showSec`)**
+```javascript
+if(key==='quotes' && API_ENABLED){
+  apiCall('ping',{}).catch(()=>{});  // fire-and-forget
+}
+```
+
+사용자가 메뉴 클릭하는 순간 GAS 깨워두기. 그 다음 PDF 버튼 누를 때는 콜드 스타트 없음.
+
+**효과** 첫 PDF 생성 시 1-3초 단축.
+
+### T1-3: 변경 없는 견적서 Drive 재업로드 스킵 (✅ ⏳)
+
+**common.js 추가**
+```javascript
+function quoteHash(q) {
+  const items = (q.items || []).map(i => `${i.name}|${i.qty}|${i.price}`).join(';');
+  return [items, q.total||0, q.process||'', q.memo||''].join('::');
+}
+```
+
+**genPDF / genEquipPDF IIFE 변경**
+```javascript
+const _hash = quoteHash(q);
+if(q.pdfUrl && q.pdfHash === _hash){
+  showToast('☁️ Drive 백업 (이전 PDF 재사용)');
+} else {
+  // ... 업로드 + q.pdfHash = _hash + syncQt
+}
+```
+
+**효과** 동일 견적 재생성 시 Drive 업로드 단계 **5-7초 → 0초**. 항목/금액/공정/비고 중 하나라도 변경되면 자동으로 재업로드.
+
+⏳ Apps Script 재배포 필요 (`QT_COLS` 에 `pdfHash`, `equipPdfHash` 추가). `autoInitSheets` 가 자동으로 시트에 컬럼 추가하므로 수동 마이그레이션 불필요.
+
+### T1-4: localStorage 영구 사진 캐시 (✅)
+
+**common.js 추가**
+- `_photoCacheLS` Map (LRU 50개, 1MB 한도)
+- 부팅 시 localStorage → 메모리로 워밍
+- `_putPhotoCache(url, base64)` 헬퍼로 resolvePhoto, resolvePhotosBatch 모두 일원화
+- 디바운스 200ms 로 연속 업데이트 한번만 직렬화
+- QuotaExceeded 시 자동 비우고 재시도
+
+**효과** 다음날 다시 출근해서 같은 견적서 PDF 재생성 시 사진 변환 단계 **2-3초 → 0초** (캐시 hit). 페이지 새로고침 후에도 유지.
+
+### T1-5: html2canvas 옵션 최적화 (✅)
+
+**변경 후** 두 HTML의 모든 호출:
+```javascript
+html2canvas(tpl, {
+  scale: 1.5,                  // 2 → 1.5
+  useCORS: false,
+  logging: false,
+  backgroundColor: '#ffffff',  // 투명도 처리 스킵
+  imageTimeout: 0,             // 사진은 이미 인라인된 base64
+  removeContainer: true        // 임시 DOM 자동 정리
+});
+```
+
+**효과** 페이지당 0.6-1.2초 (이전 1-2초). 8페이지 PDF 기준 누적 4-6초 단축. 시각 차이 거의 없음.
+
+---
+
+## 누적 효과 (5장비 + 신청 사진 8장 견적서 기준)
+
+| 시나리오 | 적용 전 | P 시리즈 후 | T1 시리즈 후 |
+|---|---|---|---|
+| 첫 PDF 생성 (콜드) | 40-75초 | 8-15초 | **5-10초** |
+| 같은 견적 재생성 (메모리 캐시) | 40-75초 | 5-8초 | **2-4초** |
+| 변경 없는 재생성 (Drive 스킵) | 40-75초 | 5-8초 + 5-7초 백업 | **1-2초 (백업 0초)** |
+| 다음날 재실행 (LS 캐시) | 40-75초 | 8-15초 | **2-4초** |

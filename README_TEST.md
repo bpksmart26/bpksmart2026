@@ -144,6 +144,17 @@ function testBulk() {
 
 - [ ] **신청기업** 매칭 결과 화면에서 등록된 사진이 있는 장비 카드 표시 → 사진이 카드 너비에 맞게 4:3 비율 박스로 표시 (반응형 너비 변경 시 높이도 비율 따라 변경)
 
+### 5.8 Tier 1 추가 최적화 (T1-1 ~ T1-5)
+
+- [ ] **T1-1 / T1-3 GAS 재배포**: Apps Script 에디터에서 `Code.gs` 갱신 후 새 버전 배포 → `config.js` URL 갱신
+- [ ] **T1-2 Pre-warm**: 견적서 관리 메뉴 클릭 → DevTools Network 탭에서 `ping` POST 자동 발생 확인 (응답 기다리지 않음)
+- [ ] **T1-1 GAS CacheService**: 동일 견적서로 PDF 두 번 연속 생성 → 두 번째가 첫 번째보다 명확히 빠름 (사진 변환 단계 거의 즉시)
+- [ ] **T1-3 Drive 재업로드 스킵**: 견적서 변경 없이 PDF 재생성 → 토스트 "☁️ Drive 백업 (이전 PDF 재사용)" 표시, Network 탭에 `uploadPhoto` POST 발생하지 않음
+- [ ] **T1-3 변경 시 재업로드**: 견적서 항목 추가/수정/금액 변경 후 PDF 재생성 → 토스트 "☁️ Drive 백업 완료" (해시가 달라져 새로 업로드)
+- [ ] **T1-4 localStorage 영구 캐시**: PDF 한 번 생성 → 페이지 새로고침 (F5) → 다시 PDF 생성 시 사진 변환 단계가 즉시 (콘솔에 `getPhotoBase64` POST 안 보여야 함)
+- [ ] **T1-4 캐시 검증**: DevTools → Application → Local Storage → `bpk_photo_cache_v1` 키 존재 확인. 값은 `[[url, base64], ...]` 배열
+- [ ] **T1-5 html2canvas 단축**: PDF 생성 시간을 콘솔에서 `console.time/timeEnd` 으로 측정 (또는 Performance 탭 녹화) → 이전 대비 4-6초 단축
+
 ---
 
 ## 6. 회귀 테스트 (기능 변경 없음 확인)
@@ -171,6 +182,9 @@ function testBulk() {
 | 견적서 PDF에 직인 안 보임 | `jikin.js` lazy fetch 실패. 콘솔 경고 확인. `file://` 직접 열었으면 로컬 서버로 변경 |
 | `getPhotosBase64Bulk` 가 안 먹힘 | GAS 재배포가 안 됐을 가능성. Apps Script 에디터에서 새 버전 배포 + URL 갱신 |
 | 견적 동기화 시 "다른 사용자가 동기화 중" 에러 | LockService가 정상 작동 중. 10초 대기 후 재시도 |
+| T1-3: 변경했는데 "이전 PDF 재사용" 토스트 발생 | `quoteHash` 가 항목/금액/공정/비고만 비교. 사진 첨부 변경은 감지 안 함. 강제 재업로드는 견적 비고에 공백 한 번 추가 후 저장 |
+| T1-4: localStorage 캐시가 너무 크다 | 50개 LRU + 1MB 한도. 콘솔에서 `clearPhotoCache()` 호출로 즉시 비움 |
+| GAS CacheService 가 무시됨 | 사진 base64 가 100KB 초과 시 캐시 안 됨 (Cache 셀당 한도). 정상 동작 |
 
 ---
 
