@@ -1,7 +1,14 @@
-*.xlsx
-*.pdf
-jikin_url.txt
-excel_quote_full.txt
-PROJECT_STATUS.md
-.claude/
-견적서 샘플/직인_b64.txt
+# OMC framework state (런타임 자동생성)
+.omc/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor
+.vscode/
+.idea/
+*.swp
