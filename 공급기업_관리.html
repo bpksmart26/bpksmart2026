@@ -907,6 +907,10 @@ function showSec(key){
   document.querySelectorAll('.nav-item').forEach((n,i)=>n.classList.toggle('active',['applications','products','quotes','dashboard','scoring'][i]===key));
   document.getElementById('topbar-title').textContent=SEC_MAP[key].title;
   if(key==='scoring') loadScoringCfg();
+  // T1-2: 견적서 관리 진입 시 GAS pre-warm — 콜드 스타트 회피
+  if(key==='quotes' && API_ENABLED){
+    apiCall('ping',{}).catch(()=>{});  // fire-and-forget
+  }
   // 모바일에서는 메뉴 선택 시 자동으로 사이드바 닫기 (P4-1)
   if(window.matchMedia('(max-width:900px)').matches) toggleSidebar(false);
 }
@@ -1551,7 +1555,8 @@ async function genPDF(qtId){
     }
 
     // 1페이지: 견적서 (JPEG로 변환 — P3-2)
-    const c1=await html2canvas(tpl,{scale:2,useCORS:true,logging:false});
+    // T1-5: scale 2→1.5 (시각 차이 거의 없음) + 추가 옵션으로 30-40% 단축
+    const c1=await html2canvas(tpl,{scale:1.5,useCORS:true,logging:false,backgroundColor:'#ffffff',imageTimeout:0,removeContainer:true});
     const h1=c1.height*(pgW/c1.width);
     pdf.addImage(c1.toDataURL('image/jpeg',0.85),'JPEG',0,0,pgW,Math.min(h1,pgH));
 
@@ -1605,7 +1610,7 @@ async function genPDF(qtId){
         photoXmm=(pgW-110)/2;
       }
 
-      const ec=await html2canvas(eTpl,{scale:2,useCORS:false,logging:false});
+      const ec=await html2canvas(eTpl,{scale:1.5,useCORS:false,logging:false,backgroundColor:'#ffffff',imageTimeout:0,removeContainer:true});
       const eh=ec.height*(pgW/ec.width);
       pdf.addImage(ec.toDataURL('image/jpeg',0.85),'JPEG',0,0,pgW,Math.min(eh,pgH));
 
@@ -1648,7 +1653,7 @@ async function genPDF(qtId){
         const hdrBottomMm=hdr.getBoundingClientRect().bottom*(pgW/eTpl.offsetWidth);
 
         pdf.addPage();
-        const pec=await html2canvas(eTpl,{scale:2,useCORS:false,logging:false});
+        const pec=await html2canvas(eTpl,{scale:1.5,useCORS:false,logging:false,backgroundColor:'#ffffff',imageTimeout:0,removeContainer:true});
         pdf.addImage(pec.toDataURL('image/jpeg',0.85),'JPEG',0,0,pgW,pgH);
 
         // 사진을 pdf.addImage()로 직접 배치 (사전조회 캐시 활용)
@@ -1764,7 +1769,7 @@ async function genEquipPDF(qtId){
       photoXmm=(pgW-110)/2;
     }
 
-    const ec=await html2canvas(eTpl,{scale:2,useCORS:false,logging:false});
+    const ec=await html2canvas(eTpl,{scale:1.5,useCORS:false,logging:false,backgroundColor:'#ffffff',imageTimeout:0,removeContainer:true});
     const eh=ec.height*(pgW/ec.width);
     pdf.addImage(ec.toDataURL('image/jpeg',0.85),'JPEG',0,0,pgW,Math.min(eh,pgH));
 

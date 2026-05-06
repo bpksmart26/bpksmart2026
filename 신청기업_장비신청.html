@@ -1887,7 +1887,8 @@ async function downloadPDF(appId){
   const tpl=document.getElementById('pdf-tpl');
   tpl.style.left='0'; tpl.style.top='0'; tpl.style.zIndex='-1';
   try{
-    const canvas=await html2canvas(tpl,{scale:2,useCORS:true,logging:false});
+    // T1-5: scale 2→1.5 + 옵션 최적화
+    const canvas=await html2canvas(tpl,{scale:1.5,useCORS:true,logging:false,backgroundColor:'#ffffff',imageTimeout:0,removeContainer:true});
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF('p','mm','a4');
     const w=pdf.internal.pageSize.getWidth();

@@ -24,8 +24,10 @@ const APP_COLS = ['id','company','ceo','bizno','phone','email','address',
                   'pname','texture','processes','pkgtypes','qty','speed','memo',
                   'problem_type','problem_points','equipment','electric','air_yn','air_flow','space_w','space_h',
                   'space_photos','product_photos','status','date','manager'];
+// T1-3: pdfHash/equipPdfHash 추가 — Drive 재업로드 스킵 판정용 (자동 마이그레이션)
 const QT_COLS  = ['id','company','appId','process','memo','validUntil',
-                  'items','total','eqCount','status','date','pdfUrl','equipPdfUrl'];
+                  'items','total','eqCount','status','date','pdfUrl','equipPdfUrl',
+                  'pdfHash','equipPdfHash'];
 
 const EQ_ARR   = ['photos','photos_pkg','videos'];
 const APP_ARR  = ['processes','pkgtypes','problem_points','equipment','electric','space_photos','product_photos'];
@@ -328,7 +330,13 @@ function _extractFileId(url) {
 }
 
 // P3-7: 썸네일 우선 시도 → 실패 시 원본 fallback (PDF용 사진은 600px면 충분)
+// T1-1: CacheService 6시간 캐싱 (셀당 100KB 제한 내 사진만)
 function _fileToBase64(fileId) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'p_' + fileId;
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
   const file = DriveApp.getFileById(fileId);
   let blob;
   try {
@@ -338,7 +346,13 @@ function _fileToBase64(fileId) {
     blob = file.getBlob();
   }
   const mime = blob.getContentType() || 'image/jpeg';
-  return 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes());
+  const result = 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes());
+
+  // CacheService 셀당 100KB 제한. 썸네일은 보통 30-80KB이라 대부분 들어감
+  if (result.length < 100000) {
+    try { cache.put(cacheKey, result, 21600); } catch (e) {}
+  }
+  return result;
 }
 
 function getPhotoBase64(data) {
