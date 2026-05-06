@@ -602,18 +602,72 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
       <div style="margin-top:20px;padding-top:16px;border-top:2px solid var(--g200)">
         <div style="font-size:12px;font-weight:700;color:#7c3aed;letter-spacing:1px;margin-bottom:14px">📋 장비 스펙 정보</div>
         <div class="frow2">
-          <div class="fg"><label>생산속도 (Production Speed)</label><input class="fc" id="p-spec-speed" placeholder="예: 30~60 bag/min"/></div>
-          <div class="fg"><label>소비전력 (Total Power)</label><input class="fc" id="p-spec-power" placeholder="예: 3.5 kW"/></div>
+          <div class="fg">
+            <label>생산속도 (Production Speed)</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input class="fc" id="p-spec-speed-val" placeholder="예: 30~60" style="flex:1;width:auto"/>
+              <span style="font-size:13px;font-weight:700;color:#374151;white-space:nowrap">bag/min</span>
+            </div>
+          </div>
+          <div class="fg">
+            <label>소비전력 (Total Power)</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input class="fc" id="p-spec-power-val" placeholder="예: 3.5" style="flex:1;width:auto"/>
+              <span style="font-size:13px;font-weight:700;color:#374151;white-space:nowrap">kW</span>
+            </div>
+          </div>
         </div>
         <div class="frow2">
-          <div class="fg"><label>포장재 종류 (Packing Material)</label><input class="fc" id="p-spec-packing" placeholder="예: PP/PE, OPP/CPP, NY/PE"/></div>
-          <div class="fg"><label>전원사양 (Power Source)</label><input class="fc" id="p-spec-voltage" placeholder="예: AC 220V 단상 60Hz"/></div>
+          <div class="fg">
+            <label>포장재 종류 (Packing Material)</label>
+            <input class="fc" id="p-spec-packing" placeholder="예: PP/PE, OPP/CPP, NY/PE"/>
+          </div>
+          <div class="fg">
+            <label>전원사양 (Power Source)</label>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:700;color:#6b7280">AC</span>
+              <input class="fc" id="p-spec-volt-v" placeholder="220" style="width:68px"/>
+              <span style="font-size:13px;font-weight:700;color:#374151">V</span>
+              <select class="fc" id="p-spec-volt-phase" style="width:74px;padding:0 6px">
+                <option value="단상">단상</option>
+                <option value="3상">3상</option>
+              </select>
+              <input class="fc" id="p-spec-volt-freq" placeholder="60" style="width:56px"/>
+              <span style="font-size:13px;font-weight:700;color:#374151">Hz</span>
+            </div>
+          </div>
         </div>
         <div class="frow2">
-          <div class="fg"><label>장비 외형 치수 (Dimension)</label><input class="fc" id="p-spec-dimension" placeholder="예: W800 × D1200 × H1600 mm"/></div>
-          <div class="fg"><label>장비 중량 (Weight)</label><input class="fc" id="p-spec-weight" placeholder="예: 350 kg"/></div>
+          <div class="fg">
+            <label>장비 외형 치수 (Dimension)</label>
+            <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:700;color:#374151">W</span>
+              <input class="fc" id="p-spec-dim-w" placeholder="800" style="width:66px"/>
+              <span style="font-size:13px;color:#6b7280">× D</span>
+              <input class="fc" id="p-spec-dim-d" placeholder="1200" style="width:66px"/>
+              <span style="font-size:13px;color:#6b7280">× H</span>
+              <input class="fc" id="p-spec-dim-h" placeholder="1600" style="width:66px"/>
+              <span style="font-size:13px;font-weight:700;color:#374151">mm</span>
+            </div>
+          </div>
+          <div class="fg">
+            <label>장비 중량 (Weight)</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input class="fc" id="p-spec-weight-val" placeholder="예: 350" style="flex:1;width:auto"/>
+              <span style="font-size:13px;font-weight:700;color:#374151;white-space:nowrap">kg</span>
+            </div>
+          </div>
         </div>
-        <div class="fg"><label>공압 사용 조건 (Compressed Air Requirement)</label><input class="fc" id="p-spec-air" placeholder="예: 5~7 kgf/cm², 100 L/min"/></div>
+        <div class="fg">
+          <label>공압 사용 조건 (Compressed Air Requirement)</label>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <input class="fc" id="p-spec-air-p" placeholder="예: 5~7" style="width:80px"/>
+            <span style="font-size:13px;font-weight:700;color:#374151;white-space:nowrap">kgf/cm²</span>
+            <span style="color:#d1d5db;font-size:16px">/</span>
+            <input class="fc" id="p-spec-air-f" placeholder="예: 100" style="width:74px"/>
+            <span style="font-size:13px;font-weight:700;color:#374151;white-space:nowrap">L/min</span>
+          </div>
+        </div>
       </div>
       <div style="margin-top:20px;padding-top:16px;border-top:2px solid var(--g200)">
         <div style="font-size:12px;font-weight:700;color:var(--primary);letter-spacing:1px;margin-bottom:14px">🏷️ 태그 정보 (콤마로 구분하여 입력)</div>
@@ -1115,13 +1169,22 @@ function openEditProd(id){
   document.getElementById('p-tag-air').value=p?.tag_air||'';
   document.getElementById('p-tag-keyword').value=p?.tag_keyword||'';
   document.getElementById('p-tags').value=p?.tags||'';
-  document.getElementById('p-spec-speed').value=p?.spec_speed||'';
-  document.getElementById('p-spec-power').value=p?.spec_power||'';
+  // 스펙 — 단위 제거 후 숫자/값만 개별 필드에 로드
+  document.getElementById('p-spec-speed-val').value=(p?.spec_speed||'').replace(/\s*bag\/min\s*$/i,'');
+  document.getElementById('p-spec-power-val').value=(p?.spec_power||'').replace(/\s*kW\s*$/i,'');
   document.getElementById('p-spec-packing').value=p?.spec_packing||'';
-  document.getElementById('p-spec-dimension').value=p?.spec_dimension||'';
-  document.getElementById('p-spec-weight').value=p?.spec_weight||'';
-  document.getElementById('p-spec-air').value=p?.spec_air||'';
-  document.getElementById('p-spec-voltage').value=p?.spec_voltage||'';
+  const _dm=(p?.spec_dimension||'').match(/W(\d+)\s*[×x]\s*D(\d+)\s*[×x]\s*H(\d+)/i);
+  document.getElementById('p-spec-dim-w').value=_dm?_dm[1]:'';
+  document.getElementById('p-spec-dim-d').value=_dm?_dm[2]:'';
+  document.getElementById('p-spec-dim-h').value=_dm?_dm[3]:'';
+  document.getElementById('p-spec-weight-val').value=(p?.spec_weight||'').replace(/\s*kg\s*$/i,'');
+  const _am=(p?.spec_air||'').match(/([\d~.\s]+?)\s*kgf\/cm[²2](?:[,\s]+([\d~.]+)\s*L\/min)?/i);
+  document.getElementById('p-spec-air-p').value=_am?_am[1].trim():'';
+  document.getElementById('p-spec-air-f').value=_am&&_am[2]?_am[2].trim():'';
+  const _vm=(p?.spec_voltage||'').match(/AC\s*(\d+)\s*V\s*(단상|3상)?\s*(\d+)?\s*Hz/i);
+  document.getElementById('p-spec-volt-v').value=_vm?_vm[1]:'';
+  if(_vm&&_vm[2]) document.getElementById('p-spec-volt-phase').value=_vm[2];
+  document.getElementById('p-spec-volt-freq').value=_vm&&_vm[3]?_vm[3]:'60';
   function buildPhotoGrid(gridEl, urls){
     gridEl.innerHTML='';
     (urls||[]).forEach(src=>{
@@ -1300,13 +1363,25 @@ async function saveProd(){
     }
   }
 
-  const spec_speed=document.getElementById('p-spec-speed').value.trim();
-  const spec_power=document.getElementById('p-spec-power').value.trim();
+  // 스펙 — 개별 필드 → 단위 포함 문자열 조합
+  const _spd=document.getElementById('p-spec-speed-val').value.trim();
+  const spec_speed=_spd?_spd+' bag/min':'';
+  const _pwr=document.getElementById('p-spec-power-val').value.trim();
+  const spec_power=_pwr?_pwr+' kW':'';
   const spec_packing=document.getElementById('p-spec-packing').value.trim();
-  const spec_dimension=document.getElementById('p-spec-dimension').value.trim();
-  const spec_weight=document.getElementById('p-spec-weight').value.trim();
-  const spec_air=document.getElementById('p-spec-air').value.trim();
-  const spec_voltage=document.getElementById('p-spec-voltage').value.trim();
+  const _dw=document.getElementById('p-spec-dim-w').value.trim();
+  const _dd=document.getElementById('p-spec-dim-d').value.trim();
+  const _dh=document.getElementById('p-spec-dim-h').value.trim();
+  const spec_dimension=(_dw||_dd||_dh)?`W${_dw} × D${_dd} × H${_dh} mm`:'';
+  const _wgt=document.getElementById('p-spec-weight-val').value.trim();
+  const spec_weight=_wgt?_wgt+' kg':'';
+  const _ap=document.getElementById('p-spec-air-p').value.trim();
+  const _af=document.getElementById('p-spec-air-f').value.trim();
+  const spec_air=(_ap||_af)?[_ap?_ap+' kgf/cm²':'',_af?_af+' L/min':''].filter(Boolean).join(', '):'';
+  const _vv=document.getElementById('p-spec-volt-v').value.trim();
+  const _vp=document.getElementById('p-spec-volt-phase').value;
+  const _vf=document.getElementById('p-spec-volt-freq').value.trim()||'60';
+  const spec_voltage=_vv?`AC ${_vv}V ${_vp} ${_vf}Hz`:'';
   const specData={spec_speed,spec_power,spec_packing,spec_dimension,spec_weight,spec_air,spec_voltage};
   const tagData={tag_texture,tag_pkg,tag_process,tag_product,tag_feature,tag_space,tag_electric,tag_air,tag_keyword,tags};
   let targetEq;
