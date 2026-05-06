@@ -1820,7 +1820,8 @@ async function downloadPDF(appId){
   const quoteDate=quote?quote.date:new Date().toISOString().slice(0,10);
   const processes=(app.processes||[]).join('·');
   const memoExtra=quote?.memo?`<br>· ${quote.memo}`:'';
-  const jikin=typeof JIKINTB64!=='undefined'?JIKINTB64:'';
+  // 직인은 lazy load (P3-3)
+  const jikin = await loadJikin();
   const stampHtml=jikin
     ?`<img src="${jikin}" style="width:62px;height:62px;object-fit:contain;margin-left:6px" />`
     :`<span style="display:inline-block;width:52px;height:52px;border-radius:50%;border:2.5px solid #cc0000;text-align:center;line-height:52px;font-size:10px;font-weight:900;color:#cc0000;transform:rotate(-8deg);margin-left:6px">(인)</span>`;
@@ -1892,7 +1893,8 @@ async function downloadPDF(appId){
     const h=pdf.internal.pageSize.getHeight();
     const imgH=canvas.height*(w/canvas.width);
     // 항상 1페이지 강제: 넘치면 A4 높이에 맞게 압축
-    pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,w,Math.min(imgH,h));
+    // P3-2: PNG → JPEG 0.85 (파일 크기 ~50% 절감)
+    pdf.addImage(canvas.toDataURL('image/jpeg',0.85),'JPEG',0,0,w,Math.min(imgH,h));
     pdf.save(`BPK_견적서_${app.company}_${appId}.pdf`);
     showToast('📄 견적서 PDF 다운로드 완료');
   } finally {

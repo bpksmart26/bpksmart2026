@@ -1402,7 +1402,8 @@ async function genPDF(qtId){
   const q=quotes.find(x=>x.id===qtId); if(!q) return;
   const a=applications.find(x=>x.id===q.appId)||{company:q.company,bizno:'',phone:'',address:''};
   const memoExtra=q.memo?`<br>· ${q.memo}`:'';
-  const jikin=typeof JIKINTB64!=='undefined'?JIKINTB64:'';
+  // 직인은 lazy load (P3-3)
+  const jikin = await loadJikin();
 
   // 견적 항목과 등록 장비 매핑 (스펙 페이지용)
   const eqInfoList=q.items.map(item=>{
@@ -1498,20 +1499,43 @@ async function genPDF(qtId){
     const pgW=pdf.internal.pageSize.getWidth();
     const pgH=pdf.internal.pageSize.getHeight();
 
-    // 1페이지: 견적서
+    // ── 사진 일괄 사전조회 (P2-1, P2-2, P2-4): 모든 Drive URL을 한번에 병렬 변환
+    const eqPhotoUrls = eqInfoList.map(eq => (eq.photos && eq.photos[0]) || null);
+    const productPhotoUrls = (a.product_photos||[]).filter(Boolean);
+    const spacePhotoUrls = (a.space_photos||[]).filter(Boolean);
+    showApiLoading('사진 로딩 중... (' + (eqPhotoUrls.filter(Boolean).length + productPhotoUrls.length + spacePhotoUrls.length) + '장)');
+    const [eqPhotos, productPhotos, spacePhotos] = await Promise.all([
+      resolvePhotosBatch(eqPhotoUrls),
+      resolvePhotosBatch(productPhotoUrls),
+      resolvePhotosBatch(spacePhotoUrls)
+    ]);
+    hideApiLoading();
+
+    // ── 사진 누락 시 사용자 확인 (P3-1)
+    const missing =
+      eqPhotos.filter((p,i)=>eqPhotoUrls[i]&&!p).length +
+      productPhotos.filter((p,i)=>productPhotoUrls[i]&&!p).length +
+      spacePhotos.filter((p,i)=>spacePhotoUrls[i]&&!p).length;
+    if(missing>0){
+      if(!confirm(`사진 ${missing}장이 로드되지 않았습니다.\n해당 자리에 빈 공간이 들어간 채로 PDF를 생성할까요?\n\n[확인] 빈칸 상태로 발행  /  [취소] PDF 생성 중단`)){
+        tpl.style.left='-9999px'; tpl.style.zIndex='';
+        showToast('PDF 생성을 취소했습니다.','warn');
+        return;
+      }
+    }
+
+    // 1페이지: 견적서 (JPEG로 변환 — P3-2)
     const c1=await html2canvas(tpl,{scale:2,useCORS:true,logging:false});
     const h1=c1.height*(pgW/c1.width);
-    // 항상 1페이지 강제: 넘치면 A4 높이에 맞게 압축
-    pdf.addImage(c1.toDataURL('image/png'),'PNG',0,0,pgW,Math.min(h1,pgH));
+    pdf.addImage(c1.toDataURL('image/jpeg',0.85),'JPEG',0,0,pgW,Math.min(h1,pgH));
 
     // 2페이지~: 장비별 사양 페이지
     const eTpl=document.getElementById('pdf-equip-tpl');
     eTpl.style.left='0';eTpl.style.top='0';eTpl.style.zIndex='-1';
-    for(const eq of eqInfoList){
+    for(let _ei=0; _ei<eqInfoList.length; _ei++){
+      const eq=eqInfoList[_ei];
       pdf.addPage();
-      showApiLoading(`사진 로딩 중... ${eq.name}`);
-      const photo=await resolvePhoto((eq.photos&&eq.photos[0])||null);
-      hideApiLoading();
+      const photo = eqPhotos[_ei]; // 사전조회 캐시 사용
       const specDefs=[
         ['생산속도',eq.spec_speed],
         ['소비전력 (Total Power)',eq.spec_power],
@@ -1557,7 +1581,7 @@ async function genPDF(qtId){
 
       const ec=await html2canvas(eTpl,{scale:2,useCORS:false,logging:false});
       const eh=ec.height*(pgW/ec.width);
-      pdf.addImage(ec.toDataURL('image/png'),'PNG',0,0,pgW,Math.min(eh,pgH));
+      pdf.addImage(ec.toDataURL('image/jpeg',0.85),'JPEG',0,0,pgW,Math.min(eh,pgH));
 
       // 사진을 pdf.addImage()로 직접 추가
       if(photo){
@@ -1566,15 +1590,16 @@ async function genPDF(qtId){
       }
     }
 
-    // 신청기업 제품·설치장소 사진 페이지 (pdf.addImage 직접 사용)
+    // 신청기업 제품·설치장소 사진 페이지 (사전조회 캐시 사용)
     const _photoSections=[
-      {photos:(a.product_photos||[]).filter(Boolean), title:'제품 사진'},
-      {photos:(a.space_photos||[]).filter(Boolean),   title:'설치 장소 사진'}
+      {photos:productPhotoUrls, resolved:productPhotos, title:'제품 사진'},
+      {photos:spacePhotoUrls,   resolved:spacePhotos,   title:'설치 장소 사진'}
     ];
-    for(const {photos,title} of _photoSections){
+    for(const {photos,resolved:secResolved,title} of _photoSections){
       if(!photos.length) continue;
       for(let ci=0;ci<photos.length;ci+=4){
         const chunk=photos.slice(ci,ci+4);
+        const chunkResolved=secResolved.slice(ci,ci+4);
         const pageLabel=photos.length>4?` (${Math.floor(ci/4)+1}/${Math.ceil(photos.length/4)})`:'';
 
         // 헤더/푸터 텍스트만 html2canvas로 렌더 (사진 없음)
@@ -1596,22 +1621,18 @@ async function genPDF(qtId){
         const hdr=eTpl.querySelector('#pg-hdr');
         const hdrBottomMm=hdr.getBoundingClientRect().bottom*(pgW/eTpl.offsetWidth);
 
-        showApiLoading(`${title} 로딩 중...`);
-        const resolved=await Promise.all(chunk.map(u=>resolvePhoto(u)));
-        hideApiLoading();
-
         pdf.addPage();
         const pec=await html2canvas(eTpl,{scale:2,useCORS:false,logging:false});
-        pdf.addImage(pec.toDataURL('image/png'),'PNG',0,0,pgW,pgH);
+        pdf.addImage(pec.toDataURL('image/jpeg',0.85),'JPEG',0,0,pgW,pgH);
 
-        // 사진을 pdf.addImage()로 직접 배치
+        // 사진을 pdf.addImage()로 직접 배치 (사전조회 캐시 활용)
         const photoW=88,photoH=62,gap=6,marginX=11;
-        for(let i=0;i<resolved.length;i++){
-          if(!resolved[i]) continue;
+        for(let i=0;i<chunkResolved.length;i++){
+          if(!chunkResolved[i]) continue;
           const x=i%2===0?marginX:pgW-marginX-photoW;
           const y=hdrBottomMm+8+Math.floor(i/2)*(photoH+gap);
-          try{ pdf.addImage(resolved[i],'JPEG',x,y,photoW,photoH,undefined,'FAST'); }
-          catch(e){ try{ pdf.addImage(resolved[i],'PNG',x,y,photoW,photoH,undefined,'FAST'); }catch(e2){} }
+          try{ pdf.addImage(chunkResolved[i],'JPEG',x,y,photoW,photoH,undefined,'FAST'); }
+          catch(e){ try{ pdf.addImage(chunkResolved[i],'PNG',x,y,photoW,photoH,undefined,'FAST'); }catch(e2){} }
         }
       }
     }
@@ -1619,20 +1640,22 @@ async function genPDF(qtId){
 
     const fileName=`BPK_견적서_${q.company}_${q.id}.pdf`;
     pdf.save(fileName);
-    showToast('📄 PDF 다운로드 완료');
+    showToast('📄 PDF 다운로드 완료' + (missing>0?` (사진 ${missing}장 누락)`:''));
 
+    // Drive 백업은 백그라운드로 (P2-3): 사용자 흐름 차단하지 않음
     if(API_ENABLED){
-      showApiLoading('견적서를 Drive에 저장하는 중...');
-      try{
-        const pdfUri=pdf.output('datauristring');
-        const url=await apiUploadPhoto(pdfUri,fileName,{type:'quote',company:q.company});
-        if(url&&url.startsWith('http')){
-          q.pdfUrl=url;
-          await syncQt(q,false);
-          showToast('📄 견적서가 Drive에도 저장되었습니다.');
-        }
-      }catch(e){ console.warn('견적서 Drive 저장 실패',e); }
-      finally{ hideApiLoading(); }
+      (async()=>{
+        try{
+          const pdfUri=pdf.output('datauristring');
+          const url=await apiUploadPhoto(pdfUri,fileName,{type:'quote',company:q.company});
+          if(url&&url.startsWith('http')){
+            q.pdfUrl=url;
+            await syncQt(q,false);
+            showToast('☁️ Drive 백업 완료');
+            renderQuotes(); // ☁️ 아이콘 갱신
+          }
+        }catch(e){ console.warn('견적서 Drive 저장 실패',e); }
+      })();
     }
   } finally {
     tpl.style.left='-9999px';tpl.style.zIndex='';
@@ -1652,6 +1675,18 @@ async function genEquipPDF(qtId){
       spec_dimension:'',spec_weight:'',spec_air:'',spec_voltage:''},item);
   });
 
+  // ── 사진 사전조회 (P2-1, P2-4)
+  const photoUrls = eqList.map(eq => (eq.photos && eq.photos[0]) || null);
+  showApiLoading('사진 로딩 중... (' + photoUrls.filter(Boolean).length + '장)');
+  const photos = await resolvePhotosBatch(photoUrls);
+  hideApiLoading();
+  // ── 누락 알림 (P3-1)
+  const _missing = photos.filter((p,i)=>photoUrls[i]&&!p).length;
+  if(_missing>0 && !confirm(`사진 ${_missing}장이 로드되지 않았습니다.\n빈칸 상태로 PDF를 생성할까요?`)){
+    showToast('PDF 생성을 취소했습니다.','warn');
+    return;
+  }
+
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF('p','mm','a4');
   const pgW=pdf.internal.pageSize.getWidth();
@@ -1660,12 +1695,11 @@ async function genEquipPDF(qtId){
   eTpl.style.left='0';eTpl.style.top='0';eTpl.style.zIndex='-1';
   let firstPage=true;
 
-  for(const eq of eqList){
+  for(let _ei=0; _ei<eqList.length; _ei++){
+    const eq=eqList[_ei];
     if(!firstPage) pdf.addPage();
     firstPage=false;
-    showApiLoading(`사진 로딩 중... ${eq.name}`);
-    const photo=await resolvePhoto((eq.photos&&eq.photos[0])||null);
-    hideApiLoading();
+    const photo = photos[_ei];
     const specDefs=[
       ['생산속도',eq.spec_speed],['소비전력 (Total Power)',eq.spec_power],
       ['포장재 종류 (Packing material)',eq.spec_packing],['외형 치수 (Dimension)',eq.spec_dimension],
@@ -1706,7 +1740,7 @@ async function genEquipPDF(qtId){
 
     const ec=await html2canvas(eTpl,{scale:2,useCORS:false,logging:false});
     const eh=ec.height*(pgW/ec.width);
-    pdf.addImage(ec.toDataURL('image/png'),'PNG',0,0,pgW,Math.min(eh,pgH));
+    pdf.addImage(ec.toDataURL('image/jpeg',0.85),'JPEG',0,0,pgW,Math.min(eh,pgH));
 
     if(photo){
       try{ pdf.addImage(photo,'JPEG',photoXmm,photoYmm,110,77); }
@@ -1717,20 +1751,22 @@ async function genEquipPDF(qtId){
 
   const equipFileName=`BPK_장비사양_${q.company}_${q.id}.pdf`;
   pdf.save(equipFileName);
-  showToast('📸 장비사양 PDF 다운로드 완료');
+  showToast('📸 장비사양 PDF 다운로드 완료' + (_missing>0?` (사진 ${_missing}장 누락)`:''));
 
+  // Drive 백업은 백그라운드로 (P2-3)
   if(API_ENABLED){
-    showApiLoading('장비사양 PDF를 Drive에 저장하는 중...');
-    try{
-      const pdfUri=pdf.output('datauristring');
-      const url=await apiUploadPhoto(pdfUri,equipFileName,{type:'quote',company:q.company});
-      if(url&&url.startsWith('http')){
-        q.equipPdfUrl=url;
-        await syncQt(q,false);
-        showToast('📸 장비사양 PDF가 Drive에도 저장되었습니다.');
-      }
-    }catch(e){ console.warn('장비사양 PDF Drive 저장 실패',e); }
-    finally{ hideApiLoading(); }
+    (async()=>{
+      try{
+        const pdfUri=pdf.output('datauristring');
+        const url=await apiUploadPhoto(pdfUri,equipFileName,{type:'quote',company:q.company});
+        if(url&&url.startsWith('http')){
+          q.equipPdfUrl=url;
+          await syncQt(q,false);
+          showToast('☁️ 장비사양 Drive 백업 완료');
+          renderQuotes();
+        }
+      }catch(e){ console.warn('장비사양 PDF Drive 저장 실패',e); }
+    })();
   }
 }
 
