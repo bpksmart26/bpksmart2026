@@ -328,32 +328,27 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 .total-sub{font-size:12px;opacity:.7;margin-top:2px}
 .total-amt{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700}
 
-/* UPLOAD BANNER (step 5 사진 업로드 진행) */
-.upload-banner{margin:24px auto 16px;max-width:540px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:3px solid #f59e0b;border-radius:14px;padding:20px 22px;box-shadow:0 8px 24px rgba(245,158,11,.25);animation:bannerPulse 2s ease-in-out infinite}
-@keyframes bannerPulse{0%,100%{box-shadow:0 8px 24px rgba(245,158,11,.25)}50%{box-shadow:0 8px 32px rgba(245,158,11,.55)}}
-.upload-banner.success{background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-color:#059669;animation:none;box-shadow:0 6px 20px rgba(5,150,105,.25)}
-.upload-banner.error{background:linear-gradient(135deg,#fee2e2,#fecaca);border-color:#dc2626;animation:none}
-.upload-banner-head{display:flex;align-items:center;gap:14px;margin-bottom:14px}
-.upload-icon{font-size:38px;animation:iconBounce 1s ease-in-out infinite;flex-shrink:0}
-@keyframes iconBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-.upload-banner.success .upload-icon{animation:none}
-.upload-banner.error .upload-icon{animation:none}
+/* UPLOAD BANNER (step 5 사진 업로드 진행 — 차분한 톤) */
+.upload-banner{margin:0 auto 16px;max-width:440px;background:var(--primary-50);border:1.5px solid var(--primary-l);border-radius:12px;padding:14px 18px;transition:all .25s ease}
+.upload-banner.success{background:var(--accent-50);border-color:var(--accent-l)}
+.upload-banner.error{background:var(--danger-l);border-color:#fca5a5}
+.upload-banner-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.upload-icon{font-size:20px;flex-shrink:0;line-height:1}
 .upload-text{flex:1;min-width:0}
-.upload-title{font-size:17px;font-weight:800;color:#78350f;margin-bottom:4px}
-.upload-banner.success .upload-title{color:#065f46}
-.upload-banner.error .upload-title{color:#991b1b}
-.upload-warn{font-size:13px;font-weight:700;color:#dc2626;letter-spacing:.2px}
+.upload-title{font-size:13px;font-weight:700;color:var(--primary);margin-bottom:2px;line-height:1.3}
+.upload-banner.success .upload-title{color:var(--accent)}
+.upload-banner.error .upload-title{color:var(--danger)}
+.upload-warn{font-size:12px;font-weight:500;color:var(--g500);line-height:1.4}
 .upload-banner.success .upload-warn,.upload-banner.error .upload-warn{display:none}
-.upload-progress{display:flex;flex-direction:column;gap:6px}
-.upload-bar-track{width:100%;height:14px;background:rgba(255,255,255,.7);border-radius:7px;overflow:hidden;border:1px solid rgba(245,158,11,.4)}
-.upload-banner.success .upload-bar-track{border-color:rgba(5,150,105,.4)}
-.upload-bar-fill{height:100%;background:linear-gradient(90deg,#f59e0b,#d97706);width:0%;transition:width .35s ease;border-radius:6px;background-image:linear-gradient(45deg,rgba(255,255,255,.25) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.25) 50%,rgba(255,255,255,.25) 75%,transparent 75%);background-size:18px 18px;animation:stripes 1s linear infinite}
-@keyframes stripes{from{background-position:0 0}to{background-position:18px 0}}
-.upload-banner.success .upload-bar-fill{background:linear-gradient(90deg,#10b981,#059669);animation:none;width:100%!important}
-.upload-banner.error .upload-bar-fill{background:linear-gradient(90deg,#ef4444,#dc2626);animation:none}
-.upload-bar-info{font-size:13px;font-weight:700;color:#78350f;text-align:center;font-family:'JetBrains Mono','Pretendard',monospace}
-.upload-banner.success .upload-bar-info{color:#065f46}
-.upload-banner.error .upload-bar-info{color:#991b1b}
+.upload-progress{display:flex;flex-direction:column;gap:5px}
+.upload-bar-track{width:100%;height:6px;background:rgba(255,255,255,.65);border-radius:3px;overflow:hidden}
+.upload-bar-fill{height:100%;background:var(--primary);width:0%;transition:width .3s ease;border-radius:3px}
+.upload-banner.success .upload-bar-fill{background:var(--accent);width:100%!important}
+.upload-banner.error .upload-bar-fill{background:var(--danger)}
+.upload-bar-info{font-size:11px;font-weight:600;color:var(--g500);text-align:right;font-family:'JetBrains Mono','Pretendard',monospace;letter-spacing:.2px}
+
+/* suc-desc 와 영수증 박스 사이 간격 정리 */
+.suc-desc{margin-bottom:24px}
 
 /* SUCCESS */
 .suc-screen{text-align:center;padding:48px 24px}
