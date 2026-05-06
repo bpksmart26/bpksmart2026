@@ -1905,23 +1905,28 @@ async function doLookup(){
   if(!ok) return;
 
   let apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
-  // API 사용 시 서버에서 최신 데이터 조회
+  let quotesAll=JSON.parse(localStorage.getItem(SK.QT)||'[]');
+
+  // API 사용 시 신청 + 견적 데이터를 병렬로 한 번에 조회 (모달 차단 시간 단축 + 추가 silent wait 제거)
   if(API_ENABLED){
     showApiLoading('신청 내역을 조회하는 중...');
     try{
-      const res=await apiCall('getApps');
-      if(res&&res.data) apps=res.data;
+      const [appsRes, quotesRes] = await Promise.all([
+        apiCall('getApps'),
+        apiCall('getQts')
+      ]);
+      if(appsRes && appsRes.data) apps = appsRes.data;
+      if(quotesRes && quotesRes.data) quotesAll = quotesRes.data;
     }catch(e){ console.warn('API lookup 실패, 로컬 데이터 사용'); }
     finally{ hideApiLoading(); }
   }
+
   const app=apps.find(a=>a.company===company && a.bizno===bizno && a.phone===phone);
   const res=document.getElementById('lookup-result');
   if(!app){
     res.innerHTML=`<div class="lookup-result"><div class="not-found"><span class="not-found-icon">🔍</span><div class="not-found-txt">신청 내역을 찾을 수 없습니다.</div><div class="not-found-sub">회사명, 사업자등록번호, 휴대폰 번호를 정확히 입력해 주세요.</div></div></div>`;
     return;
   }
-  let quotesAll=JSON.parse(localStorage.getItem(SK.QT)||'[]');
-  if(API_ENABLED){ try{ const qr=await apiCall('getQts'); if(qr&&qr.data) quotesAll=qr.data; }catch(e){} }
   const quote=quotesAll.find(q=>q.appId===app.id);
   const statuses=['신청접수','검토중','수정중','확정'];
   const icons=['📬','🔍','✏️','✅'];
@@ -1955,10 +1960,16 @@ async function doLookup(){
 // ═══════════════════════════════════════════
 async function downloadPDF(appId){
   let apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
-  if(API_ENABLED){ try{ const r=await apiCall('getApps'); if(r?.data) apps=r.data; }catch(e){} }
-  const app=apps.find(a=>a.id===appId); if(!app) return;
   let quotesAll=JSON.parse(localStorage.getItem(SK.QT)||'[]');
-  if(API_ENABLED){ try{ const r=await apiCall('getQts'); if(r?.data) quotesAll=r.data; }catch(e){} }
+  // 신청 + 견적 데이터 병렬 조회 (순차 await 2회 → 1회로 단축)
+  if(API_ENABLED){
+    try{
+      const [r1, r2] = await Promise.all([apiCall('getApps'), apiCall('getQts')]);
+      if(r1?.data) apps=r1.data;
+      if(r2?.data) quotesAll=r2.data;
+    }catch(e){}
+  }
+  const app=apps.find(a=>a.id===appId); if(!app) return;
   const quote=quotesAll.find(q=>q.appId===appId);
   const eqItems=(app.equipment||[]).map(id=>EQUIPMENT.find(e=>e.id===id)).filter(Boolean);
   const total=quote?quote.total:eqItems.reduce((s,e)=>s+e.price,0);
