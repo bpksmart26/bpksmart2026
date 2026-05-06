@@ -1406,9 +1406,20 @@ async function saveQDraft(){
   let isNew=false,qt;
   if(editQtId){qt=quotes.find(x=>x.id===editQtId);if(qt) Object.assign(qt,d);}
   else{const id='QT-2026-'+String(quotes.length+1).padStart(3,'0');qt={id,...d};quotes.push(qt);isNew=true;}
-  closeModal('modal-quote'); renderQuotes();
-  await syncQt(qt,isNew);
-  showToast('✏️ 견적서가 저장되었습니다.');
+
+  // 신청서 status 자동 갱신: 신청접수 → 검토중 (담당자가 견적서 작업 시작했음을 신청기업이 조회 시 확인 가능)
+  const app = d.appId ? applications.find(x => x.id === d.appId) : null;
+  const _shouldUpgrade = app && app.status === '신청접수';
+  if(_shouldUpgrade) app.status = '검토중';
+
+  closeModal('modal-quote');
+  renderQuotes();
+  if(_shouldUpgrade){ renderApps(); renderDashboard(); }
+  await Promise.all([
+    syncQt(qt, isNew),
+    _shouldUpgrade ? syncApp(app, false) : Promise.resolve()
+  ]);
+  showToast('✏️ 견적서가 저장되었습니다.' + (_shouldUpgrade ? ' (신청 상태: 검토중)' : ''));
 }
 
 async function sendQuote(){
