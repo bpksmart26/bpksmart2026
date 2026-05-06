@@ -50,26 +50,26 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 .login-cred{background:var(--g50);border:1px solid var(--g200);border-radius:8px;padding:12px 16px;margin-top:16px;font-size:13px;color:var(--g500);text-align:center}
 .login-cred strong{color:var(--primary)}
 
-/* ─── MAIN LAYOUT ─── */
+/* ─── MAIN LAYOUT (라이트 사이드바) ─── */
 #view-main{display:none;min-height:100vh}
 #view-main.active{display:flex}
-.sidebar{width:var(--sidebar);background:var(--g900);min-height:100vh;position:fixed;top:0;left:0;display:flex;flex-direction:column;z-index:100;overflow-y:auto}
-.sb-logo{padding:24px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
-.sb-logo-icon{width:40px;height:40px;background:var(--primary);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:#fff;margin-bottom:10px}
-.sb-logo-name{font-size:15px;font-weight:700;color:#fff}
-.sb-logo-sub{font-size:11px;color:rgba(255,255,255,.4);margin-top:2px}
-.sb-sec{padding:14px 14px 4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.3);letter-spacing:1.2px;text-transform:uppercase}
-.nav-item{display:flex;align-items:center;gap:10px;padding:11px 16px;margin:2px 8px;border-radius:var(--r-sm);font-size:14px;font-weight:500;color:rgba(255,255,255,.6);cursor:pointer;transition:all .15s;user-select:none}
-.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-item.active{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(29,78,216,.4)}
-.nav-icon{font-size:17px;flex-shrink:0}
-.nav-badge{margin-left:auto;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;min-width:20px;text-align:center}
+.sidebar{width:var(--sidebar);background:#fff;border-right:1px solid var(--g200);min-height:100vh;position:fixed;top:0;left:0;display:flex;flex-direction:column;z-index:100;overflow-y:auto;box-shadow:0 1px 3px rgba(15,23,42,.04)}
+.sb-logo{padding:22px 20px 20px;border-bottom:1px solid var(--g100)}
+.sb-logo-icon{width:38px;height:38px;background:var(--primary);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:#fff;margin-bottom:11px;box-shadow:0 2px 8px rgba(29,78,216,.25)}
+.sb-logo-name{font-size:15px;font-weight:700;color:var(--g900);letter-spacing:-.2px}
+.sb-logo-sub{font-size:11.5px;color:var(--g500);margin-top:2px;font-weight:500}
+.sb-sec{padding:18px 18px 8px;font-size:10px;font-weight:700;color:var(--g400);letter-spacing:1.2px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:11px;padding:10px 14px;margin:1px 10px;border-radius:8px;font-size:13.5px;font-weight:500;color:var(--g600);cursor:pointer;transition:all .12s;user-select:none}
+.nav-item:hover{background:var(--g100);color:var(--g900)}
+.nav-item.active{background:var(--primary-50);color:var(--primary);font-weight:600}
+.nav-icon{flex-shrink:0;color:currentColor;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px}
+.nav-badge{margin-left:auto;padding:2px 7px;border-radius:10px;font-size:10.5px;font-weight:700;min-width:20px;text-align:center;line-height:1.4}
 .nb-red{background:var(--danger);color:#fff}
 .nb-orange{background:var(--orange);color:#fff}
 .nb-green{background:var(--accent);color:#fff}
-.sb-footer{margin-top:auto;padding:16px 14px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:rgba(255,255,255,.3);line-height:1.6}
-.logout-btn{display:flex;align-items:center;gap:8px;padding:9px 14px;margin:4px 8px;border-radius:var(--r-sm);font-size:13px;font-weight:600;color:rgba(255,255,255,.5);cursor:pointer;background:none;border:none;font-family:'Pretendard',sans-serif;transition:all .15s;width:calc(100% - 16px)}
-.logout-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+.sb-footer{margin-top:auto;padding:14px 18px 12px;border-top:1px solid var(--g100);font-size:11px;color:var(--g400);line-height:1.6}
+.logout-btn{display:flex;align-items:center;gap:9px;padding:9px 14px;margin:6px 10px 8px;border-radius:8px;font-size:13px;font-weight:500;color:var(--g500);cursor:pointer;background:none;border:none;font-family:'Pretendard',sans-serif;transition:all .12s;width:calc(100% - 20px)}
+.logout-btn:hover{background:var(--danger-l);color:var(--danger)}
 
 /* ─── MAIN WRAP ─── */
 .main-wrap{margin-left:var(--sidebar);flex:1;min-height:100vh;display:flex;flex-direction:column}
@@ -85,15 +85,23 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse-badge{0%,100%{transform:scale(1)}50%{transform:scale(1.25);box-shadow:0 0 0 6px rgba(220,38,38,.25)}}
-.refresh-btn{width:36px;height:36px;border:1.5px solid var(--g200);background:#fff;border-radius:8px;cursor:pointer;font-size:15px;color:var(--g600);transition:all .15s;display:inline-flex;align-items:center;justify-content:center;padding:0}
+.refresh-btn{width:36px;height:36px;border:1.5px solid var(--g200);background:#fff;border-radius:8px;cursor:pointer;color:var(--g600);transition:all .15s;display:inline-flex;align-items:center;justify-content:center;padding:0}
 .refresh-btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-50)}
 .refresh-btn:active{transform:scale(.95)}
+
+/* ─── SVG 아이콘 시스템 (단색, currentColor 상속) ─── */
+.ic{width:18px;height:18px;flex-shrink:0;display:inline-block;vertical-align:-3px;stroke-linecap:round;stroke-linejoin:round}
+.ic-sm{width:14px;height:14px;vertical-align:-2px}
+.ic-md{width:20px;height:20px;vertical-align:-4px}
+.ic-lg{width:24px;height:24px;vertical-align:-5px}
+.ic-xl{width:28px;height:28px;vertical-align:-6px}
 .content.active{animation:fadeUp .25s ease}
 
 /* ─── STAT CARDS ─── */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
 .stat-card{background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:22px;box-shadow:var(--sh)}
-.stat-icon{float:right;font-size:30px;margin-top:-4px}
+.stat-icon{float:right;color:var(--g300);margin-top:-2px;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--g50);border-radius:10px}
+.stat-icon svg{width:20px;height:20px}
 .stat-label{font-size:12px;color:var(--g500);font-weight:600;margin-bottom:8px;clear:none}
 .stat-value{font-size:30px;font-weight:800;color:var(--g900);font-family:'JetBrains Mono',monospace;clear:both}
 .stat-sub{font-size:12px;color:var(--g400);margin-top:4px}
@@ -325,6 +333,38 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
 </head>
 <body>
 
+<!-- ═══ SVG 아이콘 세트 (모노크롬, currentColor 상속) ═══ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+    <symbol id="i-package" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16.5 9.4l-9-5.19"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></symbol>
+    <symbol id="i-document" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></symbol>
+    <symbol id="i-tool" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="i-factory" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20a2 2 0 002 2h16a2 2 0 002-2V8l-7 5V8l-7 5V4a2 2 0 00-2-2H4a2 2 0 00-2 2z"/><path d="M17 18h.01M12 18h.01M7 18h.01"/></symbol>
+    <symbol id="i-money" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8M12 6v2m0 8v2"/></symbol>
+    <symbol id="i-trending-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></symbol>
+  </defs>
+</svg>
+
 <!-- ═══ LOGIN ═══ -->
 <div id="view-login">
   <div class="login-wrap">
@@ -364,16 +404,16 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
       <div class="sb-logo-sub">공급기업 관리 시스템</div>
     </div>
     <div class="sb-sec">신청 관리</div>
-    <div class="nav-item active" onclick="showSec('applications')"><span class="nav-icon">📋</span> 신청 업체 관리<span class="nav-badge nb-red" id="badge-new">0</span></div>
+    <div class="nav-item active" onclick="showSec('applications')"><span class="nav-icon"><svg class="ic"><use href="#i-list"/></svg></span> 신청 업체 관리<span class="nav-badge nb-red" id="badge-new">0</span></div>
     <div class="sb-sec">물품 관리</div>
-    <div class="nav-item" onclick="showSec('products')"><span class="nav-icon">📦</span> 공급 물품 목록</div>
-    <div class="nav-item" onclick="showSec('quotes')"><span class="nav-icon">📄</span> 견적서 관리<span class="nav-badge nb-orange" id="badge-qt">0</span></div>
+    <div class="nav-item" onclick="showSec('products')"><span class="nav-icon"><svg class="ic"><use href="#i-package"/></svg></span> 공급 물품 목록</div>
+    <div class="nav-item" onclick="showSec('quotes')"><span class="nav-icon"><svg class="ic"><use href="#i-document"/></svg></span> 견적서 관리<span class="nav-badge nb-orange" id="badge-qt">0</span></div>
     <div class="sb-sec">통계</div>
-    <div class="nav-item" onclick="showSec('dashboard')"><span class="nav-icon">📊</span> 현황 대시보드</div>
+    <div class="nav-item" onclick="showSec('dashboard')"><span class="nav-icon"><svg class="ic"><use href="#i-chart"/></svg></span> 현황 대시보드</div>
     <div class="sb-sec">시스템</div>
-    <div class="nav-item" onclick="showSec('scoring')"><span class="nav-icon">⚙️</span> 매칭 설정</div>
+    <div class="nav-item" onclick="showSec('scoring')"><span class="nav-icon"><svg class="ic"><use href="#i-settings"/></svg></span> 매칭 설정</div>
     <div class="sb-footer">2026 스마트제조 지원사업<br>(주)비피케이 관리자</div>
-    <button class="logout-btn" onclick="doLogout()">🚪 로그아웃</button>
+    <button class="logout-btn" onclick="doLogout()"><svg class="ic"><use href="#i-logout"/></svg> 로그아웃</button>
   </aside>
 
   <!-- 모바일 사이드바 백드롭 (P4-1) -->
@@ -385,34 +425,34 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
       <div class="topbar-title" id="topbar-title">신청 업체 관리</div>
       <div class="topbar-right">
         <div id="api-status-top"></div>
-        <button class="refresh-btn" onclick="manualRefresh()" title="데이터 새로고침">🔄</button>
+        <button class="refresh-btn" onclick="manualRefresh()" title="데이터 새로고침"><svg class="ic"><use href="#i-refresh"/></svg></button>
         <div class="topbar-date" id="topbar-date"></div>
-        <div class="topbar-user">🔧 관리자</div>
+        <div class="topbar-user"><svg class="ic-sm" style="margin-right:5px"><use href="#i-tool"/></svg>관리자</div>
       </div>
     </div>
 
     <!-- SEC: 신청 업체 관리 -->
     <div class="content active" id="sec-applications">
       <div class="stat-row">
-        <div class="stat-card"><div class="stat-icon">📬</div><div class="stat-label">전체 신청</div><div class="stat-value" id="st-total">0</div><div class="stat-sub">누적 접수</div></div>
-        <div class="stat-card"><div class="stat-icon">🆕</div><div class="stat-label">신규 (미확인)</div><div class="stat-value" style="color:var(--primary)" id="st-new">0</div><div class="stat-sub">확인 필요</div></div>
-        <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">확정 완료</div><div class="stat-value" style="color:var(--accent)" id="st-ok">0</div><div class="stat-sub">견적 확정</div></div>
-        <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">검토·수정 중</div><div class="stat-value" style="color:var(--orange)" id="st-rev">0</div><div class="stat-sub">진행 중</div></div>
+        <div class="stat-card"><div class="stat-icon"><svg><use href="#i-inbox"/></svg></div><div class="stat-label">전체 신청</div><div class="stat-value" id="st-total">0</div><div class="stat-sub">누적 접수</div></div>
+        <div class="stat-card"><div class="stat-icon" style="color:var(--primary);background:var(--primary-50)"><svg><use href="#i-mail"/></svg></div><div class="stat-label">신규 (미확인)</div><div class="stat-value" style="color:var(--primary)" id="st-new">0</div><div class="stat-sub">확인 필요</div></div>
+        <div class="stat-card"><div class="stat-icon" style="color:var(--accent);background:var(--accent-50)"><svg><use href="#i-check"/></svg></div><div class="stat-label">확정 완료</div><div class="stat-value" style="color:var(--accent)" id="st-ok">0</div><div class="stat-sub">견적 확정</div></div>
+        <div class="stat-card"><div class="stat-icon" style="color:var(--orange);background:var(--orange-l)"><svg><use href="#i-clock"/></svg></div><div class="stat-label">검토·수정 중</div><div class="stat-value" style="color:var(--orange)" id="st-rev">0</div><div class="stat-sub">진행 중</div></div>
       </div>
       <div class="card">
         <div class="card-hdr">
           <div><div class="card-hdr-title">신청 업체 목록</div><div class="card-hdr-desc">장비 도입을 신청한 업체 목록입니다. 행을 클릭하면 상세 내용을 확인합니다.</div></div>
-          <button class="btn btn-outline btn-sm" onclick="exportCSV()">📥 엑셀 다운로드</button>
+          <button class="btn btn-outline btn-sm" onclick="exportCSV()"><svg class="ic-sm"><use href="#i-download"/></svg> 엑셀 다운로드</button>
         </div>
         <div class="toolbar">
-          <input class="search-inp" placeholder="🔍 업체명, 담당자 검색..." oninput="filterApps(this.value)" id="app-search"/>
+          <input class="search-inp" placeholder="업체명, 담당자 검색..." oninput="filterApps(this.value)" id="app-search"/>
           <select class="filter-sel" onchange="filterAppStatus(this.value)" id="app-status-filter">
             <option value="">전체 상태</option>
-            <option value="신청접수">📬 신청접수</option>
-            <option value="검토중">⏳ 검토 중</option>
-            <option value="수정중">✏️ 수정 중</option>
-            <option value="확정">✅ 확정</option>
-            <option value="반려">❌ 반려</option>
+            <option value="신청접수">신청접수</option>
+            <option value="검토중">검토 중</option>
+            <option value="수정중">수정 중</option>
+            <option value="확정">확정</option>
+            <option value="반려">반려</option>
           </select>
           <select class="filter-sel" onchange="filterAppProcess(this.value)">
             <option value="">전체 공정</option>
@@ -436,8 +476,8 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
         <div class="card-hdr">
           <div><div class="card-hdr-title">공급 물품 목록</div><div class="card-hdr-desc">등록된 장비의 사양, 사진, 가격을 관리합니다. 수정 내용은 신청 화면에 즉시 반영됩니다.</div></div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-outline btn-sm" onclick="openEditProd(null)">➕ 물품 추가</button>
-            <button class="btn btn-outline btn-sm" id="sync-all-btn" onclick="syncAllToSheets()" style="display:none">☁️ 전체 Sheets 동기화</button>
+            <button class="btn btn-outline btn-sm" onclick="openEditProd(null)"><svg class="ic-sm"><use href="#i-plus"/></svg> 물품 추가</button>
+            <button class="btn btn-outline btn-sm" id="sync-all-btn" onclick="syncAllToSheets()" style="display:none"><svg class="ic-sm"><use href="#i-cloud"/></svg> 전체 Sheets 동기화</button>
           </div>
         </div>
         <div class="tab-bar" id="prod-tabs">
@@ -451,7 +491,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
           <div class="tab-item" onclick="filterProdCat('검사',this)">검사·선별</div>
         </div>
         <div class="toolbar">
-          <input class="search-inp" placeholder="🔍 물품명, 모델명 검색..." oninput="filterProds(this.value)"/>
+          <input class="search-inp" placeholder="물품명, 모델명 검색..." oninput="filterProds(this.value)"/>
           <select class="filter-sel" onchange="filterProdStatus(this.value)">
             <option value="">전체 상태</option>
             <option value="active">활성</option>
@@ -467,14 +507,14 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
 
     <!-- SEC: 견적서 관리 -->
     <div class="content" id="sec-quotes">
-      <div class="notice notice-info">💡 <span>신청 업체에게 견적서를 등록하고 발송할 수 있습니다. 견적 확정 시 신청 상태가 자동으로 '확정'으로 변경되고 신청기업이 PDF를 다운로드할 수 있습니다.</span></div>
+      <div class="notice notice-info"><span>신청 업체에게 견적서를 등록하고 발송할 수 있습니다. 견적 확정 시 신청 상태가 자동으로 '확정'으로 변경되고 신청기업이 PDF를 다운로드할 수 있습니다.</span></div>
       <div class="card">
         <div class="card-hdr">
           <div><div class="card-hdr-title">견적서 관리</div><div class="card-hdr-desc">신청 업체별 견적서 등록 및 발송 현황</div></div>
-          <button class="btn btn-primary btn-sm" onclick="openQuoteModal(null)">➕ 견적서 작성</button>
+          <button class="btn btn-primary btn-sm" onclick="openQuoteModal(null)"><svg class="ic-sm"><use href="#i-plus"/></svg> 견적서 작성</button>
         </div>
         <div class="toolbar">
-          <input class="search-inp" placeholder="🔍 업체명 검색..." oninput="filterQuotes(this.value)"/>
+          <input class="search-inp" placeholder="업체명 검색..." oninput="filterQuotes(this.value)"/>
           <select class="filter-sel" onchange="filterQuoteStatus(this.value)">
             <option value="">전체 상태</option>
             <option value="작성중">작성 중</option>
@@ -492,10 +532,10 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
     <!-- SEC: 대시보드 -->
     <div class="content" id="sec-dashboard">
       <div class="stat-row">
-        <div class="stat-card"><div class="stat-icon">🏭</div><div class="stat-label">등록 물품</div><div class="stat-value" id="db-eq">60</div><div class="stat-sub">활성 물품 수</div></div>
-        <div class="stat-card"><div class="stat-icon">📬</div><div class="stat-label">총 신청 건</div><div class="stat-value" id="db-app">0</div><div class="stat-sub">2026년 누계</div></div>
-        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">견적 발송 총액</div><div class="stat-value" id="db-total" style="font-size:18px">0원</div><div class="stat-sub">VAT 별도</div></div>
-        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-label">확정 전환율</div><div class="stat-value" id="db-rate">0%</div><div class="stat-sub" id="db-rate-sub">0/0건</div></div>
+        <div class="stat-card"><div class="stat-icon"><svg><use href="#i-factory"/></svg></div><div class="stat-label">등록 물품</div><div class="stat-value" id="db-eq">60</div><div class="stat-sub">활성 물품 수</div></div>
+        <div class="stat-card"><div class="stat-icon" style="color:var(--primary);background:var(--primary-50)"><svg><use href="#i-inbox"/></svg></div><div class="stat-label">총 신청 건</div><div class="stat-value" id="db-app">0</div><div class="stat-sub">2026년 누계</div></div>
+        <div class="stat-card"><div class="stat-icon" style="color:var(--accent);background:var(--accent-50)"><svg><use href="#i-money"/></svg></div><div class="stat-label">견적 발송 총액</div><div class="stat-value" id="db-total" style="font-size:18px">0원</div><div class="stat-sub">VAT 별도</div></div>
+        <div class="stat-card"><div class="stat-icon" style="color:var(--orange);background:var(--orange-l)"><svg><use href="#i-trending-up"/></svg></div><div class="stat-label">확정 전환율</div><div class="stat-value" id="db-rate">0%</div><div class="stat-sub" id="db-rate-sub">0/0건</div></div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div class="card"><div class="card-hdr"><div class="card-hdr-title">공정별 신청 현황</div></div><div style="padding:20px" id="proc-chart"></div></div>
@@ -509,7 +549,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
       <div class="card">
         <div class="card-hdr">
           <div>
-            <div class="card-hdr-title">⚙️ 장비 매칭 가중치 설정</div>
+            <div class="card-hdr-title">장비 매칭 가중치 설정</div>
             <div class="card-hdr-desc">신청기업 매칭 결과에 적용되는 가중치·패널티·표시 개수를 조정합니다. 저장 즉시 다음 매칭부터 적용됩니다.</div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -521,7 +561,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
 
           <!-- 가중치 -->
           <div>
-            <div style="font-size:14px;font-weight:700;color:var(--g700);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--g100)">📊 가중치 (점수 배점)</div>
+            <div style="font-size:14px;font-weight:700;color:var(--g700);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--g100)">가중치 (점수 배점)</div>
             <div id="scoring-maxscore-hint" style="margin-bottom:16px;padding:10px 16px;background:var(--primary-l,#eff6ff);border-radius:8px;font-size:13px;color:var(--primary);font-weight:600"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="weight-grid">
               <div class="sc-field"><label class="sc-label">물성 일치 <span class="sc-hint">texture match</span></label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="0" max="100" id="cfg-w_texture" oninput="updateMaxScoreHint()"/><span class="sc-unit">점</span></div></div>
@@ -549,7 +589,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
 
           <!-- 결과 표시 -->
           <div>
-            <div style="font-size:14px;font-weight:700;color:var(--g700);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--g100)">📋 결과 표시 개수</div>
+            <div style="font-size:14px;font-weight:700;color:var(--g700);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--g100)">결과 표시 개수</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
               <div class="sc-field"><label class="sc-label">공정별 추천 장비 수</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="1" max="10" id="cfg-top_per_proc"/><span class="sc-unit">개</span></div></div>
               <div class="sc-field"><label class="sc-label">통합 추천 장비 수</label><div class="sc-input-wrap"><input class="fc sc-inp" type="number" min="1" max="10" id="cfg-top_integrated"/><span class="sc-unit">개</span></div></div>
@@ -591,7 +631,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
       </div>
       <div class="fg"><label>물품 설명</label><textarea class="fc" id="p-desc" rows="3"></textarea></div>
 
-      <div class="sec-label">📷 장비 사진 <span style="font-size:11px;font-weight:400;opacity:.7">최대 4장 · 장비 외관</span></div>
+      <div class="sec-label"><svg class="ic-sm"><use href="#i-camera"/></svg> 장비 사진 <span style="font-size:11px;font-weight:400;opacity:.7">최대 4장 · 장비 외관</span></div>
       <div class="fg">
         <div class="photo-grid" id="p-photos">
           <div class="photo-th add-btn" onclick="document.getElementById('p-photo-inp').click()">+</div>
@@ -600,7 +640,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
         <div style="font-size:12px;color:var(--g400);margin-top:6px">JPG · PNG · 최대 4장</div>
       </div>
 
-      <div class="sec-label">📦 포장 제품 사진 <span style="font-size:11px;font-weight:400;opacity:.7">최대 4장 · 완성 포장 상태</span></div>
+      <div class="sec-label"><svg class="ic-sm"><use href="#i-package"/></svg> 포장 제품 사진 <span style="font-size:11px;font-weight:400;opacity:.7">최대 4장 · 완성 포장 상태</span></div>
       <div class="fg">
         <div class="photo-grid" id="p-photos-pkg">
           <div class="photo-th add-btn" onclick="document.getElementById('p-photo-pkg-inp').click()">+</div>
@@ -609,7 +649,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
         <div style="font-size:12px;color:var(--g400);margin-top:6px">JPG · PNG · 최대 4장</div>
       </div>
 
-      <div class="sec-label">▶ 유튜브 영상 <span style="font-size:11px;font-weight:400;opacity:.7">최대 3개</span></div>
+      <div class="sec-label">유튜브 영상 <span style="font-size:11px;font-weight:400;opacity:.7">최대 3개</span></div>
       <div class="fg">
         <div id="p-videos"></div>
         <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="addVideoInput('')">+ 영상 추가</button>
@@ -620,7 +660,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
         <select class="fc" id="p-status"><option value="active">활성 (신청화면 노출)</option><option value="inactive">비활성 (숨김)</option></select>
       </div>
       <div style="margin-top:20px;padding-top:16px;border-top:2px solid var(--g200)">
-        <div style="font-size:12px;font-weight:700;color:#7c3aed;letter-spacing:1px;margin-bottom:14px">📋 장비 스펙 정보</div>
+        <div style="font-size:12px;font-weight:700;color:#7c3aed;letter-spacing:1px;margin-bottom:14px">장비 스펙 정보</div>
         <div class="frow2">
           <div class="fg">
             <label>생산속도 (Production Speed)</label>
@@ -690,7 +730,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
         </div>
       </div>
       <div style="margin-top:20px;padding-top:16px;border-top:2px solid var(--g200)">
-        <div style="font-size:12px;font-weight:700;color:var(--primary);letter-spacing:1px;margin-bottom:14px">🏷️ 태그 정보 (콤마로 구분하여 입력)</div>
+        <div style="font-size:12px;font-weight:700;color:var(--primary);letter-spacing:1px;margin-bottom:14px">태그 정보 (콤마로 구분하여 입력)</div>
         <div class="frow2">
           <div class="fg"><label>물성 태그</label><input class="fc" id="p-tag-texture" placeholder="예: 분말,과립,액체"/></div>
           <div class="fg"><label>포장형태 태그</label><input class="fc" id="p-tag-pkg" placeholder="예: 파우치,삼면포장"/></div>
@@ -741,8 +781,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-quote')">취소</button>
-      <button class="btn btn-warn btn-sm" onclick="saveQDraft()">✏️ 수정</button>
-      <button class="btn btn-success" onclick="sendQuote()">✅ 확정</button>
+      <button class="btn btn-success" onclick="sendQuote()"><svg class="ic"><use href="#i-check"/></svg> 확정</button>
     </div>
   </div>
 </div>
@@ -870,7 +909,7 @@ async function _backgroundRefresh(){
     if(_prevAppCount > 0){
       const newApps = applications.filter(a => !_prevAppIds.has(a.id));
       if(newApps.length > 0){
-        showToast(`📬 새 신청 ${newApps.length}건이 도착했습니다`);
+        showToast(`새 신청 ${newApps.length}건이 도착했습니다`);
         // 사이드바 신규 배지에 시각 강조 (3초 깜빡)
         const badge = document.getElementById('badge-new');
         if(badge){
@@ -1059,7 +1098,7 @@ function saveScoringCfg(){
   if(API_ENABLED) apiCall('saveCfg',cfg);
   const btn=document.querySelector('#sec-scoring .btn-primary');
   const orig=btn.innerHTML;
-  btn.innerHTML='✅ 저장됨';
+  btn.innerHTML='저장됨';
   btn.disabled=true;
   setTimeout(()=>{ btn.innerHTML=orig; btn.disabled=false; },1500);
 }
@@ -1082,8 +1121,9 @@ function updateMaxScoreHint(){
 // ═══════════════════════════════════════════
 function statusBadge(s){
   const m={'신청접수':'b-new','검토중':'b-review','수정중':'b-mod','확정':'b-ok','반려':'b-rej'};
-  const ic={'신청접수':'📬','검토중':'⏳','수정중':'✏️','확정':'✅','반려':'❌'};
-  return `<span class="badge ${m[s]||'b-new'}">${ic[s]||''}  ${s}</span>`;
+  const ic={'신청접수':'i-mail','검토중':'i-clock','수정중':'i-edit','확정':'i-check','반려':'i-x'};
+  const id=ic[s]||'i-mail';
+  return `<span class="badge ${m[s]||'b-new'}"><svg class="ic-sm"><use href="#${id}"/></svg> ${s}</span>`;
 }
 
 // ═══════════════════════════════════════════
@@ -1118,7 +1158,7 @@ function renderApps(){
         <button class="btn btn-sm btn-primary" style="margin-left:4px" onclick="openQuoteModal('${a.id}')">견적</button>
       </td>
     </tr>`;
-  }).join(''):`<tr><td colspan="10"><div class="empty"><span class="empty-icon">📭</span><div class="empty-txt">신청 내역이 없습니다.</div></div></td></tr>`;
+  }).join(''):`<tr><td colspan="10"><div class="empty"><svg class="empty-icon" style="width:42px;height:42px;color:var(--g300)"><use href="#i-inbox"/></svg><div class="empty-txt">신청 내역이 없습니다.</div></div></td></tr>`;
 
   document.getElementById('st-total').textContent=applications.length;
   document.getElementById('st-new').textContent=applications.filter(a=>a.status==='신청접수').length;
@@ -1131,7 +1171,7 @@ function openAppDetail(id){
   const a=applications.find(x=>x.id===id); if(!a) return;
   document.getElementById('m-app-title').textContent=a.company;
   document.getElementById('m-app-sub').textContent=`${a.id} · 접수일시: ${a.date}`;
-  const eqItems=(a.equipment||[]).map(eid=>{const e=equipment.find(x=>x.id===eid);return e?`<span class="eq-pill">📦 ${e.name}<span style="font-family:'JetBrains Mono',monospace;font-size:10px;margin-left:4px;opacity:.7">${e.price.toLocaleString('ko-KR')}원</span></span>`:''}).join('');
+  const eqItems=(a.equipment||[]).map(eid=>{const e=equipment.find(x=>x.id===eid);return e?`<span class="eq-pill"><svg class="ic-sm"><use href="#i-package"/></svg> ${e.name}<span style="font-family:'JetBrains Mono',monospace;font-size:10px;margin-left:4px;opacity:.7">${e.price.toLocaleString('ko-KR')}원</span></span>`:''}).join('');
   const total=(a.equipment||[]).reduce((s,eid)=>{const e=equipment.find(x=>x.id===eid);return s+(e?e.price:0);},0);
   document.getElementById('m-app-body').innerHTML=`
     <div style="margin-bottom:16px">${statusBadge(a.status)}</div>
@@ -1152,7 +1192,7 @@ function openAppDetail(id){
       <div class="detail-item"><div class="di-label">포장 형태</div><div class="di-value">${(a.pkgtypes||[]).join(', ')||'-'}</div></div>
       <div class="detail-item"><div class="di-label">목표 생산속도</div><div class="di-value">분당 ${a.speed||'-'}개${a.qty?` · 일 목표 ${a.qty}개`:''}</div></div>
       <div class="detail-item detail-full"><div class="di-label">개선 희망 공정</div><div class="di-value">${(a.processes||[]).join(' · ')||'-'}</div></div>
-      ${a.problem_type?`<div class="detail-item"><div class="di-label">도입 목적</div><div class="di-value">${a.problem_type==='구형장비교체'?'🔄 구형 장비 교체':'✨ 신규 도입 필요'}</div></div>`:''}
+      ${a.problem_type?`<div class="detail-item"><div class="di-label">도입 목적</div><div class="di-value">${a.problem_type==='구형장비교체'?'구형 장비 교체':'신규 도입 필요'}</div></div>`:''}
       ${(a.problem_points&&a.problem_points.length)?`<div class="detail-item detail-full"><div class="di-label">공정 문제점</div><div class="di-value">${a.problem_points.join(' · ')}</div></div>`:''}
       ${(a.electric&&a.electric.length)?`<div class="detail-item"><div class="di-label">전기 사용</div><div class="di-value">${a.electric.join(', ')}</div></div>`:''}
       ${a.air_yn?`<div class="detail-item"><div class="di-label">공압 설치</div><div class="di-value">${a.air_yn}${a.air_flow?' · '+a.air_flow:''}</div></div>`:''}
@@ -1171,7 +1211,7 @@ function openAppDetail(id){
       <span style="font-size:14px;color:var(--g600);font-weight:600">총 예상 금액 (VAT 별도)</span>
       <span class="price-text" style="font-size:17px">${total.toLocaleString('ko-KR')}원</span>
     </div>`;
-  document.getElementById('m-app-footer').innerHTML=`<button class="btn btn-outline" onclick="closeModal('modal-app')">닫기</button><button class="btn btn-primary" onclick="closeModal('modal-app');openQuoteModal('${id}')">📄 견적서 작성</button>`;
+  document.getElementById('m-app-footer').innerHTML=`<button class="btn btn-outline" onclick="closeModal('modal-app')">닫기</button><button class="btn btn-primary" onclick="closeModal('modal-app');openQuoteModal('${id}')"><svg class="ic-sm"><use href="#i-document"/></svg> 견적서 작성</button>`;
   openModal('modal-app');
 }
 
@@ -1197,11 +1237,11 @@ function renderProds(){
       <td><span class="mono">${p.model}</span></td>
       <td><span class="badge b-new" style="font-size:11px">${p.category}</span></td>
       <td><span class="price-text">${p.price.toLocaleString('ko-KR')}원</span></td>
-      <td style="text-align:center">${photoCount>0?`<span style="font-size:13px;color:var(--accent);font-weight:600">📷 ${photoCount}장</span>`:`<span style="font-size:12px;color:var(--g400)">미등록</span>`}</td>
+      <td style="text-align:center">${photoCount>0?`<span style="font-size:13px;color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px"><svg class="ic-sm"><use href="#i-camera"/></svg> ${photoCount}장</span>`:`<span style="font-size:12px;color:var(--g400)">미등록</span>`}</td>
       <td>${p.status==='active'?'<span class="badge b-active">● 활성</span>':'<span class="badge b-inactive">○ 비활성</span>'}</td>
-      <td style="white-space:nowrap"><button class="btn btn-sm btn-outline" onclick="openEditProd(${p.id})">✏️ 수정</button></td>
+      <td style="white-space:nowrap"><button class="btn btn-sm btn-outline" onclick="openEditProd(${p.id})"><svg class="ic-sm"><use href="#i-edit"/></svg> 수정</button></td>
     </tr>`;
-  }).join(''):`<tr><td colspan="8"><div class="empty"><span class="empty-icon">📦</span><div class="empty-txt">조건에 맞는 물품이 없습니다.</div></div></td></tr>`;
+  }).join(''):`<tr><td colspan="8"><div class="empty"><svg class="empty-icon" style="width:42px;height:42px;color:var(--g300)"><use href="#i-package"/></svg><div class="empty-txt">조건에 맞는 물품이 없습니다.</div></div></td></tr>`;
 }
 
 function openEditProd(id){
@@ -1390,7 +1430,7 @@ function filterQuoteStatus(v){qtSt=v;renderQuotes();}
 function renderQuotes(){
   let data=quotes.filter(q=>(!qtQ||q.company.includes(qtQ))&&(!qtSt||q.status===qtSt));
   const sm={'작성중':'b-draft','발송완료':'b-sent','확정':'b-conf'};
-  const ic={'작성중':'📝','발송완료':'📤','확정':'✅'};
+  const ic={'작성중':'i-edit','발송완료':'i-send','확정':'i-check'};
   document.getElementById('qt-tbody').innerHTML=data.length?data.map(q=>`
     <tr>
       <td><span class="mono">${q.id}</span></td>
@@ -1398,17 +1438,17 @@ function renderQuotes(){
       <td><span class="mono" style="font-size:11px">${q.appId||'-'}</span></td>
       <td><span class="price-text">${q.total.toLocaleString('ko-KR')}원</span></td>
       <td style="text-align:center">${q.eqCount||0}개</td>
-      <td><span class="badge ${sm[q.status]}">${ic[q.status]} ${q.status}</span></td>
+      <td><span class="badge ${sm[q.status]}"><svg class="ic-sm"><use href="#${ic[q.status]||'i-edit'}"/></svg> ${q.status}</span></td>
       <td><span class="mono" style="font-size:11px">${q.date}</span></td>
       <td style="white-space:nowrap">
-        <button class="btn btn-sm btn-outline" onclick="openQuoteModal('${q.appId}','${q.id}')">✏️ 수정</button>
-        ${q.status!=='확정'?`<button class="btn btn-sm btn-success" style="margin-left:4px" onclick="confirmQuote('${q.id}')">✅ 확정</button>`:''}
-        <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="genPDF('${q.id}')">📄 PDF${q.pdfUrl?'<span style="color:#10b981;margin-left:3px" title="Drive에 저장됨">✓</span>':''}</button>
-        <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="genEquipPDF('${q.id}')">📸 장비PDF${q.equipPdfUrl?'<span style="color:#10b981;margin-left:3px" title="Drive에 저장됨">✓</span>':''}</button>
-        ${q.pdfUrl?`<a href="${q.pdfUrl}" target="_blank" class="btn btn-sm" style="margin-left:4px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534" title="Drive에서 열기">☁️</a>`:''}
-        ${q.equipPdfUrl?`<a href="${q.equipPdfUrl}" target="_blank" class="btn btn-sm" style="margin-left:4px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534" title="장비사진 Drive에서 열기">☁️📸</a>`:''}
+        <button class="btn btn-sm btn-outline" onclick="openQuoteModal('${q.appId}','${q.id}')"><svg class="ic-sm"><use href="#i-edit"/></svg> 수정</button>
+        ${q.status!=='확정'?`<button class="btn btn-sm btn-success" style="margin-left:4px" onclick="confirmQuote('${q.id}')"><svg class="ic-sm"><use href="#i-check"/></svg> 확정</button>`:''}
+        <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="genPDF('${q.id}')"><svg class="ic-sm"><use href="#i-document"/></svg> PDF${q.pdfUrl?'<svg class="ic-sm" style="color:#10b981;margin-left:3px"><use href="#i-check"/></svg>':''}</button>
+        <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="genEquipPDF('${q.id}')"><svg class="ic-sm"><use href="#i-camera"/></svg> 장비PDF${q.equipPdfUrl?'<svg class="ic-sm" style="color:#10b981;margin-left:3px"><use href="#i-check"/></svg>':''}</button>
+        ${q.pdfUrl?`<a href="${q.pdfUrl}" target="_blank" class="btn btn-sm" style="margin-left:4px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534" title="Drive에서 열기"><svg class="ic-sm"><use href="#i-cloud"/></svg></a>`:''}
+        ${q.equipPdfUrl?`<a href="${q.equipPdfUrl}" target="_blank" class="btn btn-sm" style="margin-left:4px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534" title="장비사진 Drive에서 열기"><svg class="ic-sm"><use href="#i-cloud"/></svg></a>`:''}
       </td>
-    </tr>`).join(''):`<tr><td colspan="8"><div class="empty"><span class="empty-icon">📄</span><div class="empty-txt">견적서가 없습니다.</div></div></td></tr>`;
+    </tr>`).join(''):`<tr><td colspan="8"><div class="empty"><svg class="empty-icon" style="width:42px;height:42px;color:var(--g300)"><use href="#i-document"/></svg><div class="empty-txt">견적서가 없습니다.</div></div></td></tr>`;
   document.getElementById('badge-qt').textContent=quotes.filter(q=>q.status==='작성중').length;
 }
 
@@ -1520,7 +1560,7 @@ async function saveQDraft(){
     syncQt(qt, isNew),
     _shouldUpgrade ? syncApp(app, false) : Promise.resolve()
   ]);
-  showToast('✏️ 견적서가 저장되었습니다.' + (_shouldUpgrade ? ' (신청 상태: 검토중)' : ''));
+  showToast('견적서가 저장되었습니다.' + (_shouldUpgrade ? ' (신청 상태: 검토중)' : ''));
 }
 
 async function sendQuote(){
@@ -1535,7 +1575,7 @@ async function sendQuote(){
   if(app) app.status='확정';
   closeModal('modal-quote'); renderQuotes(); renderApps(); renderDashboard();
   await Promise.all([syncQt(qt,isNew), app?syncApp(app,false):Promise.resolve()]);
-  showToast(`✅ ${d.company} 견적서가 확정되었습니다. 신청기업에서 PDF 다운로드가 가능합니다.`);
+  showToast(`${d.company} 견적서가 확정되었습니다. 신청기업에서 PDF 다운로드가 가능합니다.`);
 }
 
 // ═══════════════════════════════════════════
@@ -1784,14 +1824,14 @@ async function genPDF(qtId){
 
     const fileName=`BPK_견적서_${q.company}_${q.id}.pdf`;
     pdf.save(fileName);
-    showToast('📄 PDF 다운로드 완료' + (missing>0?` (사진 ${missing}장 누락)`:''));
+    showToast('PDF 다운로드 완료' + (missing>0?` (사진 ${missing}장 누락)`:''));
 
     // Drive 백업은 백그라운드로 (P2-3): 사용자 흐름 차단하지 않음
     // T1-3: 변경 없는 견적서는 재업로드 스킵
     if(API_ENABLED){
       const _hash = quoteHash(q);
       if(q.pdfUrl && q.pdfHash === _hash){
-        showToast('☁️ Drive 백업 (이전 PDF 재사용)');
+        showToast('Drive 백업 (이전 PDF 재사용)');
       } else {
         (async()=>{
           try{
@@ -1801,7 +1841,7 @@ async function genPDF(qtId){
               q.pdfUrl=url;
               q.pdfHash=_hash;
               await syncQt(q,false);
-              showToast('☁️ Drive 백업 완료');
+              showToast('Drive 백업 완료');
               renderQuotes(); // ☁️ 아이콘 갱신
             }
           }catch(e){ console.warn('견적서 Drive 저장 실패',e); }
@@ -1902,14 +1942,14 @@ async function genEquipPDF(qtId){
 
   const equipFileName=`BPK_장비사양_${q.company}_${q.id}.pdf`;
   pdf.save(equipFileName);
-  showToast('📸 장비사양 PDF 다운로드 완료' + (_missing>0?` (사진 ${_missing}장 누락)`:''));
+  showToast('장비사양 PDF 다운로드 완료' + (_missing>0?` (사진 ${_missing}장 누락)`:''));
 
   // Drive 백업은 백그라운드로 (P2-3)
   // T1-3: 변경 없는 장비사양 PDF는 재업로드 스킵
   if(API_ENABLED){
     const _ehash = quoteHash(q);
     if(q.equipPdfUrl && q.equipPdfHash === _ehash){
-      showToast('☁️ Drive 백업 (이전 PDF 재사용)');
+      showToast('Drive 백업 (이전 PDF 재사용)');
     } else {
       (async()=>{
         try{
@@ -1919,7 +1959,7 @@ async function genEquipPDF(qtId){
             q.equipPdfUrl=url;
             q.equipPdfHash=_ehash;
             await syncQt(q,false);
-            showToast('☁️ 장비사양 Drive 백업 완료');
+            showToast('장비사양 Drive 백업 완료');
             renderQuotes();
           }
         }catch(e){ console.warn('장비사양 PDF Drive 저장 실패',e); }
@@ -1954,7 +1994,10 @@ function renderDashboard(){
   const colors=['','green','orange','','green'];
   document.getElementById('prod-chart').innerHTML=tp.length?tp.map(([id,c],i)=>{const eq=equipment.find(e=>e.id===parseInt(id));return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600;color:var(--g700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px">${eq?.name||''}</span><span class="mono" style="color:var(--primary);flex-shrink:0;margin-left:8px">${c}건</span></div><div class="prog-bar"><div class="prog-fill ${colors[i]}" style="width:${c/mx2*100}%"></div></div></div>`;}).join(''):`<div class="empty" style="padding:20px"><span style="font-size:13px">데이터 없음</span></div>`;
   // Timeline
-  document.getElementById('tl-list').innerHTML=[...applications].reverse().slice(0,6).map(a=>`<li class="tl-item"><div class="tl-dot">${{'신청접수':'📬','검토중':'⏳','수정중':'✏️','확정':'✅','반려':'❌'}[a.status]||'📬'}</div><div class="tl-body"><div class="tl-title">${a.company} · ${a.pname||'-'}</div><div class="tl-date">${a.date} · ${a.id}</div><div class="tl-desc">${(a.processes||[]).join('·')} 공정 | ${(a.equipment||[]).length}개 장비 선택</div></div></li>`).join('')||`<li style="text-align:center;color:var(--g400);padding:20px;font-size:13px">신청 내역이 없습니다.</li>`;
+  document.getElementById('tl-list').innerHTML=[...applications].reverse().slice(0,6).map(a=>{
+    const tlIc={'신청접수':'i-mail','검토중':'i-clock','수정중':'i-edit','확정':'i-check','반려':'i-x'}[a.status]||'i-mail';
+    return `<li class="tl-item"><div class="tl-dot"><svg class="ic-sm" style="color:var(--g500)"><use href="#${tlIc}"/></svg></div><div class="tl-body"><div class="tl-title">${a.company} · ${a.pname||'-'}</div><div class="tl-date">${a.date} · ${a.id}</div><div class="tl-desc">${(a.processes||[]).join('·')} 공정 | ${(a.equipment||[]).length}개 장비 선택</div></div></li>`;
+  }).join('')||`<li style="text-align:center;color:var(--g400);padding:20px;font-size:13px">신청 내역이 없습니다.</li>`;
 }
 
 // ═══════════════════════════════════════════
@@ -1966,7 +2009,7 @@ function exportCSV(){
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=`BPK_신청현황_${new Date().toISOString().slice(0,10)}.csv`;a.click();
-  showToast('📥 엑셀 파일이 다운로드되었습니다.');
+  showToast('엑셀 파일이 다운로드되었습니다.');
 }
 
 // ═══════════════════════════════════════════
