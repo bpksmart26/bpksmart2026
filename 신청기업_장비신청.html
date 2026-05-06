@@ -1108,16 +1108,93 @@ function fillSample(idx){
 function showView(name){
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
-  // 'apply' 진입 시 항상 page1 부터 시작 (lookup → landing → apply 패턴 등에서 일관성 보장)
+  // 'landing' 진입 = 새로 시작이라고 간주: 모든 폼/상태 초기화
+  // ((주)비피케이 로고 + 처음으로 버튼 모두 showView('landing') 호출)
+  if(name === 'landing'){
+    try { resetAllFormsAndState(); } catch(e) { console.warn('reset 실패', e); }
+  }
+  // 'apply' 진입 시 항상 page1 부터 시작
   if(name === 'apply' && typeof goPage === 'function'){
     try { goPage(1); } catch(e) {}
   }
-  // 'lookup' 또는 'landing' 진입 시 이전 lookup 결과 초기화 (있다면)
-  if(name === 'lookup' || name === 'landing'){
-    const lr = document.getElementById('lookup-result');
-    if(lr) lr.innerHTML = '';
-  }
   window.scrollTo(0,0);
+}
+
+// 모든 폼 입력값 + 상태 초기화 (landing 진입 시 호출)
+function resetAllFormsAndState(){
+  // ── 1) 신청 위자드 page1 텍스트 입력
+  ['f-company','f-bizno','f-addr','f-ceo','f-manager','f-phone','f-email',
+   'f-pname','f-weight-num','f-qty','f-space-w','f-space-h','f-memo'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  const wu = document.getElementById('f-weight-unit');  if(wu) wu.value = 'g';
+  const sp = document.getElementById('f-speed');         if(sp) sp.value = '30';
+
+  // ── 2) 동의 체크 + 라디오/체크박스 (apply view 내부만)
+  const consent = document.getElementById('f-consent');
+  if(consent) consent.checked = false;
+  document.querySelectorAll('#view-apply input[type="radio"], #view-apply input[type="checkbox"]')
+    .forEach(input => { input.checked = false; });
+
+  // ── 3) chip / button 시각적 활성 상태
+  document.querySelectorAll('#view-apply .chip.on').forEach(c => c.classList.remove('on'));
+  document.querySelectorAll('#view-apply .speed-btn.on').forEach(c => c.classList.remove('on'));
+  document.querySelectorAll('#view-apply .prob-type-btn.on').forEach(c => c.classList.remove('on'));
+  document.querySelectorAll('#view-apply .prob-item.on').forEach(c => c.classList.remove('on'));
+  // 기본값 30 속도 버튼 다시 활성
+  const defSpeed = document.querySelector('#view-apply .speed-btn[data-speed="30"]');
+  if(defSpeed) defSpeed.classList.add('on');
+
+  // ── 4) 조건부 표시 영역 숨김
+  ['problem-sub-replace','problem-sub-new','air-flow-wrap'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.style.display = 'none';
+  });
+
+  // ── 5) 사진 업로드 영역 + 파일 input + 미리보기 초기화
+  const fp = document.getElementById('f-photo');         if(fp) fp.value = '';
+  const fsp = document.getElementById('f-space-photo');  if(fsp) fsp.value = '';
+  const pZone = document.getElementById('upload-zone');
+  if(pZone){
+    pZone.classList.remove('has-file');
+    pZone.innerHTML = `<input type="file" id="f-photo" accept="image/*" multiple onchange="handlePhoto(this)"/><div class="upload-icon">📷</div><div class="upload-lbl">클릭하여 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 3장</small></div>`;
+  }
+  const sZone = document.getElementById('space-upload-zone');
+  if(sZone){
+    sZone.classList.remove('has-file');
+    sZone.innerHTML = `<input type="file" id="f-space-photo" accept="image/*" multiple onchange="handleSpacePhoto(this)"/><div class="upload-icon">📐</div><div class="upload-lbl">공간 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 2장</small></div>`;
+  }
+  if(typeof _productPhotos !== 'undefined') _productPhotos = [];
+  if(typeof _spacePhotos !== 'undefined') _spacePhotos = [];
+
+  // ── 6) 공간 면적 hint 초기화
+  const sh = document.getElementById('space-area-hint');
+  if(sh) sh.textContent = '예: 가로 5m × 세로 8m = 40㎡';
+
+  // ── 7) 에러 표시
+  document.querySelectorAll('.fg.has-err').forEach(f => f.classList.remove('has-err'));
+  document.querySelectorAll('.err-msg').forEach(e => e.style.display = 'none');
+
+  // ── 8) state 변수
+  if(typeof formData !== 'undefined') formData = {};
+  if(typeof selectedEq !== 'undefined') selectedEq = new Set();
+
+  // ── 9) Step 5 영수증 / 업로드 배너 / 매칭 결과
+  const rn = document.getElementById('receipt-note');     if(rn) rn.innerHTML = '';
+  const ub = document.getElementById('upload-banner');    if(ub){ ub.style.display = 'none'; ub.classList.remove('success','error'); }
+  const eqList = document.getElementById('eq-list');      if(eqList) eqList.innerHTML = '';
+  const allEq = document.getElementById('all-eq-list');   if(allEq) allEq.innerHTML = '';
+  const selBarList = document.getElementById('sel-bar-list'); if(selBarList){ selBarList.innerHTML = ''; selBarList.style.display='none'; }
+  const selBarCount = document.getElementById('sel-bar-count'); if(selBarCount) selBarCount.textContent = '0';
+
+  // ── 10) 조회 폼 + 결과
+  ['l-company','l-bizno','l-phone'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.value = '';
+  });
+  ['fg-lc','fg-lb','fg-lp'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.classList.remove('has-err');
+  });
+  const lr = document.getElementById('lookup-result');    if(lr) lr.innerHTML = '';
 }
 
 // ═══════════════════════════════════════════
