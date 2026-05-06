@@ -23,11 +23,13 @@ const EQ_COLS  = ['id','name','model','price','category','desc','status',
 const APP_COLS = ['id','company','ceo','bizno','phone','email','address',
                   'pname','texture','processes','pkgtypes','qty','speed','memo',
                   'problem_type','problem_points','equipment','electric','air_yn','air_flow','space_w','space_h',
-                  'space_photos','product_photos','status','date','manager'];
+                  'space_photos','product_photos','status','date','manager',
+                  'contentHash'];
 // T1-3: pdfHash/equipPdfHash 추가 — Drive 재업로드 스킵 판정용 (자동 마이그레이션)
+// version/isLatest 추가 — 같은 appId 의 견적 버전 추적용
 const QT_COLS  = ['id','company','appId','process','memo','validUntil',
                   'items','total','eqCount','status','date','pdfUrl','equipPdfUrl',
-                  'pdfHash','equipPdfHash'];
+                  'pdfHash','equipPdfHash','version','isLatest'];
 
 const EQ_ARR   = ['photos','photos_pkg','videos'];
 const APP_ARR  = ['processes','pkgtypes','problem_points','equipment','electric','space_photos','product_photos'];
@@ -82,8 +84,9 @@ function doPost(e) {
       case 'updateApp':   result = updateRow(SN.APP,  APP_COLS, APP_ARR, data, 'id'); break;
 
       case 'getQts':      result = { ok:true, data: getRows(SN.QT,  QT_COLS,  QT_ARR,  {total:'number',eqCount:'number'}) }; break;
-      case 'saveQt':      result = appendRow(SN.QT,   QT_COLS,  QT_ARR,  data); break;
+      case 'saveQt':      result = saveQuoteWithVersion(data); break;
       case 'updateQt':    result = updateRow(SN.QT,   QT_COLS,  QT_ARR,  data, 'id'); break;
+      case 'deleteApps':  result = deleteApps(data); break;
 
       case 'getCfg':      result = { ok:true, data: getCfg() }; break;
       case 'saveCfg':     result = saveCfg(data); break;
@@ -260,6 +263,170 @@ function migrateQtDateColumn() {
   });
   range.setValues(newValues);
   Logger.log('완료: ' + newValues.length + ' 행 정규화됨');
+}
+
+// ============================================================
+// 신청 contentHash 마이그레이션 (Apps Script 에디터에서 1회 실행)
+// 기존 신청 행 중 contentHash 가 비어있는 것을 채움
+// ============================================================
+function migrateAppContentHash() {
+  const sheet = getSheet(SN.APP);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return Logger.log('데이터 행 없음');
+  const colIdx = APP_COLS.indexOf('contentHash');
+  if (colIdx < 0) return Logger.log('contentHash 컬럼 없음 — APP_COLS 확인');
+  if (sheet.getMaxColumns() < APP_COLS.length) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), APP_COLS.length - sheet.getMaxColumns());
+  }
+  sheet.getRange(1, 1, 1, APP_COLS.length).setValues([APP_COLS]);
+
+  let updated = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[colIdx]) continue; // 이미 있음
+    const obj = {};
+    APP_COLS.forEach((col, j) => { obj[col] = row[j]; });
+    const hash = _computeAppContentHash(obj);
+    sheet.getRange(i + 1, colIdx + 1).setValue(hash);
+    updated++;
+  }
+  Logger.log('완료: ' + updated + ' 행에 contentHash 부여');
+  return { updated };
+}
+
+// 신청 객체 → contentHash (16자 hex). 클라이언트 / 서버 모두 같은 알고리즘 사용
+function _computeAppContentHash(obj) {
+  const sortJoin = v => Array.isArray(v) ? v.slice().sort().join(',') : (v || '');
+  const _parse = v => {
+    if (Array.isArray(v)) return v;
+    try { return JSON.parse(v || '[]'); } catch (e) { return []; }
+  };
+  const parts = [
+    obj.bizno || '',
+    obj.pname || '',
+    obj.texture || '',
+    sortJoin(_parse(obj.processes)),
+    sortJoin(_parse(obj.pkgtypes)),
+    obj.qty || '',
+    obj.speed || '',
+    obj.problem_type || '',
+    sortJoin(_parse(obj.problem_points)),
+    sortJoin(_parse(obj.equipment).map(String)),
+    sortJoin(_parse(obj.electric)),
+    obj.air_yn || '',
+    obj.air_flow || '',
+    obj.space_w || '',
+    obj.space_h || '',
+    obj.memo || ''
+  ].join('|');
+  // MD5 16자만 사용 (충돌 가능성 무시 — 같은 회사 내 비교라 충분)
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, parts);
+  return bytes.map(b => ((b < 0 ? b + 256 : b)).toString(16).padStart(2, '0')).join('').slice(0, 16);
+}
+
+// ============================================================
+// 견적 신규 저장 (자동 버전 관리)
+// 같은 appId 의 기존 견적이 있으면 → 모두 isLatest='' 로 마킹 + 새 row 는 v+1, isLatest=1
+// 없으면 → v1, isLatest=1
+// ============================================================
+function saveQuoteWithVersion(data) {
+  const sheet = getSheet(SN.QT);
+  ensureHeader(sheet, QT_COLS);
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { ok:false, error:'동시 저장 충돌' }; }
+  try {
+    const all = sheet.getDataRange().getValues();
+    const idxAppId  = QT_COLS.indexOf('appId');
+    const idxVer    = QT_COLS.indexOf('version');
+    const idxLatest = QT_COLS.indexOf('isLatest');
+    let maxVer = 0;
+    const previousLatestRows = [];
+    for (let i = 1; i < all.length; i++) {
+      if (String(all[i][idxAppId]) === String(data.appId || '')) {
+        const v = Number(all[i][idxVer]) || 0;
+        if (v > maxVer) maxVer = v;
+        if (String(all[i][idxLatest]) === '1') previousLatestRows.push(i + 1);
+      }
+    }
+    // 기존 isLatest 모두 ''
+    previousLatestRows.forEach(r => sheet.getRange(r, idxLatest + 1).setValue(''));
+    // 새 행
+    data.version = maxVer + 1;
+    data.isLatest = '1';
+    const newRow = sheet.getLastRow() + 1;
+    const values = serializeRow(QT_COLS, QT_ARR, data);
+    sheet.getRange(newRow, 1, 1, values.length).setValues([values]);
+    _enforceTextDate(sheet, newRow, QT_COLS, data);
+    SpreadsheetApp.flush();
+    return { ok:true, version: data.version, isLatest:'1' };
+  } finally {
+    try { lock.releaseLock(); } catch(e) {}
+  }
+}
+
+// 신청 다중 삭제 (사용자 선택 기반 중복 정리)
+function deleteApps(data) {
+  const ids = Array.isArray(data.ids) ? data.ids.map(String) : [];
+  if (!ids.length) return { ok:true, deleted:0 };
+  const sheet = getSheet(SN.APP);
+  const all = sheet.getDataRange().getValues();
+  const idxId = APP_COLS.indexOf('id');
+  let deleted = 0;
+  // 아래에서 위로 삭제 (행 인덱스 안 깨짐)
+  for (let i = all.length - 1; i >= 1; i--) {
+    if (ids.includes(String(all[i][idxId]))) {
+      sheet.deleteRow(i + 1);
+      deleted++;
+    }
+  }
+  return { ok:true, deleted };
+}
+
+// ============================================================
+// 견적 version/isLatest 마이그레이션 (1회 실행)
+// 같은 appId 의 견적들을 date 순으로 정렬해 v1, v2, ... 부여
+// 가장 최신만 isLatest=1, 나머지는 isLatest=''
+// ============================================================
+function migrateQuoteVersions() {
+  const sheet = getSheet(SN.QT);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return Logger.log('견적 데이터 없음');
+  if (sheet.getMaxColumns() < QT_COLS.length) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), QT_COLS.length - sheet.getMaxColumns());
+  }
+  sheet.getRange(1, 1, 1, QT_COLS.length).setValues([QT_COLS]);
+
+  const idxId      = QT_COLS.indexOf('id');
+  const idxAppId   = QT_COLS.indexOf('appId');
+  const idxDate    = QT_COLS.indexOf('date');
+  const idxVersion = QT_COLS.indexOf('version');
+  const idxLatest  = QT_COLS.indexOf('isLatest');
+
+  // 행 수집 + appId 그룹핑
+  const rows = data.slice(1).map((r, i) => ({ rowIdx: i + 2, id: r[idxId], appId: r[idxAppId], date: String(r[idxDate] || ''), version: r[idxVersion], isLatest: r[idxLatest] }));
+  const groups = {};
+  rows.forEach(r => {
+    const key = r.appId || '__no_app__';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+
+  let updated = 0;
+  Object.keys(groups).forEach(appId => {
+    const list = groups[appId].slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.rowIdx - b.rowIdx));
+    list.forEach((r, i) => {
+      const newVersion = i + 1;
+      const newLatest = (i === list.length - 1) ? '1' : '';
+      if (String(r.version) !== String(newVersion) || String(r.isLatest) !== String(newLatest)) {
+        sheet.getRange(r.rowIdx, idxVersion + 1).setValue(newVersion);
+        sheet.getRange(r.rowIdx, idxLatest + 1).setValue(newLatest);
+        updated++;
+      }
+    });
+  });
+
+  Logger.log('완료: ' + updated + ' 행에 version/isLatest 부여');
+  return { updated };
 }
 
 function upsertRow(sheetName, cols, arrCols, obj, keyCol) {
