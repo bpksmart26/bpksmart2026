@@ -1746,50 +1746,55 @@ async function goStep5(){
   const dateStr=`${_now.getFullYear()}-${_pad(_now.getMonth()+1)}-${_pad(_now.getDate())} ${_pad(_now.getHours())}:${_pad(_now.getMinutes())}`;
   const app={id,status:'신청접수',date:dateStr,...formData,equipment:[...selectedEq]};
 
-  // 공간 사진: API 사용 시 Drive에 업로드 후 URL로 교체
-  if(API_ENABLED && app.space_photos && app.space_photos.length>0){
-    showApiLoading('공간 사진을 업로드하는 중...');
-    try{
-      app.space_photos = await apiUploadPhotos(
-        app.space_photos, `space_${id}`,
-        { type: 'space', company: formData.company }
-      );
-    }catch(e){ console.warn('사진 업로드 실패, base64 유지'); }
-    finally{ hideApiLoading(); }
-  }
-  // 제품 사진: API 사용 시 Drive에 업로드
-  if(API_ENABLED && app.product_photos && app.product_photos.length>0){
-    showApiLoading('제품 사진을 업로드하는 중...');
-    try{
-      app.product_photos = await apiUploadPhotos(
-        app.product_photos, `product_${id}`,
-        { type: 'product', company: formData.company }
-      );
-    }catch(e){ console.warn('제품 사진 업로드 실패, base64 유지'); }
-    finally{ hideApiLoading(); }
-  }
+  const _spaceCount = (app.space_photos||[]).length;
+  const _productCount = (app.product_photos||[]).length;
+  const _totalPhotos = _spaceCount + _productCount;
 
+  // ── 1) 완료 화면 즉시 표시 (사용자 체감 0초)
+  const _renderReceipt = (statusLine) => {
+    document.getElementById('receipt-note').innerHTML =
+      `기업명: <strong>${formData.company}</strong><br>` +
+      `담당자: ${formData.manager} (${formData.phone})<br>` +
+      `선택 장비: ${selectedEq.size}개<br>` +
+      `접수일시: ${app.date}<br><br>` +
+      `담당자 이메일(${formData.email})로 접수 확인 안내가 발송됩니다.<br><br>` +
+      statusLine;
+  };
+
+  if(_totalPhotos > 0 && API_ENABLED){
+    _renderReceipt(`<small style="color:#92400e">📸 사진 ${_totalPhotos}장을 업로드하고 있습니다... (페이지를 닫지 마세요)</small>`);
+  } else {
+    _renderReceipt(`<small style="color:#059669">✅ 접수 완료</small>`);
+  }
+  goPage(5);
+
+  // ── 2) 백그라운드: 사진 병렬 업로드 + 저장
   if(API_ENABLED){
-    // API 사용 시: Sheets에만 저장 (다른 사용자에게 로컬 데이터 노출 방지)
-    showApiLoading('신청 내용을 접수하는 중...');
-    try{ await apiCall('saveApp',app); }
-    catch(e){
-      // 서버 저장 실패 시 로컬 임시 저장 (조회 시 활용)
+    try {
+      // 공간 사진 + 제품 사진을 양 그룹 병렬 업로드 (apiUploadPhotos 자체도 병렬)
+      const [spaceUrls, productUrls] = await Promise.all([
+        _spaceCount   ? apiUploadPhotos(app.space_photos,   `space_${id}`,   { type:'space',   company: formData.company }) : Promise.resolve([]),
+        _productCount ? apiUploadPhotos(app.product_photos, `product_${id}`, { type:'product', company: formData.company }) : Promise.resolve([])
+      ]);
+      app.space_photos = spaceUrls;
+      app.product_photos = productUrls;
+
+      await apiCall('saveApp', app);
+      _renderReceipt(`<small style="color:#059669">✅ 사진 업로드 + 신청 접수 완료</small>`);
+    } catch(e) {
+      // 서버 저장 실패 시 로컬 임시 저장
       const apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
       apps.push(app);
       localStorage.setItem(SK.APP,JSON.stringify(apps));
-      console.warn('서버 저장 실패, 로컬 임시 저장됨');
+      console.warn('서버 저장 실패, 로컬 임시 저장됨', e);
+      _renderReceipt(`<small style="color:#dc2626">⚠️ 서버 저장 실패. 로컬에 임시 저장되었습니다. 담당자가 곧 확인합니다.</small>`);
     }
-    finally{ hideApiLoading(); }
   } else {
-    // API 미사용 시: localStorage에 저장
+    // API 미사용 시: 즉시 localStorage 저장
     const apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
     apps.push(app);
     localStorage.setItem(SK.APP,JSON.stringify(apps));
   }
-
-  document.getElementById('receipt-note').innerHTML=`기업명: <strong>${formData.company}</strong><br>담당자: ${formData.manager} (${formData.phone})<br>선택 장비: ${selectedEq.size}개<br>접수일시: ${app.date}<br><br>담당자 이메일(${formData.email})로 접수 확인 안내가 발송됩니다.`;
-  goPage(5);
 }
 
 // ═══════════════════════════════════════════

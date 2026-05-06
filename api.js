@@ -34,14 +34,14 @@ async function apiUploadPhoto(base64DataUrl, name, meta) {
   return (res && res.ok && res.url) ? res.url : base64DataUrl;
 }
 
-// ── 여러 장 업로드 (순차, 새 base64만 업로드)
+// ── 여러 장 업로드 (병렬, 새 base64만 업로드)
+// Promise.all 로 모든 사진을 한꺼번에 GAS 로 전송 → 5장 사진 기준 5-15초 → 2-4초로 단축
+// 업로드 실패 시 apiUploadPhoto 가 원본 base64 반환하므로 reject 안 됨 → 순서 보존
 async function apiUploadPhotos(base64Array, prefix, meta) {
-  const urls = [];
-  for (let i = 0; i < base64Array.length; i++) {
-    const url = await apiUploadPhoto(base64Array[i], `${prefix}_${i+1}.jpg`, meta);
-    urls.push(url);
-  }
-  return urls;
+  if (!base64Array || !base64Array.length) return [];
+  return Promise.all(
+    base64Array.map((b64, i) => apiUploadPhoto(b64, `${prefix}_${i+1}.jpg`, meta))
+  );
 }
 
 // ── 로딩 오버레이 표시/숨김 (선택적 UI 헬퍼)
