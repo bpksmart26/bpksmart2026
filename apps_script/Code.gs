@@ -156,6 +156,7 @@ function getRows(sheetName, cols, arrCols, numCols) {
   const sheet = getSheet(sheetName);
   const data  = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
+  const pad = n => String(n).padStart(2, '0');
   return data.slice(1).map(row => {
     const obj = {};
     cols.forEach((col, i) => {
@@ -164,6 +165,12 @@ function getRows(sheetName, cols, arrCols, numCols) {
         try { obj[col] = JSON.parse(val || '[]'); } catch(e) { obj[col] = []; }
       } else if (numCols && numCols[col] === 'number') {
         obj[col] = Number(val) || 0;
+      } else if (val instanceof Date) {
+        // 기존에 Date 객체로 저장된 셀: 시간 정보 있으면 함께, 없으면 날짜만
+        const hasTime = val.getHours() !== 0 || val.getMinutes() !== 0 || val.getSeconds() !== 0;
+        obj[col] = hasTime
+          ? `${val.getFullYear()}-${pad(val.getMonth()+1)}-${pad(val.getDate())} ${pad(val.getHours())}:${pad(val.getMinutes())}`
+          : `${val.getFullYear()}-${pad(val.getMonth()+1)}-${pad(val.getDate())}`;
       } else {
         obj[col] = (val !== undefined && val !== null) ? String(val) : '';
       }
@@ -183,9 +190,18 @@ function serializeRow(cols, arrCols, obj) {
   });
 }
 
+// date 컬럼이 있으면 해당 셀을 plain text 포맷으로 (Sheets가 'YYYY-MM-DD HH:MM' 을 datetime 으로 자동 변환해 시간 잘라내는 현상 방지)
+function _forceTextFormatForDate(sheet, rowIdx, cols) {
+  const dateIdx = cols.indexOf('date');
+  if (dateIdx < 0) return;
+  try { sheet.getRange(rowIdx, dateIdx + 1).setNumberFormat('@'); } catch (e) {}
+}
+
 function appendRow(sheetName, cols, arrCols, obj) {
   const sheet = getSheet(sheetName);
   ensureHeader(sheet, cols);
+  const newRow = sheet.getLastRow() + 1;
+  _forceTextFormatForDate(sheet, newRow, cols);
   sheet.appendRow(serializeRow(cols, arrCols, obj));
   return { ok:true };
 }
@@ -196,11 +212,14 @@ function updateRow(sheetName, cols, arrCols, obj, keyCol) {
   const keyIdx = cols.indexOf(keyCol);
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][keyIdx]) === String(obj[keyCol])) {
+      _forceTextFormatForDate(sheet, i + 1, cols);
       sheet.getRange(i+1, 1, 1, cols.length).setValues([serializeRow(cols, arrCols, obj)]);
       return { ok:true };
     }
   }
   // 없으면 추가
+  const newRow = sheet.getLastRow() + 1;
+  _forceTextFormatForDate(sheet, newRow, cols);
   sheet.appendRow(serializeRow(cols, arrCols, obj));
   return { ok:true, action:'inserted' };
 }
