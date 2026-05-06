@@ -190,19 +190,28 @@ function serializeRow(cols, arrCols, obj) {
   });
 }
 
-// date 컬럼이 있으면 해당 셀을 plain text 포맷으로 (Sheets가 'YYYY-MM-DD HH:MM' 을 datetime 으로 자동 변환해 시간 잘라내는 현상 방지)
-function _forceTextFormatForDate(sheet, rowIdx, cols) {
+// date 컬럼이 있으면 해당 셀을 plain text 포맷으로 + 값 재작성 (Sheets가 'YYYY-MM-DD HH:MM' 을 datetime 으로 자동 변환해 시간 잘라내는 현상 방지)
+function _enforceTextDate(sheet, rowIdx, cols, obj) {
   const dateIdx = cols.indexOf('date');
   if (dateIdx < 0) return;
-  try { sheet.getRange(rowIdx, dateIdx + 1).setNumberFormat('@'); } catch (e) {}
+  try {
+    const cell = sheet.getRange(rowIdx, dateIdx + 1);
+    cell.setNumberFormat('@');                 // 1) 셀 포맷을 plain text 로
+    if (obj && obj.date != null) {
+      cell.setValue(String(obj.date));         // 2) text 포맷이 적용된 후 값을 다시 명시적 String 으로 setValue
+    }
+  } catch (e) {}
 }
 
 function appendRow(sheetName, cols, arrCols, obj) {
   const sheet = getSheet(sheetName);
   ensureHeader(sheet, cols);
+  const values = serializeRow(cols, arrCols, obj);
   const newRow = sheet.getLastRow() + 1;
-  _forceTextFormatForDate(sheet, newRow, cols);
-  sheet.appendRow(serializeRow(cols, arrCols, obj));
+  // 먼저 setValues 로 행 전체 작성 (appendRow 는 자동 파싱 가능성 있음)
+  sheet.getRange(newRow, 1, 1, values.length).setValues([values]);
+  // date 셀은 text 포맷 + 값 재작성으로 시간 보존 강제
+  _enforceTextDate(sheet, newRow, cols, obj);
   return { ok:true };
 }
 
@@ -212,16 +221,45 @@ function updateRow(sheetName, cols, arrCols, obj, keyCol) {
   const keyIdx = cols.indexOf(keyCol);
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][keyIdx]) === String(obj[keyCol])) {
-      _forceTextFormatForDate(sheet, i + 1, cols);
       sheet.getRange(i+1, 1, 1, cols.length).setValues([serializeRow(cols, arrCols, obj)]);
+      _enforceTextDate(sheet, i + 1, cols, obj);
       return { ok:true };
     }
   }
   // 없으면 추가
+  const values = serializeRow(cols, arrCols, obj);
   const newRow = sheet.getLastRow() + 1;
-  _forceTextFormatForDate(sheet, newRow, cols);
-  sheet.appendRow(serializeRow(cols, arrCols, obj));
+  sheet.getRange(newRow, 1, 1, values.length).setValues([values]);
+  _enforceTextDate(sheet, newRow, cols, obj);
   return { ok:true, action:'inserted' };
+}
+
+// 일회성 마이그레이션: 견적 시트의 date 컬럼 전체를 text 포맷으로 + Date 객체를 'YYYY-MM-DD HH:MM' 문자열로 변환
+// Apps Script 에디터 함수 드롭다운에서 직접 실행 (▶️ 버튼)
+function migrateQtDateColumn() {
+  const sheet = getSheet(SN.QT);
+  const dateIdx = QT_COLS.indexOf('date') + 1;  // 1-based
+  if (dateIdx < 1) return Logger.log('date 컬럼 없음');
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return Logger.log('데이터 행 없음');
+
+  const range = sheet.getRange(2, dateIdx, lastRow - 1, 1);
+  const values = range.getValues();
+  range.setNumberFormat('@');  // 컬럼 전체를 plain text 로
+
+  const pad = n => String(n).padStart(2, '0');
+  const newValues = values.map(([v]) => {
+    if (v instanceof Date) {
+      const hasTime = v.getHours() !== 0 || v.getMinutes() !== 0 || v.getSeconds() !== 0;
+      const dt = hasTime
+        ? `${v.getFullYear()}-${pad(v.getMonth()+1)}-${pad(v.getDate())} ${pad(v.getHours())}:${pad(v.getMinutes())}`
+        : `${v.getFullYear()}-${pad(v.getMonth()+1)}-${pad(v.getDate())}`;
+      return [dt];
+    }
+    return [String(v == null ? '' : v)];
+  });
+  range.setValues(newValues);
+  Logger.log('완료: ' + newValues.length + ' 행 정규화됨');
 }
 
 function upsertRow(sheetName, cols, arrCols, obj, keyCol) {
