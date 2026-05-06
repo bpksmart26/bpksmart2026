@@ -225,6 +225,23 @@ async function loadJikin() {
 }
 
 // ============================================================
+// 현재 시각 — 'YYYY-MM-DD HH:MM' (한국 로컬 시간 기준)
+// 견적서 작성/수정 일시, 신청 접수 일시 등에 사용
+// ============================================================
+function nowDateTime() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// 'YYYY-MM-DD' (날짜만 — CSV 파일명, 견적 유효일 등)
+function nowDate() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+// ============================================================
 // 견적서 변경 감지 해시 (T1-3: Drive 재업로드 스킵 판정용)
 // 항목/수량/가격/공정/비고가 같으면 동일 PDF로 간주
 // ============================================================

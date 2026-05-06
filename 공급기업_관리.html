@@ -1396,7 +1396,8 @@ function getQData(status){
     return {name:eq.name,model:eq.model||'',qty,unit:'SET',price:eq.price};
   }).filter(Boolean);
   const total=items.reduce((s,i)=>s+i.qty*i.price,0);
-  return{company,appId,process,memo,items,total,eqCount:items.length,status,date:new Date().toISOString().slice(0,10)};
+  // 견적서 작성/수정 일시 — 'YYYY-MM-DD HH:MM' (common.js)
+  return{company,appId,process,memo,items,total,eqCount:items.length,status,date:nowDateTime()};
 }
 
 async function saveQDraft(){
