@@ -1150,6 +1150,14 @@ function filterApps(q){appQ=q;renderApps();}
 function filterAppStatus(v){appSt=v;renderApps();}
 function filterAppProcess(v){appProc=v;renderApps();}
 
+// 펼쳐진 그룹 추적 (재렌더 시 상태 유지)
+let _expandedGroups = new Set();
+function toggleAppGroup(groupId){
+  if(_expandedGroups.has(groupId)) _expandedGroups.delete(groupId);
+  else _expandedGroups.add(groupId);
+  renderApps();
+}
+
 function renderApps(){
   let data=applications.filter(a=>{
     const mq=!appQ||a.company.includes(appQ)||a.manager.includes(appQ);
@@ -1158,30 +1166,251 @@ function renderApps(){
     return mq&&ms&&mp;
   });
   const tb=document.getElementById('app-tbody');
-  tb.innerHTML=data.length?data.map(a=>{
-    const eqNames=(a.equipment||[]).map(id=>{const e=equipment.find(x=>x.id===id);return e?e.name:''}).join(', ');
-    return `<tr onclick="openAppDetail('${a.id}')" style="cursor:pointer">
-      <td><span class="mono">${a.id}</span></td>
-      <td><span class="fw">${a.company}</span></td>
-      <td>${a.manager}</td>
-      <td><span class="mono" style="font-size:11px">${a.phone}</span></td>
-      <td>${a.pname||'-'}</td>
-      <td>${(a.processes||[]).map(p=>`<span class="badge b-new" style="margin:1px;font-size:11px">${p}</span>`).join('')}</td>
-      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--g500)">${eqNames||'-'}</td>
-      <td>${statusBadge(a.status)}</td>
-      <td><span class="mono" style="font-size:10px">${a.date}</span></td>
-      <td onclick="event.stopPropagation()" style="white-space:nowrap">
-        <button class="btn btn-sm btn-outline" onclick="openAppDetail('${a.id}')">상세</button>
-        <button class="btn btn-sm btn-primary" style="margin-left:4px" onclick="openQuoteModal('${a.id}')">견적</button>
-      </td>
-    </tr>`;
-  }).join(''):`<tr><td colspan="10"><div class="empty"><svg class="empty-icon" style="width:42px;height:42px;color:var(--g300)"><use href="#i-inbox"/></svg><div class="empty-txt">신청 내역이 없습니다.</div></div></td></tr>`;
+  if(!data.length){
+    tb.innerHTML = `<tr><td colspan="10"><div class="empty"><svg class="empty-icon" style="width:42px;height:42px;color:var(--g300)"><use href="#i-inbox"/></svg><div class="empty-txt">신청 내역이 없습니다.</div></div></td></tr>`;
+  } else {
+    const groups = groupAppsByBizno(data);
+    tb.innerHTML = groups.map(g => _renderAppGroup(g)).join('');
+  }
 
   document.getElementById('st-total').textContent=applications.length;
   document.getElementById('st-new').textContent=applications.filter(a=>a.status==='신청접수').length;
   document.getElementById('st-ok').textContent=applications.filter(a=>a.status==='확정').length;
   document.getElementById('st-rev').textContent=applications.filter(a=>a.status==='검토중'||a.status==='수정중').length;
   document.getElementById('badge-new').textContent=applications.filter(a=>a.status==='신청접수').length;
+}
+
+// 그룹 헤더 + 자식 행
+function _renderAppGroup(g){
+  const groupId = 'grp-' + (g.bizno || g.latest.id).replace(/[^a-zA-Z0-9가-힣]/g,'').slice(0,32);
+  const expanded = _expandedGroups.has(groupId) || g.all.length === 1;
+  const uniqueHashes = new Set(g.all.map(a => a.contentHash || a.id));
+  const dupCount = g.all.length - uniqueHashes.size; // 중복 행 수
+  const isMulti = g.all.length >= 2;
+
+  let html = `<tr class="grp-hdr-row" data-grp="${groupId}" onclick="toggleAppGroup('${groupId}')">
+    <td colspan="10" style="padding:12px 16px;background:var(--g50);cursor:pointer;border-bottom:1px solid var(--g200)">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <svg class="ic" style="transform:rotate(${expanded?'90':'0'}deg);transition:transform .15s;color:var(--g500)"><use href="#i-list"/></svg>
+        <span class="fw" style="font-size:14.5px">${g.company||'(이름없음)'}</span>
+        <span style="font-size:12px;color:var(--g500);font-weight:600">${g.all.length}건</span>
+        ${dupCount>0 ? `<span class="badge b-rej" style="font-size:10.5px">중복 ${dupCount}건</span>` : ''}
+        ${g.hasChanges && uniqueHashes.size>=2 ? `<span class="badge b-mod" style="font-size:10.5px">변경 ${uniqueHashes.size-1}건</span>` : ''}
+        <span style="margin-left:auto;display:flex;gap:6px" onclick="event.stopPropagation()">
+          ${dupCount>0 ? `<button class="btn btn-sm btn-outline" onclick="openDedupModal('${g.bizno||''}')"><svg class="ic-sm"><use href="#i-trash"/></svg> 중복 정리</button>` : ''}
+          ${isMulti ? `<button class="btn btn-sm btn-outline" onclick="openCompareModal('${g.bizno||''}')"><svg class="ic-sm"><use href="#i-eye"/></svg> 비교</button>` : ''}
+        </span>
+      </div>
+    </td>
+  </tr>`;
+
+  if(expanded){
+    html += g.all.map((a, i) => _renderAppRow(a, i, g)).join('');
+  }
+  return html;
+}
+
+function _renderAppRow(a, i, g){
+  const eqNames=(a.equipment||[]).map(id=>{const e=equipment.find(x=>x.id===id);return e?e.name:''}).filter(Boolean).join(', ');
+  const sameHashCount = g.all.filter(x => (x.contentHash||x.id) === (a.contentHash||a.id)).length;
+  let label = '';
+  if(g.all.length>1){
+    if(i===0) label = '<span class="badge b-new" style="margin-right:4px;font-size:10px">최신</span>';
+    if(sameHashCount>=2 && i>0) label += '<span class="badge b-rej" style="margin-right:4px;font-size:10px">중복</span>';
+  }
+  return `<tr onclick="openAppDetail('${a.id}')" style="cursor:pointer">
+    <td><span class="mono">${a.id}</span></td>
+    <td>${label}<span style="color:var(--g500);font-size:12px">${a.company}</span></td>
+    <td>${a.manager||'-'}</td>
+    <td><span class="mono" style="font-size:11px">${a.phone||''}</span></td>
+    <td>${a.pname||'-'}</td>
+    <td>${(a.processes||[]).map(p=>`<span class="badge b-new" style="margin:1px;font-size:11px">${p}</span>`).join('')}</td>
+    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--g500)">${eqNames||'-'}</td>
+    <td>${statusBadge(a.status)}</td>
+    <td><span class="mono" style="font-size:10px">${a.date}</span></td>
+    <td onclick="event.stopPropagation()" style="white-space:nowrap">
+      <button class="btn btn-sm btn-outline" onclick="openAppDetail('${a.id}')">상세</button>
+      <button class="btn btn-sm btn-primary" style="margin-left:4px" onclick="openQuoteModal('${a.id}')">견적</button>
+    </td>
+  </tr>`;
+}
+
+// ═══════════════════════════════════════════
+// 중복 정리 모달 — 사용자가 삭제할 행 선택
+// ═══════════════════════════════════════════
+function openDedupModal(bizno){
+  const list = applications.filter(a => (a.bizno||'') === bizno);
+  if(!list.length) return;
+  // 그룹 안에서 같은 contentHash 끼리 묶기
+  const hashGroups = {};
+  list.forEach(a => {
+    const h = a.contentHash || ('__none_' + a.id);
+    if(!hashGroups[h]) hashGroups[h] = [];
+    hashGroups[h].push(a);
+  });
+  const dups = Object.values(hashGroups).filter(g => g.length >= 2);
+  if(!dups.length){ showToast('중복 항목이 없습니다.', 'warn'); return; }
+
+  const dupRows = dups.flatMap(g => g.slice().sort((a,b) => a.date < b.date ? -1 : 1));
+  const company = list[0].company;
+
+  const html = `
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-title">중복 신청 정리</div>
+        <div class="modal-sub">${company} · 동일 내용으로 중복 제출된 신청 ${dupRows.length}건</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-dedup')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="notice notice-warn" style="margin-bottom:14px">
+        삭제할 행을 선택해 주세요. 삭제된 데이터는 복구할 수 없습니다.<br>
+        <small style="opacity:.85">동일한 contentHash 의 행 중 1건은 반드시 남겨야 합니다.</small>
+      </div>
+      <div id="dedup-list" style="display:flex;flex-direction:column;gap:6px">
+        ${dups.map((grp, gi) => `
+          <div style="border:1px solid var(--g200);border-radius:8px;padding:10px 12px;background:var(--g50)">
+            <div style="font-size:11px;font-weight:700;color:var(--g500);margin-bottom:8px;letter-spacing:.5px">중복 그룹 ${gi+1} · ${grp.length}건 (모두 동일 내용)</div>
+            ${grp.map((a, ai) => `
+              <label style="display:flex;align-items:center;gap:10px;padding:6px 4px;cursor:pointer">
+                <input type="checkbox" class="dedup-chk" data-id="${a.id}" data-grp="${gi}" style="width:18px;height:18px;accent-color:var(--danger)"/>
+                <span class="mono" style="font-size:11px;color:var(--g500);min-width:120px">${a.id}</span>
+                <span class="mono" style="font-size:11px;color:var(--g500)">${a.date}</span>
+                <span style="font-size:12px;color:var(--g700);margin-left:auto">${statusBadge(a.status)}</span>
+                ${ai===0?'<span class="badge b-new" style="font-size:10px">가장 오래됨</span>':''}
+              </label>
+            `).join('')}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-dedup')">취소</button>
+      <button class="btn btn-danger" onclick="confirmDedup()" id="dedup-confirm-btn"><svg class="ic-sm"><use href="#i-trash"/></svg> 선택한 항목 삭제</button>
+    </div>`;
+  let dedupModal = document.getElementById('modal-dedup');
+  if(!dedupModal){
+    dedupModal = document.createElement('div');
+    dedupModal.id = 'modal-dedup';
+    dedupModal.className = 'modal-ov';
+    dedupModal.innerHTML = '<div class="modal" style="max-width:680px"></div>';
+    document.body.appendChild(dedupModal);
+    dedupModal.addEventListener('click', e => { if(e.target===dedupModal) closeModal('modal-dedup'); });
+  }
+  dedupModal.querySelector('.modal').innerHTML = html;
+  openModal('modal-dedup');
+}
+
+async function confirmDedup(){
+  const selected = [...document.querySelectorAll('.dedup-chk:checked')].map(c => c.dataset.id);
+  if(!selected.length){ alert('삭제할 항목을 1개 이상 선택해 주세요.'); return; }
+  // 같은 그룹의 모든 행이 선택됐으면 막음 (1건은 반드시 남김)
+  const byGrp = {};
+  document.querySelectorAll('.dedup-chk').forEach(c => {
+    const g = c.dataset.grp;
+    if(!byGrp[g]) byGrp[g] = { total:0, selected:0 };
+    byGrp[g].total++;
+    if(c.checked) byGrp[g].selected++;
+  });
+  for(const g in byGrp){
+    if(byGrp[g].selected >= byGrp[g].total){
+      alert(`중복 그룹 ${parseInt(g)+1} 의 모든 행이 선택되었습니다.\n각 그룹에서 최소 1건은 남겨야 합니다.`);
+      return;
+    }
+  }
+  if(!confirm(`선택한 ${selected.length}건의 신청을 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+
+  const btn = document.getElementById('dedup-confirm-btn');
+  btn.disabled = true; btn.textContent = '삭제 중...';
+  try {
+    if(API_ENABLED){
+      const res = await apiCall('deleteApps', { ids: selected });
+      if(!res || !res.ok){ throw new Error(res?.error || '서버 응답 이상'); }
+    }
+    applications = applications.filter(a => !selected.includes(a.id));
+    saveApps();
+    closeModal('modal-dedup');
+    renderApps(); renderDashboard();
+    showToast(`${selected.length}건이 삭제되었습니다.`);
+  } catch(e){
+    alert('삭제 실패: ' + e.message);
+    btn.disabled = false; btn.innerHTML = '<svg class="ic-sm"><use href="#i-trash"/></svg> 선택한 항목 삭제';
+  }
+}
+
+// ═══════════════════════════════════════════
+// 비교 모달 — 같은 회사의 2개 신청을 좌우 비교
+// ═══════════════════════════════════════════
+function openCompareModal(bizno){
+  const list = applications.filter(a => (a.bizno||'') === bizno);
+  if(list.length < 2){ showToast('비교할 신청이 2건 이상 있어야 합니다.', 'warn'); return; }
+  const sorted = list.slice().sort((a,b) => a.date < b.date ? 1 : -1);
+  const left = sorted[0]; // 최신
+  const right = sorted[1]; // 그 이전
+  const company = left.company;
+
+  const fields = [
+    ['일시', a => a.date],
+    ['상태', a => a.status],
+    ['생산 제품', a => a.pname || '-'],
+    ['제품 물성', a => a.texture || '-'],
+    ['포장 형태', a => (a.pkgtypes||[]).join(', ') || '-'],
+    ['일 수량', a => a.qty || '-'],
+    ['목표 속도', a => a.speed ? a.speed + '개/분' : '-'],
+    ['도입 목적', a => a.problem_type || '-'],
+    ['공정 문제점', a => (a.problem_points||[]).join(', ') || '-'],
+    ['개선 공정', a => (a.processes||[]).join(', ') || '-'],
+    ['선택 장비', a => (a.equipment||[]).map(id => { const e = equipment.find(x => x.id===id); return e ? e.name : '#'+id; }).join(', ') || '-'],
+    ['전기', a => (a.electric||[]).join(', ') || '-'],
+    ['공압', a => (a.air_yn||'-') + (a.air_flow ? ' / '+a.air_flow : '')],
+    ['공간', a => (a.space_w && a.space_h) ? `${a.space_w}m × ${a.space_h}m` : '-'],
+    ['추가 요청', a => a.memo || '-']
+  ];
+
+  const rows = fields.map(([label, fn]) => {
+    const lv = fn(left); const rv = fn(right);
+    const diff = String(lv) !== String(rv);
+    return `<tr style="${diff?'background:#fffbeb':''}">
+      <td style="padding:8px 10px;font-size:12px;color:var(--g500);font-weight:600;border-bottom:1px solid var(--g100);width:100px">${label}</td>
+      <td style="padding:8px 10px;font-size:13px;border-bottom:1px solid var(--g100);${diff?'font-weight:700;color:#92400e':'color:var(--g700)'}">${lv}</td>
+      <td style="padding:8px 10px;font-size:13px;border-bottom:1px solid var(--g100);${diff?'font-weight:700;color:#92400e':'color:var(--g700)'}">${rv}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-title">신청 비교</div>
+        <div class="modal-sub">${company} · 최신 2건 비교 (다른 항목은 노란색)</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-compare')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px 20px">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr>
+            <th style="padding:8px 10px;font-size:11px;color:var(--g500);text-align:left;border-bottom:2px solid var(--g300);width:100px">항목</th>
+            <th style="padding:8px 10px;font-size:11px;color:var(--primary);text-align:left;border-bottom:2px solid var(--g300)">${left.id} <span class="badge b-new" style="font-size:9px;margin-left:4px">최신</span></th>
+            <th style="padding:8px 10px;font-size:11px;color:var(--g600);text-align:left;border-bottom:2px solid var(--g300)">${right.id}</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-compare')">닫기</button>
+    </div>`;
+  let cmpModal = document.getElementById('modal-compare');
+  if(!cmpModal){
+    cmpModal = document.createElement('div');
+    cmpModal.id = 'modal-compare';
+    cmpModal.className = 'modal-ov';
+    cmpModal.innerHTML = '<div class="modal" style="max-width:780px"></div>';
+    document.body.appendChild(cmpModal);
+    cmpModal.addEventListener('click', e => { if(e.target===cmpModal) closeModal('modal-compare'); });
+  }
+  cmpModal.querySelector('.modal').innerHTML = html;
+  openModal('modal-compare');
 }
 
 function openAppDetail(id){
