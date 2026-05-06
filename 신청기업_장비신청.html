@@ -2117,6 +2117,33 @@ async function downloadPDF(appId){
   }
   const app=apps.find(a=>a.id===appId); if(!app) return;
   const quote=quotesAll.find(q=>q.appId===appId);
+
+  // ── 1) 우선 시도: Drive 에 저장된 공급기업 PDF 직접 다운로드 (가장 최신 견적서 파일)
+  if(API_ENABLED){
+    showApiLoading('견적서 파일을 가져오는 중...');
+    try{
+      const res = await apiCall('getLatestQuotePdf', { company: app.company, appId: appId });
+      hideApiLoading();
+      if(res && res.ok && res.downloadUrl){
+        const a = document.createElement('a');
+        a.href = res.downloadUrl;
+        a.download = res.fileName || `BPK_견적서_${app.company}_${appId}.pdf`;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast('견적서 다운로드 시작 — ' + (res.fileName || 'PDF'));
+        return;
+      } else if(res && res.error){
+        console.warn('[downloadPDF] Drive 검색 실패:', res.error);
+      }
+    } catch(e){
+      hideApiLoading();
+      console.warn('[downloadPDF] getLatestQuotePdf 예외:', e);
+    }
+  }
+  // ── 2) Fallback: API 미사용 또는 Drive 에 파일 없음 → 브라우저 즉시 생성
   const eqItems=(app.equipment||[]).map(id=>EQUIPMENT.find(e=>e.id===id)).filter(Boolean);
   const total=quote?quote.total:eqItems.reduce((s,e)=>s+e.price,0);
   const items=quote?quote.items:eqItems.map(eq=>({name:eq.name,model:eq.model||'',qty:1,unit:'SET',price:eq.price}));

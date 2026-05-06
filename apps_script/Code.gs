@@ -94,6 +94,7 @@ function doPost(e) {
       case 'uploadPhoto':         result = uploadPhoto(data); break;
       case 'getPhotoBase64':      result = getPhotoBase64(data); break;
       case 'getPhotosBase64Bulk': result = getPhotosBase64Bulk(data); break;
+      case 'getLatestQuotePdf':   result = getLatestQuotePdf(data); break;
 
       default: result = { ok:false, error:'Unknown action: ' + action };
     }
@@ -532,6 +533,78 @@ function getOrCreateFolder(parent, name) {
   // 4) ID 캐시 (6시간)
   try { cache.put(cacheKey, folder.getId(), 21600); } catch (e) {}
   return folder;
+}
+
+// ============================================================
+// 견적서 폴더에서 가장 최신 견적서 PDF 찾기 (신청기업 다운로드용)
+// data: { company, appId? }
+// 반환: { ok, fileId, fileName, downloadUrl, viewUrl }
+// 우선순위:
+//   1) 파일명에 'BPK_견적서_' 시작 + appId 포함 (해당 신청건의 견적만)
+//   2) 동일 조건이면 createdAt 최신 우선
+// ============================================================
+function getLatestQuotePdf(data) {
+  const company = String(data.company || '').trim();
+  const appId = String(data.appId || '').trim();
+  if (!company) return { ok:false, error:'company 누락' };
+
+  // 폴더 탐색: BPK_Smart_Photos/견적서/{회사명}
+  const root = getOrCreateFolder(null, PHOTO_FOLDER);
+  const subIter = root.getFoldersByName('견적서');
+  if (!subIter.hasNext()) return { ok:false, error:'견적서 폴더 없음' };
+  const sub = subIter.next();
+  if (sub.isTrashed()) return { ok:false, error:'견적서 폴더가 휴지통에 있음' };
+
+  const companyName = sanitizeName(company);
+  const companyIter = sub.getFoldersByName(companyName);
+  if (!companyIter.hasNext()) return { ok:false, error:'회사 폴더 없음: ' + companyName };
+  let companyFolder = null;
+  while (companyIter.hasNext()) {
+    const f = companyIter.next();
+    if (!f.isTrashed()) { companyFolder = f; break; }
+  }
+  if (!companyFolder) return { ok:false, error:'활성 회사 폴더 없음: ' + companyName };
+
+  // 파일 리스트 수집 + 'BPK_견적서_' 필터 + appId 필터 (있으면)
+  const files = [];
+  const fileIter = companyFolder.getFiles();
+  while (fileIter.hasNext()) {
+    const f = fileIter.next();
+    if (f.isTrashed()) continue;
+    const name = f.getName();
+    // 견적서만 (장비사양 제외)
+    if (name.indexOf('BPK_견적서_') !== 0) continue;
+    if (appId && name.indexOf(appId) === -1) continue;
+    files.push({ id: f.getId(), name: name, createdAt: f.getDateCreated().getTime() });
+  }
+
+  if (!files.length) {
+    // appId 매칭 실패 시 fallback: 회사 폴더 내 모든 견적서 중 최신
+    if (appId) {
+      const fileIter2 = companyFolder.getFiles();
+      while (fileIter2.hasNext()) {
+        const f = fileIter2.next();
+        if (f.isTrashed()) continue;
+        const name = f.getName();
+        if (name.indexOf('BPK_견적서_') !== 0) continue;
+        files.push({ id: f.getId(), name: name, createdAt: f.getDateCreated().getTime() });
+      }
+    }
+    if (!files.length) return { ok:false, error:'견적서 PDF 파일 없음' };
+  }
+
+  // 최신 우선
+  files.sort((a, b) => b.createdAt - a.createdAt);
+  const latest = files[0];
+
+  return {
+    ok: true,
+    fileId: latest.id,
+    fileName: latest.name,
+    downloadUrl: 'https://drive.google.com/uc?export=download&id=' + latest.id,
+    viewUrl: 'https://drive.google.com/file/d/' + latest.id + '/view',
+    totalMatched: files.length
+  };
 }
 
 // 모든 폴더 캐시 즉시 비우기 (수동 복구용 — Apps Script 에디터에서 직접 실행)
