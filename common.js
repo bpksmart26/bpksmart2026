@@ -242,6 +242,108 @@ function nowDate() {
 }
 
 // ============================================================
+// 신청 내용 contentHash — 같은 회사가 동일한 내용을 중복 제출했는지 판별용
+// GAS 의 _computeAppContentHash 와 동일한 알고리즘. MD5 16자 hex.
+// ============================================================
+function appContentHash(app) {
+  if (!app) return '';
+  const sortJoin = v => Array.isArray(v) ? v.slice().sort().join(',') : (v || '');
+  const parts = [
+    app.bizno || '',
+    app.pname || '',
+    app.texture || '',
+    sortJoin(app.processes),
+    sortJoin(app.pkgtypes),
+    app.qty || '',
+    app.speed || '',
+    app.problem_type || '',
+    sortJoin(app.problem_points),
+    sortJoin((app.equipment || []).map(String)),
+    sortJoin(app.electric),
+    app.air_yn || '',
+    app.air_flow || '',
+    app.space_w || '',
+    app.space_h || '',
+    app.memo || ''
+  ].join('|');
+  return _md5_16(parts);
+}
+
+// 동기 MD5 (16자 hex). 외부 라이브러리 없이 작은 구현
+function _md5_16(s) {
+  function md5(str) {
+    function rh(n){let s='',j;for(j=0;j<=3;j++)s+=((n>>(j*8+4))&0x0F).toString(16)+((n>>(j*8))&0x0F).toString(16);return s;}
+    function ad(x,y){const lsw=(x&0xFFFF)+(y&0xFFFF);const msw=(x>>16)+(y>>16)+(lsw>>16);return(msw<<16)|(lsw&0xFFFF);}
+    function rl(n,c){return(n<<c)|(n>>>(32-c));}
+    function cm(q,a,b,x,s,t){return ad(rl(ad(ad(a,q),ad(x,t)),s),b);}
+    function ff(a,b,c,d,x,s,t){return cm((b&c)|((~b)&d),a,b,x,s,t);}
+    function gg(a,b,c,d,x,s,t){return cm((b&d)|(c&(~d)),a,b,x,s,t);}
+    function hh(a,b,c,d,x,s,t){return cm(b^c^d,a,b,x,s,t);}
+    function ii(a,b,c,d,x,s,t){return cm(c^(b|(~d)),a,b,x,s,t);}
+    function ct(s){let n=((s.length+8)>>6)+1,a=new Array(n*16);for(let i=0;i<n*16;i++)a[i]=0;for(let i=0;i<s.length;i++)a[i>>2]|=s.charCodeAt(i)<<((i%4)*8);a[s.length>>2]|=0x80<<((s.length%4)*8);a[n*16-2]=s.length*8;return a;}
+    const x=ct(unescape(encodeURIComponent(str)));let a=1732584193,b=-271733879,c=-1732584194,d=271733878;
+    for(let i=0;i<x.length;i+=16){const oa=a,ob=b,oc=c,od=d;
+      a=ff(a,b,c,d,x[i+0],7,-680876936);d=ff(d,a,b,c,x[i+1],12,-389564586);c=ff(c,d,a,b,x[i+2],17,606105819);b=ff(b,c,d,a,x[i+3],22,-1044525330);
+      a=ff(a,b,c,d,x[i+4],7,-176418897);d=ff(d,a,b,c,x[i+5],12,1200080426);c=ff(c,d,a,b,x[i+6],17,-1473231341);b=ff(b,c,d,a,x[i+7],22,-45705983);
+      a=ff(a,b,c,d,x[i+8],7,1770035416);d=ff(d,a,b,c,x[i+9],12,-1958414417);c=ff(c,d,a,b,x[i+10],17,-42063);b=ff(b,c,d,a,x[i+11],22,-1990404162);
+      a=ff(a,b,c,d,x[i+12],7,1804603682);d=ff(d,a,b,c,x[i+13],12,-40341101);c=ff(c,d,a,b,x[i+14],17,-1502002290);b=ff(b,c,d,a,x[i+15],22,1236535329);
+      a=gg(a,b,c,d,x[i+1],5,-165796510);d=gg(d,a,b,c,x[i+6],9,-1069501632);c=gg(c,d,a,b,x[i+11],14,643717713);b=gg(b,c,d,a,x[i+0],20,-373897302);
+      a=gg(a,b,c,d,x[i+5],5,-701558691);d=gg(d,a,b,c,x[i+10],9,38016083);c=gg(c,d,a,b,x[i+15],14,-660478335);b=gg(b,c,d,a,x[i+4],20,-405537848);
+      a=gg(a,b,c,d,x[i+9],5,568446438);d=gg(d,a,b,c,x[i+14],9,-1019803690);c=gg(c,d,a,b,x[i+3],14,-187363961);b=gg(b,c,d,a,x[i+8],20,1163531501);
+      a=gg(a,b,c,d,x[i+13],5,-1444681467);d=gg(d,a,b,c,x[i+2],9,-51403784);c=gg(c,d,a,b,x[i+7],14,1735328473);b=gg(b,c,d,a,x[i+12],20,-1926607734);
+      a=hh(a,b,c,d,x[i+5],4,-378558);d=hh(d,a,b,c,x[i+8],11,-2022574463);c=hh(c,d,a,b,x[i+11],16,1839030562);b=hh(b,c,d,a,x[i+14],23,-35309556);
+      a=hh(a,b,c,d,x[i+1],4,-1530992060);d=hh(d,a,b,c,x[i+4],11,1272893353);c=hh(c,d,a,b,x[i+7],16,-155497632);b=hh(b,c,d,a,x[i+10],23,-1094730640);
+      a=hh(a,b,c,d,x[i+13],4,681279174);d=hh(d,a,b,c,x[i+0],11,-358537222);c=hh(c,d,a,b,x[i+3],16,-722521979);b=hh(b,c,d,a,x[i+6],23,76029189);
+      a=hh(a,b,c,d,x[i+9],4,-640364487);d=hh(d,a,b,c,x[i+12],11,-421815835);c=hh(c,d,a,b,x[i+15],16,530742520);b=hh(b,c,d,a,x[i+2],23,-995338651);
+      a=ii(a,b,c,d,x[i+0],6,-198630844);d=ii(d,a,b,c,x[i+7],10,1126891415);c=ii(c,d,a,b,x[i+14],15,-1416354905);b=ii(b,c,d,a,x[i+5],21,-57434055);
+      a=ii(a,b,c,d,x[i+12],6,1700485571);d=ii(d,a,b,c,x[i+3],10,-1894986606);c=ii(c,d,a,b,x[i+10],15,-1051523);b=ii(b,c,d,a,x[i+1],21,-2054922799);
+      a=ii(a,b,c,d,x[i+8],6,1873313359);d=ii(d,a,b,c,x[i+15],10,-30611744);c=ii(c,d,a,b,x[i+6],15,-1560198380);b=ii(b,c,d,a,x[i+13],21,1309151649);
+      a=ii(a,b,c,d,x[i+4],6,-145523070);d=ii(d,a,b,c,x[i+11],10,-1120210379);c=ii(c,d,a,b,x[i+2],15,718787259);b=ii(b,c,d,a,x[i+9],21,-343485551);
+      a=ad(a,oa);b=ad(b,ob);c=ad(c,oc);d=ad(d,od);}
+    return rh(a)+rh(b)+rh(c)+rh(d);
+  }
+  return md5(s).slice(0, 16);
+}
+
+// 신청 배열을 bizno 기준 그룹화. 각 그룹: { bizno, company, latest, all, hasDuplicates, hasChanges }
+function groupAppsByBizno(apps) {
+  const groups = {};
+  (apps || []).forEach(a => {
+    const key = a.bizno || ('__no_bizno_' + a.id);
+    if (!groups[key]) groups[key] = { bizno: a.bizno || '', company: a.company || '', all: [], hashes: new Set() };
+    groups[key].all.push(a);
+    if (a.contentHash) groups[key].hashes.add(a.contentHash);
+  });
+  // 각 그룹: 정렬 + 메타 계산
+  return Object.values(groups).map(g => {
+    g.all.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // 최신 먼저
+    g.latest = g.all[0];
+    g.company = g.latest.company || g.company;
+    // 중복 = 같은 contentHash 가 2개 이상인 경우
+    const counts = {};
+    g.all.forEach(a => { const h = a.contentHash || '__none__'; counts[h] = (counts[h] || 0) + 1; });
+    g.hasDuplicates = Object.values(counts).some(c => c >= 2);
+    g.hasChanges = Object.keys(counts).length >= 2;
+    return g;
+  }).sort((a, b) => (a.latest.date < b.latest.date ? 1 : -1));
+}
+
+// 견적 배열을 appId 기준 그룹화. 같은 그룹 안에서 version 내림차순 정렬
+function groupQuotesByApp(quotes) {
+  const groups = {};
+  (quotes || []).forEach(q => {
+    const key = q.appId || ('__no_app_' + q.id);
+    if (!groups[key]) groups[key] = { appId: q.appId || '', company: q.company || '', versions: [], latest: null };
+    groups[key].versions.push(q);
+  });
+  Object.values(groups).forEach(g => {
+    g.versions.sort((a, b) => (Number(b.version) || 0) - (Number(a.version) || 0));
+    g.latest = g.versions.find(q => String(q.isLatest) === '1') || g.versions[0];
+  });
+  return Object.values(groups).sort((a, b) => (a.latest.date < b.latest.date ? 1 : -1));
+}
+
+// ============================================================
 // 견적서 변경 감지 해시 (T1-3: Drive 재업로드 스킵 판정용)
 // 항목/수량/가격/공정/비고가 같으면 동일 PDF로 간주
 // ============================================================

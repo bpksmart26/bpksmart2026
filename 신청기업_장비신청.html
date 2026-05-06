@@ -1887,6 +1887,8 @@ async function goStep5(){
   const id=`NO-${_dc}-${_seq}`;
   const dateStr=`${_now.getFullYear()}-${_pad(_now.getMonth()+1)}-${_pad(_now.getDate())} ${_pad(_now.getHours())}:${_pad(_now.getMinutes())}`;
   const app={id,status:'신청접수',date:dateStr,...formData,equipment:[...selectedEq]};
+  // 신청 내용 해시 (중복 신청 판별용)
+  app.contentHash = (typeof appContentHash === 'function') ? appContentHash(app) : '';
   // 신청 현황 조회 버튼에서 즉시 사용
   _submittedApp = app;
 
