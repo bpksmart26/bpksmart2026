@@ -2118,32 +2118,38 @@ async function downloadPDF(appId){
   const app=apps.find(a=>a.id===appId); if(!app) return;
   const quote=quotesAll.find(q=>q.appId===appId);
 
-  // ── 1) 우선 시도: Drive 에 저장된 공급기업 PDF 직접 다운로드 (가장 최신 견적서 파일)
+  // ── 1) 우선 시도: Drive 의 공급기업 발급 PDF 원본을 base64로 받아 다운로드
+  //     (downloadUrl 직접 사용은 cross-origin / 리다이렉트 이슈로 부정확)
   if(API_ENABLED){
-    showApiLoading('견적서 파일을 가져오는 중...');
+    showApiLoading('Drive에서 견적서 파일을 가져오는 중...');
     try{
-      const res = await apiCall('getLatestQuotePdf', { company: app.company, appId: appId });
+      const res = await apiCall('getLatestQuotePdf', { company: app.company, appId: appId, includeBase64: true });
       hideApiLoading();
-      if(res && res.ok && res.downloadUrl){
+      if(res && res.ok && res.base64){
         const a = document.createElement('a');
-        a.href = res.downloadUrl;
+        a.href = res.base64;
         a.download = res.fileName || `BPK_견적서_${app.company}_${appId}.pdf`;
-        a.target = '_blank';
-        a.rel = 'noopener';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        showToast('견적서 다운로드 시작 — ' + (res.fileName || 'PDF'));
+        const sizeKB = Math.round((res.fileSize||0)/1024);
+        showToast('견적서 다운로드 — ' + (res.fileName || 'PDF') + ' (' + sizeKB + 'KB)');
+        return;
+      } else if(res && res.ok && res.downloadUrl){
+        // base64 변환 실패 시 Drive 뷰어로 fallback
+        window.open(res.viewUrl || res.downloadUrl, '_blank');
+        showToast('Drive에서 견적서를 열었습니다. (다운로드 버튼 클릭)');
         return;
       } else if(res && res.error){
         console.warn('[downloadPDF] Drive 검색 실패:', res.error);
+        showToast('Drive에서 견적서를 찾지 못했습니다. 브라우저로 새로 생성합니다.', 'warn');
       }
     } catch(e){
       hideApiLoading();
       console.warn('[downloadPDF] getLatestQuotePdf 예외:', e);
     }
   }
-  // ── 2) Fallback: API 미사용 또는 Drive 에 파일 없음 → 브라우저 즉시 생성
+  // ── 2) Fallback: Drive 미존재 또는 API 미사용 → 브라우저 즉시 생성 (1페이지 간략 버전)
   const eqItems=(app.equipment||[]).map(id=>EQUIPMENT.find(e=>e.id===id)).filter(Boolean);
   const total=quote?quote.total:eqItems.reduce((s,e)=>s+e.price,0);
   const items=quote?quote.items:eqItems.map(eq=>({name:eq.name,model:eq.model||'',qty:1,unit:'SET',price:eq.price}));

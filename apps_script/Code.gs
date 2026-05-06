@@ -597,7 +597,7 @@ function getLatestQuotePdf(data) {
   files.sort((a, b) => b.createdAt - a.createdAt);
   const latest = files[0];
 
-  return {
+  const result = {
     ok: true,
     fileId: latest.id,
     fileName: latest.name,
@@ -605,6 +605,22 @@ function getLatestQuotePdf(data) {
     viewUrl: 'https://drive.google.com/file/d/' + latest.id + '/view',
     totalMatched: files.length
   };
+
+  // base64 옵션: 클라이언트가 정확히 Drive 원본을 받기 위해 사용
+  // (Drive URL 다운로드는 cross-origin / 리다이렉트 이슈로 정확성 보장 안 됨)
+  if (data.includeBase64) {
+    try {
+      const file = DriveApp.getFileById(latest.id);
+      const blob = file.getBlob();
+      const bytes = blob.getBytes();
+      result.base64 = 'data:application/pdf;base64,' + Utilities.base64Encode(bytes);
+      result.fileSize = bytes.length;
+    } catch (e) {
+      result.base64Error = e.toString();
+    }
+  }
+
+  return result;
 }
 
 // 모든 폴더 캐시 즉시 비우기 (수동 복구용 — Apps Script 에디터에서 직접 실행)
