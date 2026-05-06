@@ -20,7 +20,7 @@
   --accent:#059669;--accent-l:#d1fae5;--accent-50:#ecfdf5;
   --danger:#dc2626;--danger-l:#fef2f2;
   --warn:#d97706;--warn-l:#fffbeb;
-  --g50:#f8fafc;--g100:#f1f5f9;--g200:#e2e8f0;--g300:#cbd5e1;--g400:#94a3b8;
+  --g50:#f8fafc;--g100:#f1f5f9;--g200:#e2e8f0;--g300:#cbd5e1;--g400:#6b7d96;/* P4-4: 대비 향상 */
   --g500:#64748b;--g600:#475569;--g700:#334155;--g800:#1e293b;--g900:#0f172a;
   --sh:0 2px 12px rgba(0,0,0,.08);--sh-md:0 4px 24px rgba(0,0,0,.12);--sh-lg:0 8px 40px rgba(0,0,0,.18);
   --r:14px;--r-sm:8px;
@@ -243,7 +243,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 .eq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:520px){.eq-grid{grid-template-columns:1fr}}
 .badge-tong{display:inline-block;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.5px;margin-left:6px;vertical-align:middle}
-.eq-photo-thumb{width:100%;height:100px;object-fit:cover;border-radius:8px;margin-bottom:10px}
+.eq-photo-thumb{width:100%;aspect-ratio:4/3;height:auto;object-fit:cover;border-radius:8px;margin-bottom:10px;background:var(--g100)}/* P4-12: 비율 고정 + 너비 적응 */
 .eq-detail-btn{width:100%;margin-top:10px;padding:7px;background:var(--g100);border:1.5px solid var(--g200);border-radius:7px;font-size:12px;font-weight:700;color:var(--g600);cursor:pointer;font-family:'Pretendard',sans-serif;transition:all .2s}
 .eq-detail-btn:hover{background:var(--primary-l);border-color:var(--primary);color:var(--primary)}
 /* 전체 장비 목록 */
@@ -412,6 +412,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
   .panel{padding:24px 20px}
   .frow{grid-template-columns:1fr}
   .st-lbl{display:none}
+  .st-lbl.active{display:block;font-size:11px;font-weight:700}/* P4-5: 모바일에서 현재 단계 라벨만 표시 */
   .hero-title{font-size:24px}
   .hero{padding:40px 16px 36px}
   .lookup-panel{padding:28px 20px}

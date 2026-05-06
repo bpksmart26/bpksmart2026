@@ -22,7 +22,7 @@
   --purple:#7c3aed;--purple-l:#f5f3ff;
   --danger:#dc2626;--danger-l:#fef2f2;
   --warn:#d97706;--warn-l:#fffbeb;
-  --g50:#f8fafc;--g100:#f1f5f9;--g200:#e2e8f0;--g300:#cbd5e1;--g400:#94a3b8;
+  --g50:#f8fafc;--g100:#f1f5f9;--g200:#e2e8f0;--g300:#cbd5e1;--g400:#6b7d96;/* P4-4: 대비 향상 (이전 #94a3b8 → 4:1) */
   --g500:#64748b;--g600:#475569;--g700:#334155;--g800:#1e293b;--g900:#0f172a;
   --sh:0 2px 12px rgba(0,0,0,.08);--sh-md:0 4px 24px rgba(0,0,0,.12);--sh-lg:0 8px 40px rgba(0,0,0,.18);
   --r:14px;--r-sm:8px;--sidebar:230px;
@@ -285,11 +285,20 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
 .pdf-eq-model{font-family:'JetBrains Mono',monospace;font-size:11px;color:#64748b;margin-bottom:6px}
 .pdf-eq-price{font-size:13px;font-weight:700;color:#1d4ed8}
 .pdf-equip-footer{margin-top:28px;text-align:center;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:12px}
+/* ─── 햄버거 메뉴 (모바일 전용, P4-1) ─── */
+.hamburger{display:none;width:40px;height:40px;border:none;background:transparent;cursor:pointer;padding:0;align-items:center;justify-content:center;color:var(--g700);font-size:22px;border-radius:8px;transition:background .15s}
+.hamburger:hover{background:var(--g100)}
+.sb-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99;animation:fadeIn .2s}
+.sb-backdrop.open{display:block}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
 /* ─── RESPONSIVE ─── */
 @media(max-width:900px){
-  .sidebar{display:none}
+  .sidebar{transform:translateX(-100%);transition:transform .25s ease;box-shadow:0 0 40px rgba(0,0,0,.3)}
+  .sidebar.open{transform:translateX(0)}
   .main-wrap{margin-left:0}
   .stat-row{grid-template-columns:1fr 1fr}
+  .hamburger{display:inline-flex}
 }
 @media(max-width:640px){
   .stat-row{grid-template-columns:1fr}
@@ -362,8 +371,12 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
     <button class="logout-btn" onclick="doLogout()">🚪 로그아웃</button>
   </aside>
 
+  <!-- 모바일 사이드바 백드롭 (P4-1) -->
+  <div class="sb-backdrop" id="sb-backdrop" onclick="toggleSidebar(false)"></div>
+
   <div class="main-wrap">
     <div class="topbar">
+      <button class="hamburger" onclick="toggleSidebar()" aria-label="메뉴 열기">☰</button>
       <div class="topbar-title" id="topbar-title">신청 업체 관리</div>
       <div class="topbar-right">
         <div id="api-status-top"></div>
@@ -894,6 +907,19 @@ function showSec(key){
   document.querySelectorAll('.nav-item').forEach((n,i)=>n.classList.toggle('active',['applications','products','quotes','dashboard','scoring'][i]===key));
   document.getElementById('topbar-title').textContent=SEC_MAP[key].title;
   if(key==='scoring') loadScoringCfg();
+  // 모바일에서는 메뉴 선택 시 자동으로 사이드바 닫기 (P4-1)
+  if(window.matchMedia('(max-width:900px)').matches) toggleSidebar(false);
+}
+
+// 사이드바 토글 (P4-1: 모바일 햄버거 메뉴)
+function toggleSidebar(open){
+  const sb=document.querySelector('.sidebar');
+  const bd=document.getElementById('sb-backdrop');
+  if(!sb||!bd) return;
+  const willOpen = open===undefined ? !sb.classList.contains('open') : !!open;
+  sb.classList.toggle('open',willOpen);
+  bd.classList.toggle('open',willOpen);
+  document.body.style.overflow = willOpen ? 'hidden' : '';
 }
 
 // ═══════════════════════════════════════════
@@ -1778,7 +1804,11 @@ function renderDashboard(){
   const confirmed=applications.filter(a=>a.status==='확정').length;
   const totalQtAmt=quotes.filter(q=>q.status!=='작성중').reduce((s,q)=>s+q.total,0);
   const rate=applications.length?Math.round(confirmed/applications.length*100):0;
-  document.getElementById('db-total').textContent=totalQtAmt>=100000000?(totalQtAmt/100000000).toFixed(1)+'억':totalQtAmt>=10000?(totalQtAmt/10000).toFixed(0)+'만':totalQtAmt.toLocaleString();
+  // P4-6: 대시보드 총액 표시 통일 (단위 일관성, 0원 표시 명시)
+  document.getElementById('db-total').textContent =
+    totalQtAmt === 0 ? '0원' :
+    totalQtAmt >= 100000000 ? (totalQtAmt/100000000).toFixed(1) + '억원' :
+    totalQtAmt.toLocaleString('ko-KR') + '원';
   document.getElementById('db-rate').textContent=rate+'%';
   document.getElementById('db-rate-sub').textContent=`${confirmed}/${applications.length}건 확정`;
   document.getElementById('db-eq').textContent=equipment.filter(e=>e.status==='active').length;
