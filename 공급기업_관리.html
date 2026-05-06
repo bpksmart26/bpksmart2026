@@ -1674,19 +1674,26 @@ async function genPDF(qtId){
     showToast('📄 PDF 다운로드 완료' + (missing>0?` (사진 ${missing}장 누락)`:''));
 
     // Drive 백업은 백그라운드로 (P2-3): 사용자 흐름 차단하지 않음
+    // T1-3: 변경 없는 견적서는 재업로드 스킵
     if(API_ENABLED){
-      (async()=>{
-        try{
-          const pdfUri=pdf.output('datauristring');
-          const url=await apiUploadPhoto(pdfUri,fileName,{type:'quote',company:q.company});
-          if(url&&url.startsWith('http')){
-            q.pdfUrl=url;
-            await syncQt(q,false);
-            showToast('☁️ Drive 백업 완료');
-            renderQuotes(); // ☁️ 아이콘 갱신
-          }
-        }catch(e){ console.warn('견적서 Drive 저장 실패',e); }
-      })();
+      const _hash = quoteHash(q);
+      if(q.pdfUrl && q.pdfHash === _hash){
+        showToast('☁️ Drive 백업 (이전 PDF 재사용)');
+      } else {
+        (async()=>{
+          try{
+            const pdfUri=pdf.output('datauristring');
+            const url=await apiUploadPhoto(pdfUri,fileName,{type:'quote',company:q.company});
+            if(url&&url.startsWith('http')){
+              q.pdfUrl=url;
+              q.pdfHash=_hash;
+              await syncQt(q,false);
+              showToast('☁️ Drive 백업 완료');
+              renderQuotes(); // ☁️ 아이콘 갱신
+            }
+          }catch(e){ console.warn('견적서 Drive 저장 실패',e); }
+        })();
+      }
     }
   } finally {
     tpl.style.left='-9999px';tpl.style.zIndex='';
@@ -1785,19 +1792,26 @@ async function genEquipPDF(qtId){
   showToast('📸 장비사양 PDF 다운로드 완료' + (_missing>0?` (사진 ${_missing}장 누락)`:''));
 
   // Drive 백업은 백그라운드로 (P2-3)
+  // T1-3: 변경 없는 장비사양 PDF는 재업로드 스킵
   if(API_ENABLED){
-    (async()=>{
-      try{
-        const pdfUri=pdf.output('datauristring');
-        const url=await apiUploadPhoto(pdfUri,equipFileName,{type:'quote',company:q.company});
-        if(url&&url.startsWith('http')){
-          q.equipPdfUrl=url;
-          await syncQt(q,false);
-          showToast('☁️ 장비사양 Drive 백업 완료');
-          renderQuotes();
-        }
-      }catch(e){ console.warn('장비사양 PDF Drive 저장 실패',e); }
-    })();
+    const _ehash = quoteHash(q);
+    if(q.equipPdfUrl && q.equipPdfHash === _ehash){
+      showToast('☁️ Drive 백업 (이전 PDF 재사용)');
+    } else {
+      (async()=>{
+        try{
+          const pdfUri=pdf.output('datauristring');
+          const url=await apiUploadPhoto(pdfUri,equipFileName,{type:'quote',company:q.company});
+          if(url&&url.startsWith('http')){
+            q.equipPdfUrl=url;
+            q.equipPdfHash=_ehash;
+            await syncQt(q,false);
+            showToast('☁️ 장비사양 Drive 백업 완료');
+            renderQuotes();
+          }
+        }catch(e){ console.warn('장비사양 PDF Drive 저장 실패',e); }
+      })();
+    }
   }
 }
 

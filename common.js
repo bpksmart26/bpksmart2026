@@ -67,6 +67,56 @@ const _photoCache = new Map();
 // 동일 URL에 대한 동시 요청 묶음 (in-flight de-dup)
 const _photoInflight = new Map();
 
+// ── T1-4: localStorage 영구 캐시 (세션 간 유지)
+// 50개 LRU + 1MB 안전 한도. QuotaExceeded 시 자동 비움.
+const _photoCacheLS_KEY = 'bpk_photo_cache_v1';
+const _photoCacheLS_MAX = 50;
+const _photoCacheLS_BYTE_MAX = 1024 * 1024; // 1MB
+
+const _photoCacheLS = (() => {
+  try {
+    const raw = localStorage.getItem(_photoCacheLS_KEY);
+    if (!raw) return new Map();
+    const arr = JSON.parse(raw);
+    // 부팅 시 메모리 캐시에도 워밍
+    arr.forEach(([k, v]) => _photoCache.set(k, v));
+    return new Map(arr);
+  } catch (e) { return new Map(); }
+})();
+
+let _photoCachePersistTimer = null;
+function _persistPhotoCache() {
+  // 디바운스 (연속 호출 시 마지막만 저장)
+  if (_photoCachePersistTimer) clearTimeout(_photoCachePersistTimer);
+  _photoCachePersistTimer = setTimeout(() => {
+    try {
+      // LRU: 최근 항목 우선 (Map은 삽입 순서 유지)
+      const arr = [..._photoCacheLS.entries()].slice(-_photoCacheLS_MAX);
+      const json = JSON.stringify(arr);
+      if (json.length > _photoCacheLS_BYTE_MAX) {
+        // 너무 크면 절반만 저장
+        localStorage.setItem(_photoCacheLS_KEY, JSON.stringify(arr.slice(arr.length / 2 | 0)));
+      } else {
+        localStorage.setItem(_photoCacheLS_KEY, json);
+      }
+    } catch (e) {
+      // QuotaExceeded → 비우고 재시도
+      try { localStorage.removeItem(_photoCacheLS_KEY); } catch (_) {}
+    }
+  }, 200);
+}
+
+function _putPhotoCache(url, base64) {
+  _photoCache.set(url, base64);
+  _photoCacheLS.set(url, base64);
+  // 50개 초과 시 가장 오래된 것 제거
+  if (_photoCacheLS.size > _photoCacheLS_MAX) {
+    const oldestKey = _photoCacheLS.keys().next().value;
+    _photoCacheLS.delete(oldestKey);
+  }
+  _persistPhotoCache();
+}
+
 // ── 단건 변환: Drive URL → base64
 //   - data: URL이면 그대로 반환
 //   - https://drive.google.com/* 이면 GAS 경유 base64 변환 (CORS 우회)
@@ -83,7 +133,7 @@ async function resolvePhoto(url) {
     try {
       const res = await apiCall('getPhotoBase64', { url });
       if (res && res.ok && res.base64) {
-        _photoCache.set(url, res.base64);
+        _putPhotoCache(url, res.base64); // T1-4: 메모리 + localStorage
         return res.base64;
       }
       console.warn('[resolvePhoto] 실패 응답:', res);
@@ -124,7 +174,7 @@ async function resolvePhotosBatch(urls) {
       need.forEach((n, k) => {
         const item = res.data[k];
         if (item && item.ok && item.base64) {
-          _photoCache.set(n.url, item.base64);
+          _putPhotoCache(n.url, item.base64); // T1-4
           result[n.idx] = item.base64;
         }
       });
@@ -140,8 +190,12 @@ async function resolvePhotosBatch(urls) {
   return result;
 }
 
-// ── 캐시 비우기 (필요 시 외부에서 호출)
-function clearPhotoCache() { _photoCache.clear(); }
+// ── 캐시 비우기 (필요 시 외부에서 호출, 예: 사진 변경 후)
+function clearPhotoCache() {
+  _photoCache.clear();
+  _photoCacheLS.clear();
+  try { localStorage.removeItem(_photoCacheLS_KEY); } catch (e) {}
+}
 
 // ============================================================
 // 직인 lazy load (jikin.js eager script 대체)
@@ -168,6 +222,16 @@ async function loadJikin() {
     _jikinCache = '';
   }
   return _jikinCache;
+}
+
+// ============================================================
+// 견적서 변경 감지 해시 (T1-3: Drive 재업로드 스킵 판정용)
+// 항목/수량/가격/공정/비고가 같으면 동일 PDF로 간주
+// ============================================================
+function quoteHash(q) {
+  if (!q) return '';
+  const items = (q.items || []).map(i => `${i.name}|${i.qty}|${i.price}`).join(';');
+  return [items, q.total||0, q.process||'', q.memo||''].join('::');
 }
 
 // ============================================================
