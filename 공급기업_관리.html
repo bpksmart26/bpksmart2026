@@ -83,6 +83,7 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 .content{padding:28px;display:none;flex:1}
 .content.active{display:block}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
 .content.active{animation:fadeUp .25s ease}
 
 /* ─── STAT CARDS ─── */
@@ -805,37 +806,77 @@ function doLogout(){
 }
 
 // ═══════════════════════════════════════════
-// LOAD DATA
+// LOAD DATA — Stale-While-Revalidate (SWR) 패턴
+// 1) localStorage 캐시로 즉시 UI 표시 (체감 0초)
+// 2) 백그라운드에서 API 갱신 + 조용히 재렌더 (작은 인디케이터로 알림)
 // ═══════════════════════════════════════════
 async function loadData(){
+  // Phase 1: localStorage 즉시 로드 (sync, 차단 없음)
+  _loadFromLocalStorage();
+
+  // Phase 2: API 모드면 백그라운드 갱신 (응답 안 기다림 — 사용자 즉시 작업 가능)
   if(API_ENABLED){
-    showApiLoading('데이터를 불러오는 중...');
-    try{
-      const [eqRes,appRes,qtRes,cfgRes]=await Promise.all([
-        apiCall('getEq'),apiCall('getApps'),apiCall('getQts'),apiCall('getCfg')
-      ]);
-      if(eqRes&&eqRes.data&&eqRes.data.length>0){
-        equipment=eqRes.data;
-        localStorage.setItem(SK.EQ,JSON.stringify(equipment));
-      } else {
-        const se=localStorage.getItem(SK.EQ);
-        equipment=se?JSON.parse(se):DEFAULT_EQ.map(e=>({...e}));
-        if(!se) localStorage.setItem(SK.EQ,JSON.stringify(equipment));
-        apiCall('bulkSaveEq',equipment); // 최초 1회 Sheets에 업로드
-      }
-      applications=(appRes&&appRes.data)?appRes.data:[];
-      quotes=(qtRes&&qtRes.data)?qtRes.data:[];
-      if(cfgRes&&cfgRes.data&&Object.keys(cfgRes.data).length>0){
-        localStorage.setItem('bpk_scoring_cfg',JSON.stringify(cfgRes.data));
-      }
-    }catch(err){
-      console.warn('API loadData 실패, localStorage fallback',err);
-      _loadFromLocalStorage();
-      showToast('서버 연결 실패 — 로컬 데이터로 표시됩니다. (' + err.message + ')','error');
-    }finally{ hideApiLoading(); }
-  } else {
-    _loadFromLocalStorage();
+    _backgroundRefresh();
   }
+}
+
+async function _backgroundRefresh(){
+  _setSyncing(true);
+  try{
+    const [eqRes,appRes,qtRes,cfgRes] = await Promise.all([
+      apiCall('getEq'), apiCall('getApps'), apiCall('getQts'), apiCall('getCfg')
+    ]);
+
+    // 장비
+    if(eqRes && eqRes.data && eqRes.data.length > 0){
+      equipment = eqRes.data;
+      localStorage.setItem(SK.EQ, JSON.stringify(equipment));
+    } else if(!localStorage.getItem(SK.EQ)){
+      // 첫 부팅 + 서버에도 없음 → DEFAULT_EQ 시드 + 서버에 1회 업로드
+      equipment = DEFAULT_EQ.map(e=>({...e}));
+      localStorage.setItem(SK.EQ, JSON.stringify(equipment));
+      apiCall('bulkSaveEq', equipment);
+    }
+
+    // 신청 / 견적: 서버 = 정본, localStorage 도 캐시로 갱신 (다음 진입 시 즉시 표시용)
+    if(appRes && appRes.data){
+      applications = appRes.data;
+      localStorage.setItem(SK.APP, JSON.stringify(applications));
+    }
+    if(qtRes && qtRes.data){
+      quotes = qtRes.data;
+      localStorage.setItem(SK.QT, JSON.stringify(quotes));
+    }
+
+    // 매칭 설정
+    if(cfgRes && cfgRes.data && Object.keys(cfgRes.data).length > 0){
+      localStorage.setItem('bpk_scoring_cfg', JSON.stringify(cfgRes.data));
+    }
+
+    // 조용히 재렌더 (모달이 열려있어도 리스트만 갱신되므로 안전)
+    renderApps(); renderProds(); renderQuotes(); renderDashboard();
+  }catch(err){
+    console.warn('백그라운드 데이터 갱신 실패, localStorage 유지', err);
+  }finally{
+    _setSyncing(false);
+  }
+}
+
+// 동기화 인디케이터 (작은 배지, 차단 없음)
+function _setSyncing(on){
+  let el = document.getElementById('sync-indicator');
+  if(!el){
+    el = document.createElement('span');
+    el.id = 'sync-indicator';
+    el.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:14px;font-size:11px;font-weight:600;background:var(--primary-l);color:var(--primary);transition:opacity .25s;font-family:Pretendard,sans-serif';
+    el.innerHTML = '<span style="display:inline-block;width:8px;height:8px;border:1.5px solid var(--primary);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></span>동기화 중';
+    const tr = document.querySelector('.topbar-right');
+    if(tr) tr.insertBefore(el, tr.firstChild);
+  }
+  el.style.opacity = on ? '1' : '0';
+  // 완전히 사라지게 (interaction 방지)
+  setTimeout(() => { if(!on && el) el.style.display = 'none'; }, 300);
+  if(on){ el.style.display = 'inline-flex'; }
 }
 
 function _loadFromLocalStorage(){
