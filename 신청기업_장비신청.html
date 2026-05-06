@@ -153,6 +153,10 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 .range-val{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:600;color:var(--primary);background:var(--primary-l);padding:5px 12px;border-radius:var(--r-sm);min-width:90px;text-align:right}
 .range-hints{display:flex;justify-content:space-between;font-size:12px;color:var(--g400);margin-top:4px}
 
+/* 비활성 버튼 (업로드 중 등) */
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.4)}
+.btn:disabled:hover{transform:none;box-shadow:none;border-color:inherit;color:inherit;background:inherit}
+
 /* BUTTONS */
 .btn-row{display:flex;justify-content:flex-end;gap:12px;margin-top:36px;padding-top:24px;border-top:1px solid var(--g100)}
 .btn{padding:12px 28px;border-radius:10px;font-family:'Pretendard',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:8px;height:50px}
@@ -946,8 +950,8 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
             <div class="receipt-note" id="receipt-note"></div>
           </div>
           <div class="btn-row" style="justify-content:center;margin-top:24px;border-top:none;padding-top:0">
-            <button class="btn btn-outline" onclick="viewMySubmission()">📋 신청 현황 조회</button>
-            <button class="btn btn-primary" onclick="location.reload()">처음으로</button>
+            <button class="btn btn-outline" id="step5-btn-lookup" onclick="viewMySubmission()" title="업로드 완료 후 클릭 가능">📋 신청 현황 조회</button>
+            <button class="btn btn-primary" id="step5-btn-reset" onclick="location.reload()" title="업로드 완료 후 클릭 가능">처음으로</button>
           </div>
         </div>
       </div>
@@ -1907,6 +1911,14 @@ async function goStep5(){
       (statusLine ? `<div class="receipt-status">${statusLine}</div>` : '');
   };
 
+  // ── 업로드 중 step5 버튼 비활성화/활성화 (업로드 미완료 상태에서 이탈 방지)
+  const _setStep5BtnsEnabled = (enabled) => {
+    const btnLookup = document.getElementById('step5-btn-lookup');
+    const btnReset  = document.getElementById('step5-btn-reset');
+    if(btnLookup){ btnLookup.disabled = !enabled; btnLookup.title = enabled ? '' : '업로드 완료 후 클릭 가능'; }
+    if(btnReset) { btnReset.disabled  = !enabled; btnReset.title  = enabled ? '' : '업로드 완료 후 클릭 가능'; }
+  };
+
   // ── 업로드 진행 배너 헬퍼
   const banner = document.getElementById('upload-banner');
   const barFill = document.getElementById('upload-bar-fill');
@@ -1940,9 +1952,11 @@ async function goStep5(){
     if(titleEl) titleEl.textContent = `사진 ${_totalPhotos}장을 업로드하고 있습니다`;
     setBannerProgress(0, _totalPhotos);
     _renderReceipt('');
+    _setStep5BtnsEnabled(false); // 업로드 미완료 동안 버튼 비활성
   } else {
     if(banner) banner.style.display = 'none';
     _renderReceipt(`<small style="color:#059669;font-weight:700">✅ 접수 완료</small>`);
+    _setStep5BtnsEnabled(true);
   }
   goPage(5);
 
@@ -1986,6 +2000,7 @@ async function goStep5(){
       _renderReceipt(`<small style="color:#dc2626;font-weight:700">⚠️ 서버 저장에 일부 문제가 있어 로컬에 임시 저장되었습니다. 담당자가 곧 확인합니다.</small>`);
     } finally {
       if(_totalPhotos > 0) window.removeEventListener('beforeunload', _beforeUnload);
+      _setStep5BtnsEnabled(true); // 성공/실패 무관 — 사용자가 다음 작업 가능하도록
     }
   } else {
     const apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
