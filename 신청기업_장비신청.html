@@ -1108,6 +1108,15 @@ function fillSample(idx){
 function showView(name){
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
+  // 'apply' 진입 시 항상 page1 부터 시작 (lookup → landing → apply 패턴 등에서 일관성 보장)
+  if(name === 'apply' && typeof goPage === 'function'){
+    try { goPage(1); } catch(e) {}
+  }
+  // 'lookup' 또는 'landing' 진입 시 이전 lookup 결과 초기화 (있다면)
+  if(name === 'lookup' || name === 'landing'){
+    const lr = document.getElementById('lookup-result');
+    if(lr) lr.innerHTML = '';
+  }
   window.scrollTo(0,0);
 }
 
