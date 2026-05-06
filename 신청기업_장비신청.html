@@ -946,7 +946,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
             <div class="receipt-note" id="receipt-note"></div>
           </div>
           <div class="btn-row" style="justify-content:center;margin-top:24px;border-top:none;padding-top:0">
-            <button class="btn btn-outline" onclick="showView('lookup')">📋 신청 현황 조회</button>
+            <button class="btn btn-outline" onclick="viewMySubmission()">📋 신청 현황 조회</button>
             <button class="btn btn-primary" onclick="location.reload()">처음으로</button>
           </div>
         </div>
@@ -1883,6 +1883,8 @@ async function goStep5(){
   const id=`NO-${_dc}-${_seq}`;
   const dateStr=`${_now.getFullYear()}-${_pad(_now.getMonth()+1)}-${_pad(_now.getDate())} ${_pad(_now.getHours())}:${_pad(_now.getMinutes())}`;
   const app={id,status:'신청접수',date:dateStr,...formData,equipment:[...selectedEq]};
+  // 신청 현황 조회 버튼에서 즉시 사용
+  _submittedApp = app;
 
   const _spaceCount = (app.space_photos||[]).length;
   const _productCount = (app.product_photos||[]).length;
@@ -2022,12 +2024,18 @@ async function doLookup(){
   }
 
   const app=apps.find(a=>a.company===company && a.bizno===bizno && a.phone===phone);
-  const res=document.getElementById('lookup-result');
   if(!app){
-    res.innerHTML=`<div class="lookup-result"><div class="not-found"><span class="not-found-icon">🔍</span><div class="not-found-txt">신청 내역을 찾을 수 없습니다.</div><div class="not-found-sub">회사명, 사업자등록번호, 휴대폰 번호를 정확히 입력해 주세요.</div></div></div>`;
+    document.getElementById('lookup-result').innerHTML =
+      `<div class="lookup-result"><div class="not-found"><span class="not-found-icon">🔍</span><div class="not-found-txt">신청 내역을 찾을 수 없습니다.</div><div class="not-found-sub">회사명, 사업자등록번호, 휴대폰 번호를 정확히 입력해 주세요.</div></div></div>`;
     return;
   }
   const quote=quotesAll.find(q=>q.appId===app.id);
+  renderLookupResult(app, quote);
+}
+
+// 조회 결과 HTML 렌더링 (doLookup + viewMySubmission 공유)
+function renderLookupResult(app, quote){
+  const res = document.getElementById('lookup-result'); if(!res) return;
   const statuses=['신청접수','검토중','수정중','확정'];
   const icons=['📬','🔍','✏️','✅'];
   const curIdx=statuses.indexOf(app.status);
@@ -2035,7 +2043,7 @@ async function doLookup(){
     const cls=i<curIdx?'done':i===curIdx?'cur':'';
     return `<div class="stl-item"><div class="stl-dot ${cls}">${icons[i]}</div><div class="stl-lbl ${cls}">${s}</div></div>${i<3?`<div class="stl-line ${i<curIdx?'done':''}"></div>`:''}`;
   }).join('');
-  const eqItems=(app.equipment||[]).map(id=>{const eq=EQUIPMENT.find(e=>e.id===id);return eq;}).filter(Boolean);
+  const eqItems=(app.equipment||[]).map(id=>EQUIPMENT.find(e=>String(e.id)===String(id))).filter(Boolean);
   const total=eqItems.reduce((s,e)=>s+e.price,0);
   const isConfirmed=app.status==='확정';
   res.innerHTML=`<div class="lookup-result">
@@ -2053,6 +2061,27 @@ async function doLookup(){
          <div class="status-msg info" style="margin-top:12px">현재 상태: <strong>${app.status}</strong> — 담당자 확정 후 견적서를 다운로드할 수 있습니다.</div>`
     }
   </div>`;
+}
+
+// 신청 완료 직후 영수증 박스의 데이터로 즉시 조회 결과 표시 (API 재호출 없음)
+let _submittedApp = null;
+function viewMySubmission(){
+  if(!_submittedApp){ showView('lookup'); return; }
+  const a = _submittedApp;
+  // 조회 폼 자동 입력 (사용자가 다시 검색하고 싶을 때 편의)
+  const lc = document.getElementById('l-company'); if(lc) lc.value = a.company || '';
+  const lb = document.getElementById('l-bizno');   if(lb) lb.value = a.bizno || '';
+  const lp = document.getElementById('l-phone');   if(lp) lp.value = a.phone || '';
+  // 결과 즉시 렌더 (방금 제출했으므로 견적은 아직 없음)
+  renderLookupResult(a, null);
+  // 폼 에러 클리어
+  ['fg-lc','fg-lb','fg-lp'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.classList.remove('has-err');
+  });
+  // landing 으로 잠깐 거치지 않고 바로 lookup 으로 (resetAllFormsAndState 회피)
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-lookup').classList.add('active');
+  window.scrollTo(0, 0);
 }
 
 // ═══════════════════════════════════════════
