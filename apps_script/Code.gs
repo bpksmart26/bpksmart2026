@@ -86,8 +86,9 @@ function doPost(e) {
       case 'getCfg':      result = { ok:true, data: getCfg() }; break;
       case 'saveCfg':     result = saveCfg(data); break;
 
-      case 'uploadPhoto':    result = uploadPhoto(data); break;
-      case 'getPhotoBase64': result = getPhotoBase64(data); break;
+      case 'uploadPhoto':         result = uploadPhoto(data); break;
+      case 'getPhotoBase64':      result = getPhotoBase64(data); break;
+      case 'getPhotosBase64Bulk': result = getPhotosBase64Bulk(data); break;
 
       default: result = { ok:false, error:'Unknown action: ' + action };
     }
@@ -232,14 +233,23 @@ function deleteRow(sheetName, keyCol, keyVal) {
 }
 
 function bulkSave(sheetName, cols, arrCols, rows) {
-  const sheet = getSheet(sheetName);
-  sheet.clearContents();
-  sheet.appendRow(cols);
-  if (rows && rows.length) {
-    const values = rows.map(obj => serializeRow(cols, arrCols, obj));
-    sheet.getRange(2, 1, values.length, cols.length).setValues(values);
+  // P2-6: LockService 로 동시 수정 방지 (clearContents → 재기록 사이 보호)
+  const lock = LockService.getDocumentLock();
+  try { lock.waitLock(10000); }
+  catch (e) { return { ok:false, error: '다른 사용자가 동기화 중입니다. 잠시 후 다시 시도하세요.' }; }
+  try {
+    const sheet = getSheet(sheetName);
+    sheet.clearContents();
+    sheet.appendRow(cols);
+    if (rows && rows.length) {
+      const values = rows.map(obj => serializeRow(cols, arrCols, obj));
+      sheet.getRange(2, 1, values.length, cols.length).setValues(values);
+    }
+    SpreadsheetApp.flush();
+    return { ok:true };
+  } finally {
+    lock.releaseLock();
   }
-  return { ok:true };
 }
 
 // ============================================================
@@ -311,17 +321,47 @@ function uploadPhoto(data) {
   return { ok:true, url: 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w600' };
 }
 
+function _extractFileId(url) {
+  const u = String(url || '');
+  const m = u.match(/[?&]id=([^&\s]+)/) || u.match(/\/file\/d\/([^/?]+)/);
+  return m ? m[1] : '';
+}
+
+// P3-7: 썸네일 우선 시도 → 실패 시 원본 fallback (PDF용 사진은 600px면 충분)
+function _fileToBase64(fileId) {
+  const file = DriveApp.getFileById(fileId);
+  let blob;
+  try {
+    blob = file.getThumbnail();
+    if (!blob) blob = file.getBlob();
+  } catch (e) {
+    blob = file.getBlob();
+  }
+  const mime = blob.getContentType() || 'image/jpeg';
+  return 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes());
+}
+
 function getPhotoBase64(data) {
   try {
-    const url = String(data.url || '');
-    const m = url.match(/[?&]id=([^&\s]+)/) || url.match(/\/file\/d\/([^/?]+)/);
-    const fileId = m ? m[1] : '';
+    const fileId = _extractFileId(data.url);
     if (!fileId) return { ok:false, error:'fileId 없음' };
-    const file = DriveApp.getFileById(fileId);
-    const blob = file.getBlob();
-    const mime = blob.getContentType() || 'image/jpeg';
-    return { ok:true, base64: 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes()) };
+    return { ok:true, base64: _fileToBase64(fileId) };
   } catch(e) {
     return { ok:false, error: e.toString() };
   }
+}
+
+// P2-2: 다중 URL을 한번의 doPost로 변환 (콜드스타트 비용 N→1)
+function getPhotosBase64Bulk(data) {
+  const urls = Array.isArray(data.urls) ? data.urls : [];
+  const out = urls.map(url => {
+    try {
+      const fileId = _extractFileId(url);
+      if (!fileId) return { ok:false, error:'fileId 없음' };
+      return { ok:true, base64: _fileToBase64(fileId) };
+    } catch(e) {
+      return { ok:false, error: e.toString() };
+    }
+  });
+  return { ok:true, data: out };
 }
