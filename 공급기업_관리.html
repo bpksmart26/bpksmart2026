@@ -1711,10 +1711,19 @@ function _renderQuoteRow(g){
   </tr>`;
 }
 
-// 견적 버전 히스토리 모달
+// 견적 버전 히스토리 모달 — Drive 업로드 진행 중인 PDF 자동 갱신 지원
+let _openVersionsModalAppId = null;
+let _pendingPdfUploads = new Set(); // 'quote' or 'equip' 별 in-flight 업로드
+function _markPdfUploading(qtId, kind){ _pendingPdfUploads.add(qtId+'|'+kind); _refreshVersionsModalIfOpen(); }
+function _markPdfUploaded(qtId, kind){ _pendingPdfUploads.delete(qtId+'|'+kind); _refreshVersionsModalIfOpen(); }
+function _refreshVersionsModalIfOpen(){
+  if(_openVersionsModalAppId) openQuoteVersionsModal(_openVersionsModalAppId);
+}
+
 function openQuoteVersionsModal(appId){
+  _openVersionsModalAppId = appId;
   const versions = quotes.filter(q => q.appId === appId).sort((a,b) => (Number(b.version)||0) - (Number(a.version)||0));
-  if(!versions.length) return;
+  if(!versions.length){ _openVersionsModalAppId = null; return; }
   const company = versions[0].company;
 
   const html = `
@@ -1723,7 +1732,7 @@ function openQuoteVersionsModal(appId){
         <div class="modal-title">견적서 버전 히스토리</div>
         <div class="modal-sub">${company} · ${appId} · 총 ${versions.length}개 버전</div>
       </div>
-      <button class="modal-close" onclick="closeModal('modal-qt-versions')">✕</button>
+      <button class="modal-close" onclick="closeQuoteVersionsModal()">✕</button>
     </div>
     <div class="modal-body">
       <table style="width:100%;border-collapse:collapse">
@@ -1747,8 +1756,16 @@ function openQuoteVersionsModal(appId){
               <td style="padding:9px 8px;text-align:center;border-bottom:1px solid var(--g100)">${statusBadge(q.status||'작성중').replace('badge','badge').replace('b-new','b-' + (q.status==='확정'?'conf':'draft'))}</td>
               <td style="padding:9px 8px;font-family:monospace;font-size:11px;color:var(--g500);border-bottom:1px solid var(--g100)">${q.date||'-'}</td>
               <td style="padding:9px 8px;text-align:center;border-bottom:1px solid var(--g100)">
-                ${q.pdfUrl?`<a href="${q.pdfUrl}" target="_blank" class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 10px"><svg class="ic-sm"><use href="#i-cloud"/></svg> 견적</a>`:'<span style="color:var(--g400);font-size:11px">-</span>'}
-                ${q.equipPdfUrl?`<a href="${q.equipPdfUrl}" target="_blank" class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 10px;margin-left:4px"><svg class="ic-sm"><use href="#i-cloud"/></svg> 장비</a>`:''}
+                ${q.pdfUrl
+                  ? `<a href="${q.pdfUrl}" target="_blank" class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 10px"><svg class="ic-sm"><use href="#i-cloud"/></svg> 견적</a>`
+                  : (_pendingPdfUploads.has(q.id+'|quote')
+                      ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--primary);font-weight:600"><span style="display:inline-block;width:10px;height:10px;border:1.5px solid var(--primary);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></span>업로드 중...</span>'
+                      : '<span style="color:var(--g400);font-size:11px">-</span>')}
+                ${q.equipPdfUrl
+                  ? `<a href="${q.equipPdfUrl}" target="_blank" class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 10px;margin-left:4px"><svg class="ic-sm"><use href="#i-cloud"/></svg> 장비</a>`
+                  : (_pendingPdfUploads.has(q.id+'|equip')
+                      ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--primary);font-weight:600;margin-left:4px"><span style="display:inline-block;width:10px;height:10px;border:1.5px solid var(--primary);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></span>업로드 중...</span>'
+                      : '')}
               </td>
             </tr>`;
           }).join('')}
@@ -1756,7 +1773,7 @@ function openQuoteVersionsModal(appId){
       </table>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal('modal-qt-versions')">닫기</button>
+      <button class="btn btn-outline" onclick="closeQuoteVersionsModal()">닫기</button>
     </div>`;
   let m = document.getElementById('modal-qt-versions');
   if(!m){
@@ -1765,10 +1782,15 @@ function openQuoteVersionsModal(appId){
     m.className = 'modal-ov';
     m.innerHTML = '<div class="modal" style="max-width:760px"></div>';
     document.body.appendChild(m);
-    m.addEventListener('click', e => { if(e.target===m) closeModal('modal-qt-versions'); });
+    m.addEventListener('click', e => { if(e.target===m) closeQuoteVersionsModal(); });
   }
   m.querySelector('.modal').innerHTML = html;
   openModal('modal-qt-versions');
+}
+
+function closeQuoteVersionsModal(){
+  _openVersionsModalAppId = null;
+  closeModal('modal-qt-versions');
 }
 
 async function confirmQuote(id){
@@ -2170,6 +2192,7 @@ async function genPDF(qtId){
       if(q.pdfUrl && q.pdfHash === _hash){
         showToast('Drive 백업 (이전 PDF 재사용)');
       } else {
+        _markPdfUploading(q.id, 'quote');
         (async()=>{
           try{
             const pdfUri=pdf.output('datauristring');
@@ -2182,6 +2205,7 @@ async function genPDF(qtId){
               renderQuotes(); // ☁️ 아이콘 갱신
             }
           }catch(e){ console.warn('견적서 Drive 저장 실패',e); }
+          finally { _markPdfUploaded(q.id, 'quote'); }
         })();
       }
     }
@@ -2288,6 +2312,7 @@ async function genEquipPDF(qtId){
     if(q.equipPdfUrl && q.equipPdfHash === _ehash){
       showToast('Drive 백업 (이전 PDF 재사용)');
     } else {
+      _markPdfUploading(q.id, 'equip');
       (async()=>{
         try{
           const pdfUri=pdf.output('datauristring');
@@ -2300,6 +2325,7 @@ async function genEquipPDF(qtId){
             renderQuotes();
           }
         }catch(e){ console.warn('장비사양 PDF Drive 저장 실패',e); }
+        finally { _markPdfUploaded(q.id, 'equip'); }
       })();
     }
   }
