@@ -330,32 +330,53 @@ function saveCfg(cfg) {
 }
 
 // ============================================================
-// Drive 폴더 헬퍼 — CacheService 로 ID 캐시 (Drive 인덱스 지연 회피)
-// 생성 직후 getFoldersByName 이 빈 결과 반환하는 race 까지 막음
+// Drive 폴더 헬퍼 — CacheService 로 ID 캐시 + trashed 폴더 자동 회피
+// 1) Drive 검색 인덱스 지연 race 방지
+// 2) dedupePhotoFolders 등으로 trashed 된 폴더가 캐시에 남아있어도 자동 갱신
 // ============================================================
 function getOrCreateFolder(parent, name) {
   const cache = CacheService.getScriptCache();
   const parentId = parent ? parent.getId() : '__root__';
   const cacheKey = 'fld_' + parentId + '_' + name;
 
-  // 1) 캐시 hit: ID 로 직접 가져오기 (검색 인덱스 무관)
+  // 1) 캐시 hit 시 ID 로 직접 조회. 단 trashed 면 무효화하고 재검색.
   const cached = cache.get(cacheKey);
   if (cached) {
-    try { return DriveApp.getFolderById(cached); }
-    catch (e) { /* 폴더가 삭제됐거나 권한 없음 → 아래 분기로 재생성 */ }
+    try {
+      const folder = DriveApp.getFolderById(cached);
+      if (!folder.isTrashed()) return folder;
+      cache.remove(cacheKey); // trashed → 캐시 비움
+    } catch (e) { /* 권한 없음 / 삭제 등 → 아래 분기 */ }
   }
 
-  // 2) 캐시 미스: 검색 후 없으면 생성
+  // 2) 검색: trashed 가 아닌 첫 폴더 사용
   const iter = parent ? parent.getFoldersByName(name) : DriveApp.getFoldersByName(name);
-  let folder;
-  if (iter.hasNext()) {
-    folder = iter.next();
-  } else {
+  let folder = null;
+  while (iter.hasNext()) {
+    const f = iter.next();
+    if (!f.isTrashed()) { folder = f; break; }
+  }
+
+  // 3) 없으면 생성
+  if (!folder) {
     folder = parent ? parent.createFolder(name) : DriveApp.createFolder(name);
   }
-  // 6시간 캐시 (충분히 안정 — 같은 폴더로 재계속 라우팅)
+
+  // 4) ID 캐시 (6시간)
   try { cache.put(cacheKey, folder.getId(), 21600); } catch (e) {}
   return folder;
+}
+
+// 모든 폴더 캐시 즉시 비우기 (수동 복구용 — Apps Script 에디터에서 직접 실행)
+function clearFolderCache() {
+  // ScriptCache 는 패턴 삭제 미지원 — 알려진 키 패턴 + 사용자 안내
+  try {
+    CacheService.getScriptCache().removeAll([
+      'fld___root___' + PHOTO_FOLDER
+    ]);
+  } catch (e) {}
+  Logger.log('폴더 ID 캐시는 6시간 후 자동 만료됩니다. 또는 dedupePhotoFolders 함수가 캐시 자동 갱신.');
+  return 'OK';
 }
 
 function sanitizeName(name) {
@@ -409,9 +430,10 @@ function uploadPhoto(data) {
 // 신청서_사진 / 제품_사진 / 견적서 / 장비_사진 의 각 하위 폴더를 회사명별로 그룹핑하여
 // 2번째 이후 폴더의 파일을 첫 번째 폴더로 이동 후 빈 폴더 삭제
 function dedupePhotoFolders() {
+  const cache = CacheService.getScriptCache();
   const root = getOrCreateFolder(null, PHOTO_FOLDER);
   const subs = ['신청서_사진', '제품_사진', '견적서', '장비_사진'];
-  let movedFiles = 0, deletedFolders = 0;
+  let movedFiles = 0, deletedFolders = 0, cacheUpdated = 0;
 
   subs.forEach(subName => {
     const subIter = root.getFoldersByName(subName);
@@ -423,6 +445,7 @@ function dedupePhotoFolders() {
     const childIter = sub.getFolders();
     while (childIter.hasNext()) {
       const f = childIter.next();
+      if (f.isTrashed()) continue;
       const key = f.getName();
       if (!groups[key]) groups[key] = [];
       groups[key].push(f);
@@ -430,8 +453,12 @@ function dedupePhotoFolders() {
 
     Object.keys(groups).forEach(name => {
       const folders = groups[name];
-      if (folders.length <= 1) return;
-      const canonical = folders[0];           // 가장 먼저 생성된 폴더를 정본으로
+      if (folders.length <= 1) {
+        // 중복 없어도 캐시는 갱신 (이전에 trashed 폴더가 캐시되어 있을 수 있음)
+        try { cache.put('fld_' + sub.getId() + '_' + name, folders[0].getId(), 21600); cacheUpdated++; } catch (e) {}
+        return;
+      }
+      const canonical = folders[0];                 // 첫 폴더를 정본으로
       const dups = folders.slice(1);
       dups.forEach(dup => {
         const fileIter = dup.getFiles();
@@ -441,14 +468,16 @@ function dedupePhotoFolders() {
           dup.removeFile(file);
           movedFiles++;
         }
-        dup.setTrashed(true);                 // 빈 폴더 휴지통으로
+        dup.setTrashed(true);
         deletedFolders++;
       });
+      // 캐시를 canonical 의 ID로 강제 갱신 (이전에 trashed 폴더 ID 가 들어있을 수 있음)
+      try { cache.put('fld_' + sub.getId() + '_' + name, canonical.getId(), 21600); cacheUpdated++; } catch (e) {}
     });
   });
 
-  Logger.log(`완료: ${movedFiles} 파일 이동, ${deletedFolders} 중복 폴더 휴지통으로 이동`);
-  return { movedFiles, deletedFolders };
+  Logger.log(`완료: ${movedFiles} 파일 이동, ${deletedFolders} 중복 폴더 휴지통, ${cacheUpdated} 캐시 갱신`);
+  return { movedFiles, deletedFolders, cacheUpdated };
 }
 
 function _extractFileId(url) {
