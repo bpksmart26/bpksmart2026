@@ -328,6 +328,33 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 .total-sub{font-size:12px;opacity:.7;margin-top:2px}
 .total-amt{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700}
 
+/* UPLOAD BANNER (step 5 사진 업로드 진행) */
+.upload-banner{margin:24px auto 16px;max-width:540px;background:linear-gradient(135deg,#fef3c7,#fde68a);border:3px solid #f59e0b;border-radius:14px;padding:20px 22px;box-shadow:0 8px 24px rgba(245,158,11,.25);animation:bannerPulse 2s ease-in-out infinite}
+@keyframes bannerPulse{0%,100%{box-shadow:0 8px 24px rgba(245,158,11,.25)}50%{box-shadow:0 8px 32px rgba(245,158,11,.55)}}
+.upload-banner.success{background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-color:#059669;animation:none;box-shadow:0 6px 20px rgba(5,150,105,.25)}
+.upload-banner.error{background:linear-gradient(135deg,#fee2e2,#fecaca);border-color:#dc2626;animation:none}
+.upload-banner-head{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.upload-icon{font-size:38px;animation:iconBounce 1s ease-in-out infinite;flex-shrink:0}
+@keyframes iconBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.upload-banner.success .upload-icon{animation:none}
+.upload-banner.error .upload-icon{animation:none}
+.upload-text{flex:1;min-width:0}
+.upload-title{font-size:17px;font-weight:800;color:#78350f;margin-bottom:4px}
+.upload-banner.success .upload-title{color:#065f46}
+.upload-banner.error .upload-title{color:#991b1b}
+.upload-warn{font-size:13px;font-weight:700;color:#dc2626;letter-spacing:.2px}
+.upload-banner.success .upload-warn,.upload-banner.error .upload-warn{display:none}
+.upload-progress{display:flex;flex-direction:column;gap:6px}
+.upload-bar-track{width:100%;height:14px;background:rgba(255,255,255,.7);border-radius:7px;overflow:hidden;border:1px solid rgba(245,158,11,.4)}
+.upload-banner.success .upload-bar-track{border-color:rgba(5,150,105,.4)}
+.upload-bar-fill{height:100%;background:linear-gradient(90deg,#f59e0b,#d97706);width:0%;transition:width .35s ease;border-radius:6px;background-image:linear-gradient(45deg,rgba(255,255,255,.25) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.25) 50%,rgba(255,255,255,.25) 75%,transparent 75%);background-size:18px 18px;animation:stripes 1s linear infinite}
+@keyframes stripes{from{background-position:0 0}to{background-position:18px 0}}
+.upload-banner.success .upload-bar-fill{background:linear-gradient(90deg,#10b981,#059669);animation:none;width:100%!important}
+.upload-banner.error .upload-bar-fill{background:linear-gradient(90deg,#ef4444,#dc2626);animation:none}
+.upload-bar-info{font-size:13px;font-weight:700;color:#78350f;text-align:center;font-family:'JetBrains Mono','Pretendard',monospace}
+.upload-banner.success .upload-bar-info{color:#065f46}
+.upload-banner.error .upload-bar-info{color:#991b1b}
+
 /* SUCCESS */
 .suc-screen{text-align:center;padding:48px 24px}
 .suc-icon{font-size:72px;margin-bottom:20px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);display:block}
@@ -901,6 +928,22 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           <span class="suc-icon">🎉</span>
           <div class="suc-title">신청이 완료되었습니다!</div>
           <div class="suc-desc">장비 도입 신청이 정상적으로 접수되었습니다.<br>담당자가 검토 후 <strong>2~3 영업일 내</strong>에 입력하신 연락처로<br>상세 안내 및 견적서를 전달해 드립니다.</div>
+
+          <!-- 사진 업로드 진행 배너 (업로드 중에만 표시) -->
+          <div class="upload-banner" id="upload-banner" style="display:none">
+            <div class="upload-banner-head">
+              <span class="upload-icon">📸</span>
+              <div class="upload-text">
+                <div class="upload-title" id="upload-title">사진을 업로드하고 있습니다</div>
+                <div class="upload-warn" id="upload-warn">⚠️ 완료될 때까지 페이지를 닫지 마세요!</div>
+              </div>
+            </div>
+            <div class="upload-progress">
+              <div class="upload-bar-track"><div class="upload-bar-fill" id="upload-bar-fill"></div></div>
+              <div class="upload-bar-info" id="upload-bar-info">0 / 0 사진 업로드 중...</div>
+            </div>
+          </div>
+
           <div class="receipt-box">
             <div class="receipt-note" id="receipt-note"></div>
           </div>
@@ -1750,47 +1793,98 @@ async function goStep5(){
   const _productCount = (app.product_photos||[]).length;
   const _totalPhotos = _spaceCount + _productCount;
 
-  // ── 1) 완료 화면 즉시 표시 (사용자 체감 0초)
+  // ── 영수증 박스 갱신 헬퍼
   const _renderReceipt = (statusLine) => {
     document.getElementById('receipt-note').innerHTML =
       `기업명: <strong>${formData.company}</strong><br>` +
       `담당자: ${formData.manager} (${formData.phone})<br>` +
       `선택 장비: ${selectedEq.size}개<br>` +
       `접수일시: ${app.date}<br><br>` +
-      `담당자 이메일(${formData.email})로 접수 확인 안내가 발송됩니다.<br><br>` +
-      statusLine;
+      `담당자 이메일(${formData.email})로 접수 확인 안내가 발송됩니다.` +
+      (statusLine ? '<br><br>' + statusLine : '');
   };
 
+  // ── 업로드 진행 배너 헬퍼
+  const banner = document.getElementById('upload-banner');
+  const barFill = document.getElementById('upload-bar-fill');
+  const barInfo = document.getElementById('upload-bar-info');
+  const titleEl = document.getElementById('upload-title');
+  const setBannerProgress = (done, total) => {
+    if(!barFill||!barInfo) return;
+    const pct = total > 0 ? Math.round(done/total*100) : 0;
+    barFill.style.width = pct + '%';
+    barInfo.textContent = `${done} / ${total} 사진 업로드 중... (${pct}%)`;
+  };
+  const setBannerSuccess = (msg) => {
+    if(!banner) return;
+    banner.classList.remove('error');
+    banner.classList.add('success');
+    if(titleEl) titleEl.textContent = msg || '✅ 업로드 + 신청 접수 완료';
+    if(barInfo) barInfo.textContent = `${_totalPhotos} / ${_totalPhotos} 완료`;
+  };
+  const setBannerError = (msg) => {
+    if(!banner) return;
+    banner.classList.remove('success');
+    banner.classList.add('error');
+    if(titleEl) titleEl.textContent = msg || '⚠️ 일부 단계 실패';
+    if(barInfo) barInfo.textContent = '로컬에 임시 저장되었습니다';
+  };
+
+  // ── 1) 완료 화면 즉시 표시
   if(_totalPhotos > 0 && API_ENABLED){
-    _renderReceipt(`<small style="color:#92400e">📸 사진 ${_totalPhotos}장을 업로드하고 있습니다... (페이지를 닫지 마세요)</small>`);
+    banner.style.display = '';
+    banner.classList.remove('success','error');
+    if(titleEl) titleEl.textContent = `사진 ${_totalPhotos}장을 업로드하고 있습니다`;
+    setBannerProgress(0, _totalPhotos);
+    _renderReceipt('');
   } else {
-    _renderReceipt(`<small style="color:#059669">✅ 접수 완료</small>`);
+    if(banner) banner.style.display = 'none';
+    _renderReceipt(`<small style="color:#059669;font-weight:700">✅ 접수 완료</small>`);
   }
   goPage(5);
 
   // ── 2) 백그라운드: 사진 병렬 업로드 + 저장
   if(API_ENABLED){
+    // 업로드 중 페이지 이탈 시 브라우저 확인 다이얼로그
+    const _beforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '사진 업로드가 완료되지 않았습니다. 정말 페이지를 닫으시겠습니까?';
+      return e.returnValue;
+    };
+    if(_totalPhotos > 0) window.addEventListener('beforeunload', _beforeUnload);
+
+    let _done = 0;
+    const _onPhotoDone = () => {
+      _done++;
+      setBannerProgress(_done, _totalPhotos);
+    };
     try {
-      // 공간 사진 + 제품 사진을 양 그룹 병렬 업로드 (apiUploadPhotos 자체도 병렬)
       const [spaceUrls, productUrls] = await Promise.all([
-        _spaceCount   ? apiUploadPhotos(app.space_photos,   `space_${id}`,   { type:'space',   company: formData.company }) : Promise.resolve([]),
-        _productCount ? apiUploadPhotos(app.product_photos, `product_${id}`, { type:'product', company: formData.company }) : Promise.resolve([])
+        _spaceCount   ? apiUploadPhotos(app.space_photos,   `space_${id}`,   { type:'space',   company: formData.company }, _onPhotoDone) : Promise.resolve([]),
+        _productCount ? apiUploadPhotos(app.product_photos, `product_${id}`, { type:'product', company: formData.company }, _onPhotoDone) : Promise.resolve([])
       ]);
       app.space_photos = spaceUrls;
       app.product_photos = productUrls;
 
+      // 저장 단계 표시
+      if(_totalPhotos > 0 && titleEl){
+        titleEl.textContent = '신청 내용을 저장하는 중...';
+        if(barInfo) barInfo.textContent = `${_totalPhotos} / ${_totalPhotos} 사진 업로드 완료, 저장 중...`;
+      }
+
       await apiCall('saveApp', app);
-      _renderReceipt(`<small style="color:#059669">✅ 사진 업로드 + 신청 접수 완료</small>`);
+      if(_totalPhotos > 0) setBannerSuccess('✅ 사진 업로드 + 신청 접수 완료');
     } catch(e) {
-      // 서버 저장 실패 시 로컬 임시 저장
       const apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
       apps.push(app);
       localStorage.setItem(SK.APP,JSON.stringify(apps));
       console.warn('서버 저장 실패, 로컬 임시 저장됨', e);
-      _renderReceipt(`<small style="color:#dc2626">⚠️ 서버 저장 실패. 로컬에 임시 저장되었습니다. 담당자가 곧 확인합니다.</small>`);
+      if(_totalPhotos > 0) setBannerError('⚠️ 서버 저장 실패');
+      _renderReceipt(`<small style="color:#dc2626;font-weight:700">⚠️ 서버 저장에 일부 문제가 있어 로컬에 임시 저장되었습니다. 담당자가 곧 확인합니다.</small>`);
+    } finally {
+      if(_totalPhotos > 0) window.removeEventListener('beforeunload', _beforeUnload);
     }
   } else {
-    // API 미사용 시: 즉시 localStorage 저장
     const apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
     apps.push(app);
     localStorage.setItem(SK.APP,JSON.stringify(apps));
