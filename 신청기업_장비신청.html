@@ -354,9 +354,17 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 @keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
 .suc-title{font-size:26px;font-weight:800;color:var(--g900);margin-bottom:12px}
 .suc-desc{font-size:16px;color:var(--g500);line-height:1.8;margin-bottom:32px}
-.receipt-box{background:var(--g50);border:1.5px solid var(--g200);border-radius:12px;padding:24px;text-align:left;max-width:440px;margin:0 auto}
+.receipt-box{background:var(--g50);border:1.5px solid var(--g200);border-radius:12px;padding:22px 26px;text-align:left;max-width:440px;margin:0 auto}
 .receipt-id{font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--primary);font-weight:700;margin-bottom:10px}
-.receipt-note{font-size:14px;color:var(--g500);line-height:1.8}
+.receipt-note{font-size:14px;color:var(--g700)}
+.receipt-id-row{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1.5px solid var(--g200);margin-bottom:14px}
+.receipt-id-label{font-size:12px;color:var(--g500);font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.receipt-id-val{font-family:'JetBrains Mono',monospace;font-size:15px;color:var(--primary);font-weight:700;letter-spacing:.3px}
+.receipt-rows{display:flex;flex-direction:column;gap:9px}
+.receipt-row{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;line-height:1.4;gap:14px}
+.receipt-k{color:var(--g500);font-weight:500;flex-shrink:0}
+.receipt-v{color:var(--g800);font-weight:700;text-align:right;word-break:break-all}
+.receipt-status{margin-top:16px;padding-top:14px;border-top:1.5px solid var(--g200);text-align:center;font-size:13px}
 
 /* LOOKUP */
 .lookup-wrap{max-width:640px;margin:40px auto;padding:0 24px}
@@ -1883,12 +1891,18 @@ async function goStep5(){
   // ── 영수증 박스 갱신 헬퍼
   const _renderReceipt = (statusLine) => {
     document.getElementById('receipt-note').innerHTML =
-      `기업명: <strong>${formData.company}</strong><br>` +
-      `담당자: ${formData.manager} (${formData.phone})<br>` +
-      `선택 장비: ${selectedEq.size}개<br>` +
-      `접수일시: ${app.date}<br><br>` +
-      `담당자 이메일(${formData.email})로 접수 확인 안내가 발송됩니다.` +
-      (statusLine ? '<br><br>' + statusLine : '');
+      `<div class="receipt-id-row">` +
+        `<span class="receipt-id-label">접수번호</span>` +
+        `<span class="receipt-id-val">${app.id}</span>` +
+      `</div>` +
+      `<div class="receipt-rows">` +
+        `<div class="receipt-row"><span class="receipt-k">기업명</span><span class="receipt-v">${formData.company}</span></div>` +
+        `<div class="receipt-row"><span class="receipt-k">담당자</span><span class="receipt-v">${formData.manager}</span></div>` +
+        `<div class="receipt-row"><span class="receipt-k">연락처</span><span class="receipt-v">${formData.phone}</span></div>` +
+        `<div class="receipt-row"><span class="receipt-k">선택 장비</span><span class="receipt-v">${selectedEq.size}개</span></div>` +
+        `<div class="receipt-row"><span class="receipt-k">접수일시</span><span class="receipt-v">${app.date}</span></div>` +
+      `</div>` +
+      (statusLine ? `<div class="receipt-status">${statusLine}</div>` : '');
   };
 
   // ── 업로드 진행 배너 헬퍼
