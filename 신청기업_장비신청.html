@@ -2072,16 +2072,45 @@ function renderLookupResult(app, quote){
     const cls=i<curIdx?'done':i===curIdx?'cur':'';
     return `<div class="stl-item"><div class="stl-dot ${cls}">${icons[i]}</div><div class="stl-lbl ${cls}">${s}</div></div>${i<3?`<div class="stl-line ${i<curIdx?'done':''}"></div>`:''}`;
   }).join('');
-  const eqItems=(app.equipment||[]).map(id=>EQUIPMENT.find(e=>String(e.id)===String(id))).filter(Boolean);
-  const total=eqItems.reduce((s,e)=>s+e.price,0);
+  // 장비 목록: 견적서가 있으면 견적 항목 우선 (수정/재발급 사항 반영)
+  // 없으면 신청서 원본 장비 배열 사용
+  let eqList = [];
+  let total = 0;
+  let sourceLabel = '';
+  if(quote && Array.isArray(quote.items) && quote.items.length > 0){
+    eqList = quote.items.map(it => ({
+      name: it.name || '-',
+      model: it.model || '',
+      qty: Number(it.qty) || 1,
+      price: Number(it.price) || 0,
+      lineTotal: (Number(it.price)||0) * (Number(it.qty)||1)
+    }));
+    total = Number(quote.total) || eqList.reduce((s,it) => s + it.lineTotal, 0);
+    const v = Number(quote.version) || 1;
+    sourceLabel = `견적서 v${v} 기준`;
+  } else {
+    eqList = (app.equipment||[]).map(id => {
+      const e = EQUIPMENT.find(x => String(x.id) === String(id));
+      return e ? { name:e.name, model:e.model||'', qty:1, price:e.price, lineTotal:e.price } : null;
+    }).filter(Boolean);
+    total = eqList.reduce((s,it) => s + it.lineTotal, 0);
+    sourceLabel = '신청서 기준 (견적 발급 전)';
+  }
   const isConfirmed=app.status==='확정';
   res.innerHTML=`<div class="lookup-result">
     <div class="res-company">${app.company}</div>
     <div class="res-id">접수번호: ${app.id} · 접수일시: ${app.date}</div>
     <div class="status-tl">${tlHtml}</div>
     <div style="margin-bottom:18px">
-      <div class="sum-title" style="margin-bottom:10px">선택 장비 (${eqItems.length}개)</div>
-      ${eqItems.map(eq=>`<div class="res-eq-item"><span class="res-eq-name">${eq.name}</span><span class="res-eq-price">${eq.price.toLocaleString('ko-KR')}원</span></div>`).join('')}
+      <div class="sum-title" style="margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+        <span>도입 장비 (${eqList.length}개)</span>
+        <span style="font-size:11px;color:var(--g500);font-weight:500">${sourceLabel}</span>
+      </div>
+      ${eqList.map(it => `
+        <div class="res-eq-item">
+          <span class="res-eq-name">${it.name}${it.qty>1?` <span style="color:var(--g500);font-size:12px;font-weight:500">× ${it.qty}</span>`:''}</span>
+          <span class="res-eq-price">${it.lineTotal.toLocaleString('ko-KR')}원</span>
+        </div>`).join('')}
     </div>
     <div class="res-total"><span class="res-total-lbl">총 예상 금액 (VAT 별도)</span><span class="res-total-amt">${total.toLocaleString('ko-KR')}원</span></div>
     ${isConfirmed && quote

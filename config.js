@@ -5,7 +5,7 @@
 
 // Google Apps Script 웹앱 배포 URL (배포 후 여기에 붙여넣기)
 // 예: 'https://script.google.com/macros/s/AKfycb.../exec'
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOkdmSIxuDgbgWjyUqTge4OZfMtt06disQK-S03FodxPeP01IOkmA7e6XKvpEAbCUV/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyof5UdzZzmVafDQ77xmX-Vq1CSbz4U9Rr_qjLw8iWES1EH7Zr1y5skHtRTv8fAMWnx/exec';
 
 // true = API 사용 / false = localStorage 전용 (URL 미설정 시 자동 fallback)
 const API_ENABLED = typeof APPS_SCRIPT_URL !== 'undefined' && APPS_SCRIPT_URL.trim().length > 0;
