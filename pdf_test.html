@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>PDF 신규 생성 테스트 — jsPDF 직접 그리기</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Pretendard',-apple-system,sans-serif;background:#f1f5f9;padding:40px;color:#0f172a}
+  .wrap{max-width:780px;margin:0 auto;background:#fff;border-radius:14px;padding:32px 36px;box-shadow:0 6px 24px rgba(15,23,42,.06)}
+  h1{font-size:22px;font-weight:800;margin-bottom:6px}
+  .sub{color:#64748b;font-size:13px;margin-bottom:22px}
+  .info{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px 16px;font-size:12.5px;color:#1e3a8a;line-height:1.6;margin-bottom:20px}
+  button{padding:14px 22px;background:#1d4ed8;color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .15s;display:inline-flex;align-items:center;gap:8px}
+  button:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(29,78,216,.3)}
+  button:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+  button.secondary{background:#475569}
+  .row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .log{background:#0f172a;color:#94a3b8;border-radius:10px;padding:14px 16px;font-family:'JetBrains Mono',monospace;font-size:12px;min-height:60px;max-height:220px;overflow-y:auto;white-space:pre-wrap;line-height:1.6}
+  .log .ok{color:#86efac}
+  .log .err{color:#fca5a5}
+  .log .info{background:none;border:none;padding:0;color:#93c5fd}
+  .badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:.4px}
+  .badge.green{background:#dcfce7;color:#166534}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>BPK Smart 2026 — PDF 신규 생성 테스트</h1>
+  <div class="sub">jsPDF 직접 그리기 + 한글 폰트(Pretendard / NanumGothic) 임베딩 검증용</div>
+  <div class="info">
+    <strong>이 페이지는 검증 전용입니다.</strong> 실제 시스템(공급기업 관리 / 신청 페이지)의 코드는 변경하지 않았습니다.<br>
+    아래 버튼을 누르면 sample 데이터로 PDF 가 생성·다운로드됩니다. 다운로드 후 다음을 확인해 주세요:<br>
+    1) <b>한글-영문-숫자-특수문자 자간이 정상</b>인지 (이전 html2canvas 의 압축 문제 사라졌는지)<br>
+    2) <b>전체 디자인이 기존 견적서와 비슷</b>한지 (간격·정렬·표 모양)<br>
+    3) <b>footer 가 페이지 하단</b>에 위치하는지<br>
+    4) <b>장비 사양 페이지(2~3 페이지)</b>의 사양 표·헤더가 정상인지
+  </div>
+  <div class="row">
+    <button id="btn-quote" onclick="testQuotePdf()">견적서 PDF 생성 (1 페이지)</button>
+    <button id="btn-full" onclick="testFullPdf()" class="secondary">견적서 + 장비사양 (사진 없음)</button>
+    <button id="btn-photo-auto" onclick="testWithAutoPhoto()" class="secondary">견적서 + 장비사양 (Picsum 자동 사진)</button>
+  </div>
+  <div class="row">
+    <input type="file" id="user-photo" accept="image/*" multiple style="font-size:13px"/>
+    <button id="btn-photo-user" onclick="testWithUserPhoto()" class="secondary">선택한 사진으로 PDF 생성</button>
+  </div>
+  <div class="log" id="log">대기 중...</div>
+</div>
+
+<!-- jsPDF + 폰트 + 생성기 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="assets/pdf-font-loader.js"></script>
+<script src="assets/pdf-quote-generator.js"></script>
+
+<script>
+// 한글 금액 변환 (mm/공급기업_관리.html 의 numToKorean 과 동일 로직)
+function numToKorean(num) {
+  if(!num) return '금 영원정';
+  const units = ['','만','억','조'];
+  const digits = ['','일','이','삼','사','오','육','칠','팔','구'];
+  const positions = ['','십','백','천'];
+  let n = Math.floor(num); let result = ''; let unitIdx = 0;
+  while (n > 0) {
+    const part = n % 10000;
+    if (part > 0) {
+      let partStr = ''; let p = part; let posIdx = 0;
+      while (p > 0) {
+        const d = p % 10;
+        if (d > 0) partStr = digits[d] + positions[posIdx] + partStr;
+        p = Math.floor(p/10); posIdx++;
+      }
+      result = partStr + units[unitIdx] + result;
+    }
+    n = Math.floor(n/10000); unitIdx++;
+  }
+  return '금 ' + (result || '영') + '원정';
+}
+
+function _log(msg, cls) {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  if(cls) line.className = cls;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+function _clearLog() { document.getElementById('log').innerHTML = ''; }
+
+// ── Sample 데이터 ──
+const SAMPLE_QUOTE_BASE = {
+  id: 'QT-2026-009',
+  appId: 'NO-260507-8006',
+  company: '한국소스주식회사',
+  process: '계량·포장·검사',
+  date: '2026-05-07 19:32',
+  version: 2,
+  status: '확정',
+  memo: '납품일정 협의 후 결정. 설치 장소 답사 필요.',
+  items: [
+    { name: '액상류 자동충진수직사면포장기', model: 'BPK-VP420-LS', qty: 1, unit: 'SET', price: 18000000 },
+    { name: '액상류 자동충진수직삼면포장기', model: 'BPK-VP420-3S', qty: 1, unit: 'SET', price: 18000000 },
+    { name: '컨베이어 라인 5m',              model: 'BPK-CV-5000',  qty: 1, unit: 'SET', price: 4000000 }
+  ],
+  options: [
+    { name: '추가 노즐 세트',  qty: 3, price: 500000,  unit: 'SET' },
+    { name: '운반·설치비',    qty: 1, price: 1200000, unit: 'SET' }
+  ]
+};
+SAMPLE_QUOTE_BASE.total = SAMPLE_QUOTE_BASE.items.reduce((s,i)=>s+i.qty*i.price, 0)
+                       + SAMPLE_QUOTE_BASE.options.reduce((s,o)=>s+o.price, 0);
+SAMPLE_QUOTE_BASE.eqCount = SAMPLE_QUOTE_BASE.items.length;
+
+const SAMPLE_APP = {
+  id: 'NO-260507-8006', bizno: '275-88-01197', company: '한국소스주식회사',
+  manager: '최소담', phone: '010-3333-4444',
+  email: 'sauce@hansauce.co.kr',
+  address: '경기도 안산시 단원구 산단로 50'
+};
+
+const SAMPLE_EQ_LIST = [
+  { id:1, name:'액상류 자동충진수직사면포장기', model:'BPK-VP420-LS',
+    spec_speed:'25 bag/min', spec_power:'2.7 kW', spec_packing:'PP, PE, PET, NY, LLDPE',
+    spec_dimension:'W800 × D1200 × H1600 mm', spec_weight:'350kg',
+    spec_air:'5~6 kgf/cm², 150 L/min', spec_voltage:'380V 60Hz 3상' },
+  { id:2, name:'액상류 자동충진수직삼면포장기', model:'BPK-VP420-3S',
+    spec_speed:'30 bag/min', spec_power:'3.0 kW', spec_packing:'PP, PE, PET',
+    spec_dimension:'W750 × D1100 × H1500 mm', spec_weight:'320kg',
+    spec_air:'5~6 kgf/cm², 130 L/min', spec_voltage:'220V 60Hz 1상' }
+];
+
+async function testQuotePdf() {
+  _clearLog();
+  document.getElementById('btn-quote').disabled = true;
+  document.getElementById('btn-full').disabled = true;
+  try {
+    _log('1) 폰트 로드 중...', 'info');
+    const t0 = Date.now();
+    await ensurePdfFonts();
+    _log('   폰트 로드 완료 (' + (Date.now()-t0) + 'ms)', 'ok');
+    _log('2) PDF 빌드 중...', 'info');
+    const t1 = Date.now();
+    const pdf = await buildQuotePdf(SAMPLE_QUOTE_BASE, SAMPLE_APP, [], [], null);
+    _log('   PDF 빌드 완료 (' + (Date.now()-t1) + 'ms)', 'ok');
+    _log('3) 다운로드 시작...', 'info');
+    pdf.save('test_견적서_' + SAMPLE_QUOTE_BASE.id + '.pdf');
+    _log('   ✓ 완료. 다운로드된 PDF 를 확인해 주세요.', 'ok');
+  } catch (e) {
+    _log('✗ 실패: ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    document.getElementById('btn-quote').disabled = false;
+    document.getElementById('btn-full').disabled = false;
+  }
+}
+
+async function testFullPdf() {
+  _clearLog();
+  document.getElementById('btn-quote').disabled = true;
+  document.getElementById('btn-full').disabled = true;
+  try {
+    _log('1) 폰트 로드 중...', 'info');
+    const t0 = Date.now();
+    await ensurePdfFonts();
+    _log('   폰트 로드 완료 (' + (Date.now()-t0) + 'ms)', 'ok');
+    _log('2) PDF 빌드 중 (견적서 + 장비사양 ' + SAMPLE_EQ_LIST.length + '대)...', 'info');
+    const t1 = Date.now();
+    const pdf = await buildQuotePdf(SAMPLE_QUOTE_BASE, SAMPLE_APP, SAMPLE_EQ_LIST, [], null);
+    _log('   PDF 빌드 완료 (' + (Date.now()-t1) + 'ms)', 'ok');
+    _log('3) 다운로드 시작...', 'info');
+    pdf.save('test_견적서_장비사양_' + SAMPLE_QUOTE_BASE.id + '.pdf');
+    _log('   ✓ 완료. 다운로드된 PDF 를 확인해 주세요.', 'ok');
+  } catch (e) {
+    _log('✗ 실패: ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    document.getElementById('btn-quote').disabled = false;
+    document.getElementById('btn-full').disabled = false;
+  }
+}
+
+// ── 헬퍼: URL → base64 data URL (CORS 가능한 이미지) ──
+async function _fetchAsBase64(url){
+  const res = await fetch(url, { mode:'cors' });
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(blob);
+  });
+}
+// ── 헬퍼: File 객체 → base64 data URL ──
+function _fileAsBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
+  });
+}
+
+async function testWithAutoPhoto(){
+  _clearLog();
+  for(const id of ['btn-quote','btn-full','btn-photo-auto','btn-photo-user']) document.getElementById(id).disabled = true;
+  try {
+    _log('1) 폰트 로드 중...', 'info');
+    await ensurePdfFonts();
+    _log('   폰트 로드 완료', 'ok');
+    _log('2) Picsum 사진 ' + SAMPLE_EQ_LIST.length + '장 fetch 중...', 'info');
+    const photos = await Promise.all(
+      SAMPLE_EQ_LIST.map((_, i) => _fetchAsBase64('https://picsum.photos/800/600?random=' + (Date.now()+i)))
+    );
+    _log('   사진 로드 완료', 'ok');
+    _log('3) PDF 빌드 중...', 'info');
+    const pdf = await buildQuotePdf(SAMPLE_QUOTE_BASE, SAMPLE_APP, SAMPLE_EQ_LIST, photos, null);
+    pdf.save('test_견적서_장비사양_사진포함.pdf');
+    _log('   ✓ 완료. 다운로드된 PDF 의 장비 사양 페이지에 사진이 들어가는지 확인해 주세요.', 'ok');
+  } catch(e) {
+    _log('✗ 실패: ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    for(const id of ['btn-quote','btn-full','btn-photo-auto','btn-photo-user']) document.getElementById(id).disabled = false;
+  }
+}
+
+async function testWithUserPhoto(){
+  _clearLog();
+  const input = document.getElementById('user-photo');
+  if(!input.files || !input.files.length){
+    _log('✗ 먼저 사진을 선택해 주세요. (multiple 선택 시 각 장비 페이지에 순서대로 배치)', 'err');
+    return;
+  }
+  for(const id of ['btn-quote','btn-full','btn-photo-auto','btn-photo-user']) document.getElementById(id).disabled = true;
+  try {
+    _log('1) 폰트 로드 중...', 'info');
+    await ensurePdfFonts();
+    _log('   폰트 로드 완료', 'ok');
+    _log('2) 선택한 사진 ' + input.files.length + '장 base64 변환 중...', 'info');
+    const userPhotos = await Promise.all(Array.from(input.files).map(_fileAsBase64));
+    // 장비 수에 맞게 photos 배열 생성 (사진이 부족하면 순환, 남으면 잘라냄)
+    const photos = SAMPLE_EQ_LIST.map((_, i) => userPhotos[i % userPhotos.length] || null);
+    _log('   사진 변환 완료', 'ok');
+    _log('3) PDF 빌드 중...', 'info');
+    const pdf = await buildQuotePdf(SAMPLE_QUOTE_BASE, SAMPLE_APP, SAMPLE_EQ_LIST, photos, null);
+    pdf.save('test_견적서_장비사양_내사진.pdf');
+    _log('   ✓ 완료. 다운로드된 PDF 를 확인해 주세요.', 'ok');
+  } catch(e) {
+    _log('✗ 실패: ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    for(const id of ['btn-quote','btn-full','btn-photo-auto','btn-photo-user']) document.getElementById(id).disabled = false;
+  }
+}
+</script>
+</body>
+</html>
