@@ -2160,6 +2160,7 @@ function renderLookupResult(app, quote){
   // 장비 목록: 견적서가 있으면 견적 항목 우선 (수정/재발급 사항 반영)
   // 없으면 신청서 원본 장비 배열 사용
   let eqList = [];
+  let optList = [];
   let total = 0;
   let sourceLabel = '';
   if(quote && Array.isArray(quote.items) && quote.items.length > 0){
@@ -2170,7 +2171,15 @@ function renderLookupResult(app, quote){
       price: Number(it.price) || 0,
       lineTotal: (Number(it.price)||0) * (Number(it.qty)||1)
     }));
-    total = Number(quote.total) || eqList.reduce((s,it) => s + it.lineTotal, 0);
+    // 공급사가 견적서에 추가한 수기 옵션 (있을 때만) — 가격은 입력값 그대로 표시 (수량 곱셈 없음)
+    if(Array.isArray(quote.options) && quote.options.length > 0){
+      optList = quote.options.map(op => ({
+        name: op.name || '-',
+        qty:  Number(op.qty)   || 0,
+        price: Number(op.price) || 0
+      }));
+    }
+    total = Number(quote.total) || (eqList.reduce((s,it) => s + it.lineTotal, 0) + optList.reduce((s,op) => s + op.price, 0));
     const v = Number(quote.version) || 1;
     sourceLabel = `견적서 v${v} 기준`;
   } else {
@@ -2196,6 +2205,14 @@ function renderLookupResult(app, quote){
           <span class="res-eq-name">${it.name}${it.qty>1?` <span style="color:var(--g500);font-size:12px;font-weight:500">× ${it.qty}</span>`:''}</span>
           <span class="res-eq-price">${it.lineTotal.toLocaleString('ko-KR')}원</span>
         </div>`).join('')}
+      ${optList.length ? `
+        <div class="sum-title" style="margin:14px 0 10px">추가 옵션 (${optList.length}개)</div>
+        ${optList.map(op => `
+          <div class="res-eq-item">
+            <span class="res-eq-name">[옵션] ${op.name}${op.qty>0?` <span style="color:var(--g500);font-size:12px;font-weight:500">× ${op.qty}</span>`:''}</span>
+            <span class="res-eq-price">${op.price.toLocaleString('ko-KR')}원</span>
+          </div>`).join('')}
+      ` : ''}
     </div>
     <div class="res-total"><span class="res-total-lbl">총 예상 금액 (VAT 별도)</span><span class="res-total-amt">${total.toLocaleString('ko-KR')}원</span></div>
     ${isConfirmed && quote
@@ -2204,6 +2221,30 @@ function renderLookupResult(app, quote){
          <div class="status-msg info" style="margin-top:12px">현재 상태: <strong>${app.status}</strong> — 담당자 확정 후 견적서를 다운로드할 수 있습니다.</div>`
     }
   </div>`;
+
+  // ── PDF 백그라운드 prefetch — 사용자가 결과를 보는 동안 Drive 의 PDF 를 미리 받아 캐시
+  //    [견적서 PDF 다운로드] 클릭 시 즉시 다운로드 시작 (체감 0ms)
+  if(isConfirmed && quote && API_ENABLED){
+    setTimeout(() => _prefetchQuotePdf(app), 100);
+  }
+}
+
+// 다운로드 클릭 전에 미리 받아두는 PDF base64 캐시 (appId → res)
+const _lookupPdfCache = {};
+const _lookupPdfInflight = {};
+function _prefetchQuotePdf(app){
+  if(!app || !app.id) return;
+  if(_lookupPdfCache[app.id]) return;          // 이미 캐시
+  if(_lookupPdfInflight[app.id]) return;        // 이미 fetch 중
+  _lookupPdfInflight[app.id] = true;
+  apiCall('getLatestQuotePdf', { company: app.company, appId: app.id, includeBase64: true })
+    .then(res => {
+      if(res && res.ok && res.base64){
+        _lookupPdfCache[app.id] = res;
+      }
+    })
+    .catch(()=>{})
+    .finally(() => { delete _lookupPdfInflight[app.id]; });
 }
 
 // 신청 완료 직후 영수증 박스의 데이터로 즉시 조회 결과 표시 (API 재호출 없음)
@@ -2231,38 +2272,58 @@ function viewMySubmission(){
 // PDF GENERATION
 // ═══════════════════════════════════════════
 async function downloadPDF(appId){
+  // 0) prefetch 캐시 hit — 가장 빠른 경로 (renderLookupResult 시점부터 백그라운드로 받아둠)
+  const _doDownload = (res, app) => {
+    const a = document.createElement('a');
+    a.href = res.base64;
+    a.download = res.fileName || `BPK_견적서_${app?.company||''}_${appId}.pdf`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const sizeKB = Math.round((res.fileSize||0)/1024);
+    showToast('견적서 다운로드 — ' + (res.fileName || 'PDF') + (sizeKB?' ('+sizeKB+'KB)':''));
+  };
+  if(_lookupPdfCache[appId]){
+    // 캐시에서 회사명 보완 위해 LS apps 만 빠르게 조회 (네트워크 호출 없음)
+    const localApps = JSON.parse(localStorage.getItem(SK.APP)||'[]');
+    const localApp  = localApps.find(a => a.id === appId);
+    _doDownload(_lookupPdfCache[appId], localApp);
+    return;
+  }
+  // prefetch 가 진행 중이면 짧게 대기 (1.5초까지) — 거의 다 끝났을 가능성 높음
+  if(_lookupPdfInflight[appId]){
+    showApiLoading('견적서를 준비하는 중...');
+    const t0 = Date.now();
+    while(_lookupPdfInflight[appId] && Date.now() - t0 < 1500){
+      await new Promise(r => setTimeout(r, 100));
+    }
+    hideApiLoading();
+    if(_lookupPdfCache[appId]){
+      const localApps = JSON.parse(localStorage.getItem(SK.APP)||'[]');
+      const localApp  = localApps.find(a => a.id === appId);
+      _doDownload(_lookupPdfCache[appId], localApp);
+      return;
+    }
+  }
+
+  // 1) 캐시 미스 — 정식 경로. 신청·견적 데이터는 LS 에서 즉시 가져옴 (네트워크 재조회 생략)
   let apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
   let quotesAll=JSON.parse(localStorage.getItem(SK.QT)||'[]');
-  // 신청 + 견적 데이터 병렬 조회 (순차 await 2회 → 1회로 단축)
-  if(API_ENABLED){
-    try{
-      const [r1, r2] = await Promise.all([apiCall('getApps'), apiCall('getQts')]);
-      if(r1?.data) apps=r1.data;
-      if(r2?.data) quotesAll=r2.data;
-    }catch(e){}
+  const app=apps.find(a=>a.id===appId); if(!app){
+    showToast('신청 정보를 찾지 못했습니다. 다시 조회해 주세요.', 'error');
+    return;
   }
-  const app=apps.find(a=>a.id===appId); if(!app) return;
   const quote=quotesAll.find(q=>q.appId===appId);
 
-  // ── 1) 우선 시도: Drive 의 공급기업 발급 PDF 원본을 base64로 받아 다운로드
-  //     (downloadUrl 직접 사용은 cross-origin / 리다이렉트 이슈로 부정확)
+  // ── Drive 의 공급기업 발급 PDF 원본을 base64로 받아 다운로드
   if(API_ENABLED){
     showApiLoading('Drive에서 견적서 파일을 가져오는 중...');
     try{
       const res = await apiCall('getLatestQuotePdf', { company: app.company, appId: appId, includeBase64: true });
       hideApiLoading();
       if(res && res.ok && res.base64){
-        const a = document.createElement('a');
-        a.href = res.base64;
-        a.download = res.fileName || `BPK_견적서_${app.company}_${appId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        const sizeKB = Math.round((res.fileSize||0)/1024);
-        showToast('견적서 다운로드 — ' + (res.fileName || 'PDF') + ' (' + sizeKB + 'KB)');
+        _lookupPdfCache[appId] = res; // 다음 클릭 즉시 캐시
+        _doDownload(res, app);
         return;
       } else if(res && res.ok && res.downloadUrl){
-        // base64 변환 실패 시 Drive 뷰어로 fallback
         window.open(res.viewUrl || res.downloadUrl, '_blank');
         showToast('Drive에서 견적서를 열었습니다. (다운로드 버튼 클릭)');
         return;

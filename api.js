@@ -59,7 +59,7 @@ function showApiLoading(msg) {
   if (!el) {
     el = document.createElement('div');
     el.id = 'api-loading-ov';
-    el.style.cssText = 'position:fixed;inset:0;background:rgba(255,255,255,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(255,255,255,.98);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px';
     el.innerHTML = '<div style="width:44px;height:44px;border:5px solid #dbeafe;border-top-color:#1d4ed8;border-radius:50%;animation:spin .8s linear infinite"></div><div id="api-loading-msg" style="font-size:15px;font-weight:600;color:#1e40af"></div>';
     document.body.appendChild(el);
   }

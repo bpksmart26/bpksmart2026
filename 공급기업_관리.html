@@ -83,7 +83,7 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 .nav-item.active{background:#fff;color:var(--primary);font-weight:600;box-shadow:0 1px 3px rgba(15,23,42,.06)}
 .nav-icon{flex-shrink:0;color:currentColor;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px}
 .nav-badge{margin-left:auto;padding:2px 7px;border-radius:10px;font-size:10.5px;font-weight:700;min-width:20px;text-align:center;line-height:1.4}
-.nb-red{background:var(--danger);color:#fff}
+.nb-red{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
 .nb-orange{background:var(--orange);color:#fff}
 .nb-green{background:var(--accent);color:#fff}
 .sb-footer{margin-top:auto;padding:14px 18px 12px;border-top:1px solid var(--g200);font-size:11px;color:var(--g400);line-height:1.6}
@@ -532,7 +532,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
     <div class="nav-item active" onclick="showSec('applications')"><span class="nav-icon"><svg class="ic"><use href="#i-list"/></svg></span> 신청 업체 관리<span class="nav-badge nb-red" id="badge-new">0</span></div>
     <div class="sb-sec">물품 관리</div>
     <div class="nav-item" onclick="showSec('products')"><span class="nav-icon"><svg class="ic"><use href="#i-package"/></svg></span> 공급 물품 목록</div>
-    <div class="nav-item" onclick="showSec('quotes')"><span class="nav-icon"><svg class="ic"><use href="#i-document"/></svg></span> 견적서 관리<span class="nav-badge nb-orange" id="badge-qt">0</span></div>
+    <div class="nav-item" onclick="showSec('quotes')"><span class="nav-icon"><svg class="ic"><use href="#i-document"/></svg></span> 견적서 관리</div>
     <div class="sb-sec">통계</div>
     <div class="nav-item" onclick="showSec('dashboard')"><span class="nav-icon"><svg class="ic"><use href="#i-chart"/></svg></span> 현황 대시보드</div>
     <div class="sb-sec">시스템</div>
@@ -783,6 +783,24 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
   </div>
 </div>
 
+<!-- 견적서 상세 모달 (행 클릭 시) -->
+<div class="modal-ov" id="modal-qt-detail">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-hdr"><div><div class="modal-title" id="m-qd-title">견적서 상세</div><div class="modal-sub" id="m-qd-sub"></div></div><button class="modal-close" onclick="closeModal('modal-qt-detail')">✕</button></div>
+    <div class="modal-body" id="m-qd-body"></div>
+    <div class="modal-footer" id="m-qd-footer"></div>
+  </div>
+</div>
+
+<!-- 공급 물품 상세 모달 (행 클릭 시) -->
+<div class="modal-ov" id="modal-prod-detail">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-hdr"><div><div class="modal-title" id="m-pd-title">물품 상세</div><div class="modal-sub" id="m-pd-sub"></div></div><button class="modal-close" onclick="closeModal('modal-prod-detail')">✕</button></div>
+    <div class="modal-body" id="m-pd-body"></div>
+    <div class="modal-footer" id="m-pd-footer"></div>
+  </div>
+</div>
+
 <!-- MODAL: 물품 수정 -->
 <div class="modal-ov" id="modal-prod">
   <div class="modal" style="max-width:700px">
@@ -957,7 +975,7 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal('modal-quote')">취소</button>
-      <button class="btn btn-success" onclick="sendQuote()"><svg class="ic"><use href="#i-check"/></svg> 확정</button>
+      <button class="btn btn-success" id="m-qt-confirm-btn" onclick="sendQuote()"><svg class="ic"><use href="#i-document"/></svg> <span id="m-qt-confirm-label">견적서 발급</span></button>
     </div>
   </div>
 </div>
@@ -1743,10 +1761,10 @@ function openAppDetail(id){
     </div>
     ${(a.product_photos&&a.product_photos.length)?`
     <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 10px">제품 사진</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">${a.product_photos.map(p=>`<img src="${p}" style="width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--g200);cursor:pointer" onclick="window.open('${p}','_blank')"/>`).join('')}</div>`:''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${a.product_photos.map((p,i)=>`<img class="m-app-photo" data-original="${p}" src="${p}" referrerpolicy="no-referrer" loading="lazy" onerror="_appPhotoErr(this)" onclick="_appPhotoOpen(this)" style="width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--g200);background:#f1f5f9;cursor:pointer" alt="제품 사진 ${i+1}"/>`).join('')}</div>`:''}
     ${(a.space_photos&&a.space_photos.length)?`
     <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 10px">현장 사진</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">${a.space_photos.map(p=>`<img src="${p}" style="width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--g200);cursor:pointer" onclick="window.open('${p}','_blank')"/>`).join('')}</div>`:''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${a.space_photos.map((p,i)=>`<img class="m-app-photo" data-original="${p}" src="${p}" referrerpolicy="no-referrer" loading="lazy" onerror="_appPhotoErr(this)" onclick="_appPhotoOpen(this)" style="width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--g200);background:#f1f5f9;cursor:pointer" alt="현장 사진 ${i+1}"/>`).join('')}</div>`:''}
     <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 10px">선택 장비</div>
     <div style="margin-bottom:12px">${eqItems||'<span style="color:var(--g400);font-size:14px">장비 미선택</span>'}</div>
     <div style="background:var(--g50);border-radius:var(--r-sm);padding:14px 18px;display:flex;justify-content:space-between;align-items:center">
@@ -1755,6 +1773,32 @@ function openAppDetail(id){
     </div>`;
   document.getElementById('m-app-footer').innerHTML=`<button class="btn btn-outline" onclick="closeModal('modal-app')">닫기</button><button class="btn btn-primary" onclick="closeModal('modal-app');openQuoteModal('${id}')"><svg class="ic-sm"><use href="#i-document"/></svg> 견적서 작성</button>`;
   openModal('modal-app');
+}
+
+// 신청 상세 모달 사진 — onerror fallback: drive thumbnail 로드 실패 시 GAS 경유 base64 로 1회 재시도
+async function _appPhotoErr(img){
+  if(img.dataset.fallbackTried) return;       // 무한 루프 방지
+  img.dataset.fallbackTried = '1';
+  const original = img.dataset.original || '';
+  if(!original){ _appPhotoFail(img, original); return; }
+  try {
+    const resolved = await resolvePhoto(original);
+    if(resolved){ img.src = resolved; }
+    else { _appPhotoFail(img, original); }
+  } catch(e){ _appPhotoFail(img, original); }
+}
+function _appPhotoFail(img, original){
+  img.style.background = '#fee2e2';
+  img.alt = '사진 불러오기 실패';
+  img.title = '사진을 불러오지 못했습니다 — 클릭하여 원본 새 탭 열기';
+  // src 를 placeholder 로 (broken icon 대신 빨강 빈 박스)
+  img.src = "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3C/svg%3E";
+  img.dataset.failed = '1';
+}
+function _appPhotoOpen(img){
+  // base64 로 교체된 경우 그대로 새 탭, 실패한 경우 원본 URL 열기, 정상이면 현재 src 열기
+  const url = (img.dataset.failed ? img.dataset.original : (img.src || img.dataset.original)) || '';
+  if(url) window.open(url, '_blank');
 }
 
 // ═══════════════════════════════════════════
@@ -1773,7 +1817,7 @@ function renderProds(){
   });
   document.getElementById('prod-tbody').innerHTML=data.length?data.map(p=>{
     const photoCount=(p.photos||[]).filter(x=>x).length;
-    return `<tr>
+    return `<tr onclick="openProdDetail(${p.id})" style="cursor:pointer">
       <td><span class="mono" style="color:var(--g400)">${p.id}</span></td>
       <td><span class="fw">${p.name}</span></td>
       <td><span class="mono">${p.model}</span></td>
@@ -1781,9 +1825,62 @@ function renderProds(){
       <td><span class="price-text">${p.price.toLocaleString('ko-KR')}원</span></td>
       <td style="text-align:center">${photoCount>0?`<span style="font-size:13px;color:var(--accent);font-weight:600;display:inline-flex;align-items:center;gap:4px"><svg class="ic-sm"><use href="#i-camera"/></svg> ${photoCount}장</span>`:`<span style="font-size:12px;color:var(--g400)">미등록</span>`}</td>
       <td>${p.status==='active'?'<span class="badge b-active">● 활성</span>':'<span class="badge b-inactive">○ 비활성</span>'}</td>
-      <td style="white-space:nowrap"><button class="btn btn-sm btn-outline" onclick="openEditProd(${p.id})"><svg class="ic-sm"><use href="#i-edit"/></svg> 수정</button></td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap"><button class="btn btn-sm btn-outline" onclick="openEditProd(${p.id})"><svg class="ic-sm"><use href="#i-edit"/></svg> 수정</button></td>
     </tr>`;
   }).join(''):`<tr><td colspan="8"><div class="empty"><svg class="empty-icon" style="width:42px;height:42px;color:var(--g300)"><use href="#i-package"/></svg><div class="empty-txt">조건에 맞는 물품이 없습니다.</div></div></td></tr>`;
+}
+
+// 공급 물품 상세 모달 — 행 클릭 시 호출. 사진·사양·매칭 태그 등 한눈에 표시
+function openProdDetail(id){
+  const p = equipment.find(x => x.id === id); if(!p) return;
+  const photos     = (p.photos||[]).filter(Boolean);
+  const photosPkg  = (p.photos_pkg||[]).filter(Boolean);
+  const specDefs = [
+    ['생산속도',          p.spec_speed],
+    ['소비전력',          p.spec_power],
+    ['포장재 종류',       p.spec_packing],
+    ['외형 치수',         p.spec_dimension],
+    ['장비 중량',         p.spec_weight],
+    ['공압 조건',         p.spec_air],
+    ['전원 사양',         p.spec_voltage]
+  ];
+  const specRows = specDefs.filter(([,v]) => v).map(([k,v]) => `
+    <div class="detail-item"><div class="di-label">${k}</div><div class="di-value">${v}</div></div>`).join('');
+  const photoStrip = (label, arr) => arr.length ? `
+    <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 10px">${label} (${arr.length})</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${arr.map((u,i)=>`<img class="m-pd-photo" data-original="${u}" src="${u}" referrerpolicy="no-referrer" loading="lazy" onerror="_appPhotoErr(this)" onclick="_appPhotoOpen(this)" alt="${label} ${i+1}" style="width:140px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--g200);background:#f1f5f9;cursor:pointer"/>`).join('')}
+    </div>` : '';
+  document.getElementById('m-pd-title').textContent = p.name || '물품 상세';
+  document.getElementById('m-pd-sub').textContent = `${p.model||'모델 미입력'} · ${p.category||'-'} · ID ${p.id}`;
+  document.getElementById('m-pd-body').innerHTML = `
+    <div style="margin-bottom:16px">
+      ${p.status==='active'?'<span class="badge b-active">● 활성</span>':'<span class="badge b-inactive">○ 비활성</span>'}
+      <span class="badge b-new" style="margin-left:6px;font-size:11px">${p.category||'-'}</span>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">기본 정보</div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="di-label">물품명</div><div class="di-value">${p.name||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">모델명</div><div class="di-value"><span class="mono">${p.model||'-'}</span></div></div>
+      <div class="detail-item"><div class="di-label">납품 예정 가격</div><div class="di-value"><span class="price-text" style="font-size:15px">${(p.price||0).toLocaleString('ko-KR')}원</span></div></div>
+      <div class="detail-item"><div class="di-label">상태</div><div class="di-value">${p.status==='active'?'활성':'비활성'}</div></div>
+      ${p.desc?`<div class="detail-item detail-full"><div class="di-label">설명</div><div class="di-value" style="white-space:pre-line;line-height:1.6">${p.desc}</div></div>`:''}
+    </div>
+    ${specRows ? `
+    <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin:18px 0 10px">사양 (Specifications)</div>
+    <div class="detail-grid">${specRows}</div>` : ''}
+    ${(p.tag_texture||p.tag_pkg) ? `
+    <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin:18px 0 10px">매칭 태그</div>
+    <div class="detail-grid">
+      ${p.tag_texture?`<div class="detail-item"><div class="di-label">제품 물성 태그</div><div class="di-value">${p.tag_texture}</div></div>`:''}
+      ${p.tag_pkg?`<div class="detail-item"><div class="di-label">포장 형태 태그</div><div class="di-value">${p.tag_pkg}</div></div>`:''}
+    </div>` : ''}
+    ${photoStrip('장비 사진', photos)}
+    ${photoStrip('포장 사진', photosPkg)}`;
+  document.getElementById('m-pd-footer').innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal('modal-prod-detail')">닫기</button>
+    <button class="btn btn-primary" onclick="closeModal('modal-prod-detail');openEditProd(${p.id})"><svg class="ic-sm"><use href="#i-edit"/></svg> 수정</button>`;
+  openModal('modal-prod-detail');
 }
 
 function openEditProd(id){
@@ -1978,7 +2075,8 @@ function renderQuotes(){
     const groups = (typeof groupQuotesByApp === 'function') ? groupQuotesByApp(data) : data.map(q => ({appId:q.appId, latest:q, versions:[q]}));
     tb.innerHTML = groups.map(g => _renderQuoteRow(g)).join('');
   }
-  document.getElementById('badge-qt').textContent=quotes.filter(q=>q.status==='작성중').length;
+  // badge-qt 요소는 제거됨 — 참조 안전망만 남김
+  const _bqt = document.getElementById('badge-qt'); if(_bqt) _bqt.textContent = quotes.filter(q=>q.status==='작성중').length;
 }
 
 function _renderQuoteRow(g){
@@ -1986,8 +2084,8 @@ function _renderQuoteRow(g){
   const sm={'작성중':'b-draft','발송완료':'b-sent','확정':'b-conf'};
   const ic={'작성중':'i-edit','발송완료':'i-send','확정':'i-check'};
   const v = Number(q.version) || 1;
-  const hasHistory = g.versions.length > 1;
-  return `<tr>
+  const verCount = g.versions.length;
+  return `<tr onclick="openQuoteDetail('${q.id}')" style="cursor:pointer">
     <td><span class="mono">${q.id}</span>${v>1 ? ` <span class="badge b-mod" style="font-size:10px;margin-left:4px">v${v}</span>` : ` <span class="badge b-new" style="font-size:10px;margin-left:4px">v1</span>`}</td>
     <td><span class="fw">${q.company}</span></td>
     <td><span class="mono" style="font-size:11px">${q.appId||'-'}</span></td>
@@ -1995,15 +2093,72 @@ function _renderQuoteRow(g){
     <td style="text-align:center">${q.eqCount||0}개</td>
     <td><span class="badge ${sm[q.status]}"><svg class="ic-sm"><use href="#${ic[q.status]||'i-edit'}"/></svg> ${q.status}</span></td>
     <td><span class="mono" style="font-size:11px">${q.date}</span></td>
-    <td style="white-space:nowrap">
-      <button class="btn btn-sm btn-outline" onclick="openQuoteModal('${q.appId}','${q.id}')" title="${v>1?'재발급 (v'+(v+1)+' 생성)':'수정 발급 (v2 생성)'}"><svg class="ic-sm"><use href="#i-edit"/></svg> 재발급</button>
-      ${q.status!=='확정'?`<button class="btn btn-sm btn-success" style="margin-left:4px" onclick="confirmQuote('${q.id}')"><svg class="ic-sm"><use href="#i-check"/></svg> 확정</button>`:''}
-      <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="genPDF('${q.id}')"><svg class="ic-sm"><use href="#i-document"/></svg> PDF${q.pdfUrl?'<svg class="ic-sm" style="color:#10b981;margin-left:3px"><use href="#i-check"/></svg>':''}</button>
-      <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="genEquipPDF('${q.id}')"><svg class="ic-sm"><use href="#i-camera"/></svg> 장비PDF${q.equipPdfUrl?'<svg class="ic-sm" style="color:#10b981;margin-left:3px"><use href="#i-check"/></svg>':''}</button>
-      ${q.pdfUrl?`<a href="${q.pdfUrl}" target="_blank" class="btn btn-sm" style="margin-left:4px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534" title="Drive에서 열기"><svg class="ic-sm"><use href="#i-cloud"/></svg></a>`:''}
-      ${hasHistory?`<button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="openQuoteVersionsModal('${q.appId}')" title="${g.versions.length}개 버전 히스토리"><svg class="ic-sm"><use href="#i-clock"/></svg> 버전 (${g.versions.length})</button>`:''}
+    <td onclick="event.stopPropagation()" style="white-space:nowrap">
+      <button class="btn btn-sm btn-outline" onclick="openQuoteModal('${q.appId}','${q.id}')" title="견적서 수정 — 저장 시 v${v+1} 으로 재발급"><svg class="ic-sm"><use href="#i-edit"/></svg> 수정</button>
+      <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="openQuoteVersionsModal('${q.appId}')" title="${verCount}개 버전 — 각 버전의 견적·장비 PDF 다운로드"><svg class="ic-sm"><use href="#i-clock"/></svg> 버전 (${verCount})</button>
     </td>
   </tr>`;
+}
+
+// 견적서 상세 모달 — 행 클릭 시 호출. 항목·옵션·메모 등 한눈에 표시
+function openQuoteDetail(qtId){
+  const q = quotes.find(x => x.id === qtId); if(!q) return;
+  const a = applications.find(x => x.id === q.appId);
+  const v = Number(q.version) || 1;
+  const sm = {'작성중':'b-draft','발송완료':'b-sent','확정':'b-conf'};
+  const itemsHtml = (q.items||[]).map(it => `
+    <tr>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--g100)">${it.name}${it.model&&it.model!=='-'?`<div style="font-size:11px;color:var(--g500);margin-top:2px">${it.model}</div>`:''}</td>
+      <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--g100);font-family:'JetBrains Mono',monospace">${it.qty||1}</td>
+      <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--g100);font-size:12px;color:var(--g500)">${it.unit||'SET'}</td>
+      <td style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--g100);font-family:'JetBrains Mono',monospace;font-weight:700">${((it.qty||1)*(it.price||0)).toLocaleString('ko-KR')}원</td>
+    </tr>`).join('');
+  const opts = Array.isArray(q.options) ? q.options : [];
+  const optsHtml = opts.length ? opts.map(op => `
+    <tr>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--g100)"><span style="font-size:10.5px;color:var(--g500);font-weight:700;margin-right:5px">[옵션]</span>${op.name||'-'}</td>
+      <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--g100);font-family:'JetBrains Mono',monospace">${op.qty||0}</td>
+      <td style="padding:8px 10px;text-align:center;border-bottom:1px solid var(--g100);font-size:12px;color:var(--g500)">SET</td>
+      <td style="padding:8px 10px;text-align:right;border-bottom:1px solid var(--g100);font-family:'JetBrains Mono',monospace;font-weight:700">${(op.price||0).toLocaleString('ko-KR')}원</td>
+    </tr>`).join('') : '';
+  document.getElementById('m-qd-title').textContent = `${q.company} — 견적서 상세`;
+  document.getElementById('m-qd-sub').textContent = `${q.id} · v${v} · ${q.date||''}`;
+  document.getElementById('m-qd-body').innerHTML = `
+    <div style="margin-bottom:16px">
+      <span class="badge ${sm[q.status]||'b-draft'}" style="margin-right:6px">${q.status||'-'}</span>
+      ${v>1 ? `<span class="badge b-mod">v${v} (재발급)</span>` : '<span class="badge b-new">v1 (최초 발급)</span>'}
+      ${q.isLatest==='1' || q.isLatest===true ? '<span class="badge b-conf" style="margin-left:6px">최신</span>' : ''}
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">기본 정보</div>
+    <div class="detail-grid">
+      <div class="detail-item"><div class="di-label">업체명</div><div class="di-value">${q.company||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">접수번호</div><div class="di-value"><span class="mono" style="font-size:13px">${q.appId||'-'}</span></div></div>
+      <div class="detail-item"><div class="di-label">사업자등록번호</div><div class="di-value">${a?.bizno||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">담당자</div><div class="di-value">${a?.manager||'-'} ${a?.phone?` · ${a.phone}`:''}</div></div>
+      <div class="detail-item"><div class="di-label">공정</div><div class="di-value">${q.process||'-'}</div></div>
+      <div class="detail-item"><div class="di-label">버전 / 발급일</div><div class="di-value">v${v} · ${q.date||'-'}</div></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--g400);text-transform:uppercase;letter-spacing:.8px;margin:18px 0 10px">견적 항목 (${(q.items||[]).length}개)</div>
+    <table style="width:100%;border-collapse:collapse;border:1px solid var(--g200);border-radius:6px;overflow:hidden">
+      <thead><tr style="background:var(--g50)"><th style="padding:9px 10px;text-align:left;font-size:11px;color:var(--g600)">품명</th><th style="padding:9px 10px;text-align:center;font-size:11px;color:var(--g600);width:60px">수량</th><th style="padding:9px 10px;text-align:center;font-size:11px;color:var(--g600);width:60px">단위</th><th style="padding:9px 10px;text-align:right;font-size:11px;color:var(--g600);width:130px">합계</th></tr></thead>
+      <tbody>${itemsHtml||'<tr><td colspan="4" style="padding:14px;text-align:center;color:var(--g400)">항목 없음</td></tr>'}${optsHtml}</tbody>
+    </table>
+    ${opts.length ? `<div style="margin-top:6px;font-size:11px;color:var(--g500)">옵션 ${opts.length}개 포함 — 옵션 가격은 입력값 그대로 합산</div>` : ''}
+    <div style="background:var(--g50);border-radius:var(--r-sm);padding:14px 18px;margin-top:14px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:14px;font-weight:700;color:var(--g700)">합계 금액 (VAT 별도)</span>
+      <span class="price-text" style="font-size:18px">${(q.total||0).toLocaleString('ko-KR')}원</span>
+    </div>
+    ${q.memo ? `<div style="margin-top:14px;padding:12px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:13px;color:#78350f;line-height:1.6"><div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:4px;letter-spacing:.4px">비고 / 특이사항</div>${q.memo.replace(/\n/g,'<br>')}</div>` : ''}
+    <div style="margin-top:14px;display:flex;gap:12px;font-size:12px;color:var(--g500)">
+      <div>견적서 PDF: ${q.pdfUrl ? `<a href="${q.pdfUrl}" target="_blank" style="color:var(--primary);font-weight:600;text-decoration:none">Drive에서 보기 ↗</a>` : '<span style="color:var(--g400)">미발급</span>'}</div>
+      <div style="color:var(--g300)">|</div>
+      <div>장비 사양서 PDF: ${q.equipPdfUrl ? `<a href="${q.equipPdfUrl}" target="_blank" style="color:var(--primary);font-weight:600;text-decoration:none">Drive에서 보기 ↗</a>` : '<span style="color:var(--g400)">미발급</span>'}</div>
+    </div>`;
+  document.getElementById('m-qd-footer').innerHTML = `
+    <button class="btn btn-outline" onclick="closeModal('modal-qt-detail')">닫기</button>
+    <button class="btn btn-primary" onclick="closeModal('modal-qt-detail');openQuoteVersionsModal('${q.appId}')"><svg class="ic-sm"><use href="#i-clock"/></svg> 버전 히스토리</button>
+    <button class="btn btn-success" onclick="closeModal('modal-qt-detail');openQuoteModal('${q.appId}','${q.id}')"><svg class="ic-sm"><use href="#i-edit"/></svg> 수정</button>`;
+  openModal('modal-qt-detail');
 }
 
 // 견적 버전 히스토리 모달 — Drive 업로드 진행 중인 PDF 자동 갱신 지원
@@ -2050,17 +2205,13 @@ function openQuoteVersionsModal(appId){
               <td style="padding:9px 8px;font-family:monospace;font-size:13px;font-weight:700;color:var(--primary);text-align:right;border-bottom:1px solid var(--g100)">${(q.total||0).toLocaleString('ko-KR')}원</td>
               <td style="padding:9px 8px;text-align:center;border-bottom:1px solid var(--g100)">${statusBadge(q.status||'작성중').replace('badge','badge').replace('b-new','b-' + (q.status==='확정'?'conf':'draft'))}</td>
               <td style="padding:9px 8px;font-family:monospace;font-size:11px;color:var(--g500);border-bottom:1px solid var(--g100)">${q.date||'-'}</td>
-              <td style="padding:9px 8px;text-align:center;border-bottom:1px solid var(--g100)">
-                ${q.pdfUrl
-                  ? `<a href="${q.pdfUrl}" target="_blank" class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 10px"><svg class="ic-sm"><use href="#i-cloud"/></svg> 견적</a>`
-                  : (_pendingPdfUploads.has(q.id+'|quote')
-                      ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--primary);font-weight:600"><span style="display:inline-block;width:10px;height:10px;border:1.5px solid var(--primary);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></span>업로드 중...</span>'
-                      : '<span style="color:var(--g400);font-size:11px">-</span>')}
-                ${q.equipPdfUrl
-                  ? `<a href="${q.equipPdfUrl}" target="_blank" class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 10px;margin-left:4px"><svg class="ic-sm"><use href="#i-cloud"/></svg> 장비</a>`
-                  : (_pendingPdfUploads.has(q.id+'|equip')
-                      ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--primary);font-weight:600;margin-left:4px"><span style="display:inline-block;width:10px;height:10px;border:1.5px solid var(--primary);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></span>업로드 중...</span>'
-                      : '')}
+              <td style="padding:9px 8px;text-align:center;border-bottom:1px solid var(--g100);white-space:nowrap">
+                ${_pendingPdfUploads.has(q.id+'|quote')
+                  ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--primary);font-weight:600"><span style="display:inline-block;width:10px;height:10px;border:1.5px solid var(--primary);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></span>견적 업로드</span>'
+                  : `<button class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 10px" onclick="genPDF('${q.id}')" title="견적서 PDF 다운로드 + Drive 저장"><svg class="ic-sm"><use href="#i-document"/></svg> 견적${q.pdfUrl?'<svg class="ic-sm" style="color:#10b981;margin-left:3px"><use href="#i-check"/></svg>':''}</button>`}
+                ${_pendingPdfUploads.has(q.id+'|equip')
+                  ? '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--primary);font-weight:600;margin-left:4px"><span style="display:inline-block;width:10px;height:10px;border:1.5px solid var(--primary);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></span>장비 업로드</span>'
+                  : `<button class="btn btn-sm btn-outline" style="font-size:11px;padding:4px 10px;margin-left:4px" onclick="genEquipPDF('${q.id}')" title="장비 사양서 PDF 다운로드 + Drive 저장"><svg class="ic-sm"><use href="#i-camera"/></svg> 장비${q.equipPdfUrl?'<svg class="ic-sm" style="color:#10b981;margin-left:3px"><use href="#i-check"/></svg>':''}</button>`}
               </td>
             </tr>`;
           }).join('')}
@@ -2124,7 +2275,13 @@ function openQuoteModal(appId,qtId){
   const app=applications.find(a=>a.id===appId);
   const existQt=qtId?quotes.find(q=>q.id===qtId):null;
   editQtId=qtId||null;
-  document.getElementById('m-qt-title').textContent=app?`견적서 작성 — ${app.company}`:'견적서 작성';
+  // 진입 컨텍스트에 따라 버튼 라벨 / 모달 타이틀 동적 변경
+  // - 신규(qtId 없음) → '견적서 발급'
+  // - 재발급(qtId 있음) → '견적서 재발급'
+  const isReissue = !!existQt;
+  const confirmLabel = document.getElementById('m-qt-confirm-label');
+  if(confirmLabel) confirmLabel.textContent = isReissue ? '견적서 재발급' : '견적서 발급';
+  document.getElementById('m-qt-title').textContent=app?`${isReissue?'견적서 수정':'견적서 작성'} — ${app.company}`:(isReissue?'견적서 수정':'견적서 작성');
   document.getElementById('q-company').value=existQt?.company||app?.company||'';
   document.getElementById('q-receiptno').value=existQt?.appId||appId||'';
   document.getElementById('q-process').value=existQt?.process||(app?.processes||[]).join('·')||'';
@@ -2175,11 +2332,10 @@ function calcQTotal(){
     row.querySelector('.q-price-disp').textContent=price?((price*qty).toLocaleString('ko-KR')+'원'):'-';
     return s+price*qty;
   },0);
-  // 2) 옵션(수기) 합 — 합계 disp 없이 모달 하단 q-total-disp 에서만 표시
+  // 2) 옵션(수기) 합 — 입력한 금액을 그대로 합산 (수량 곱셈 없음)
   const optsTotal=[...document.querySelectorAll('#q-options .q-opt')].reduce((s,row)=>{
-    const qty=parseInt(row.querySelector('.q-opt-qty')?.value||0)||0;
     const price=parseInt(row.querySelector('.q-opt-price')?.value||0)||0;
-    return s+qty*price;
+    return s+price;
   },0);
   document.getElementById('q-total-disp').textContent=(itemsTotal+optsTotal).toLocaleString('ko-KR')+'원';
 }
@@ -2206,7 +2362,8 @@ function getQData(status){
     if(!name || (qty===0 && price===0)) return null;
     return {name,qty,price,unit:'SET'};
   }).filter(Boolean);
-  const total=items.reduce((s,i)=>s+i.qty*i.price,0)+options.reduce((s,o)=>s+o.qty*o.price,0);
+  // 옵션은 입력한 금액을 그대로 합계에 반영 (수량 곱셈 없음)
+  const total=items.reduce((s,i)=>s+i.qty*i.price,0)+options.reduce((s,o)=>s+(o.price||0),0);
   // 견적서 작성/수정 일시 — 'YYYY-MM-DD HH:MM' (common.js)
   return{company,appId,process,memo,items,options,total,eqCount:items.length,status,date:nowDateTime()};
 }
@@ -2242,8 +2399,10 @@ async function sendQuote(){
   const existing = d.appId ? quotes.filter(q => q.appId === d.appId) : [];
   const maxV = existing.length ? Math.max(...existing.map(q => Number(q.version)||1)) : 0;
   const newVersion = maxV + 1;
-  const verNote = maxV ? `\n\n이 신청에 대한 견적이 이미 ${maxV}건 있습니다.\n새 버전 v${newVersion} 으로 발급됩니다 (이전 버전은 보존).` : '';
-  if(!confirm(`${d.company}의 견적서를 확정 처리하시겠습니까?\n확정 후 신청기업이 PDF를 다운로드할 수 있습니다.${verNote}`)) return;
+  const isReissue = maxV > 0;
+  const actionLabel = isReissue ? `견적서 재발급 (v${newVersion})` : '견적서 발급';
+  const verNote = isReissue ? `\n\n이 신청에 대한 견적이 이미 ${maxV}건 있습니다.\n새 버전 v${newVersion} 으로 발급됩니다 (이전 버전은 보존).` : '';
+  if(!confirm(`${d.company} - ${actionLabel} 진행하시겠습니까?\n확정 처리 후 PDF 가 생성·다운로드되며 Drive 에 저장됩니다.${verNote}`)) return;
 
   // 항상 새 행 생성 — saveQuoteWithVersion 이 자동으로 isLatest 갱신
   const id='QT-2026-'+String(quotes.length+1).padStart(3,'0');
@@ -2257,7 +2416,15 @@ async function sendQuote(){
   closeModal('modal-quote'); renderQuotes(); renderApps(); renderDashboard();
   // saveQt 가 GAS saveQuoteWithVersion 호출 → 서버에서도 isLatest 정리
   await Promise.all([syncQt(qt, true), app?syncApp(app,false):Promise.resolve()]);
-  showToast(`${d.company} 견적서 v${newVersion} 이 확정되었습니다.`);
+  showToast(`${d.company} 견적서 v${newVersion} 확정 — PDF 생성 중...`);
+
+  // 즉시 PDF 생성 (다운로드 + Drive 업로드). 사용자가 별도 [PDF] 버튼을 누를 필요 없음
+  try {
+    await genPDF(qt.id);
+  } catch(e) {
+    console.error('[sendQuote] genPDF 실패', e);
+    showToast(`PDF 발급 실패: ${(e&&e.message)||'알 수 없는 오류'}`,'error');
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -2291,13 +2458,14 @@ async function genPDF(qtId){
     ${_td(it.unit||'SET','text-align:center')}
     ${_td((it.qty*it.price).toLocaleString('ko-KR')+'원','text-align:right')}
   </tr>`).join('');
-  // 옵션(수기) — 견적 항목 표 안에 '[옵션]옵션명' 텍스트로 함께 표시. 단위는 SET 고정. 합계는 q.total 에 이미 포함됨
+  // 옵션(수기) — 견적 항목 표 안에 '[옵션]옵션명' 텍스트로 함께 표시. 단위는 SET 고정.
+  // 합계 칸은 입력한 금액(op.price)을 그대로 표시 (수량 × 단가 곱셈 없음)
   const opts=Array.isArray(q.options)?q.options:[];
   const optionRows=opts.map(op=>`<tr>
     ${_td(`[옵션]${op.name||''}`)}
     ${_td(op.qty||0,'text-align:center')}
     ${_td('SET','text-align:center')}
-    ${_td(((op.qty||0)*(op.price||0)).toLocaleString('ko-KR')+'원','text-align:right')}
+    ${_td((op.price||0).toLocaleString('ko-KR')+'원','text-align:right')}
   </tr>`).join('');
   const totalRowCount=q.items.length+opts.length;
   const padCount=Math.max(0,5-totalRowCount);
@@ -2308,7 +2476,7 @@ async function genPDF(qtId){
     :`<span style="display:inline-block;width:52px;height:52px;border-radius:50%;border:2.5px solid #cc0000;text-align:center;line-height:52px;font-size:10px;font-weight:900;color:#cc0000;transform:rotate(-8deg);margin-left:6px">(인)</span>`;
 
   document.getElementById('pdf-content').innerHTML=`
-<div style="padding:22px 46px 14px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:12.5px;line-height:1.4">
+<div style="padding:22px 46px 14px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:12.5px;line-height:1.4;min-height:1123px;box-sizing:border-box;position:relative">
 
   <div style="text-align:center;font-size:28px;font-weight:900;letter-spacing:20px;margin-bottom:18px">見　積　書</div>
 
@@ -2360,7 +2528,7 @@ async function genPDF(qtId){
     </div>
   </div>
 
-  <div style="margin-top:8px;text-align:center;font-size:9.5px;color:#999;border-top:1px solid #e5e5e5;padding-top:6px">
+  <div style="position:absolute;left:46px;right:46px;bottom:14px;text-align:center;font-size:9.5px;color:#999;border-top:1px solid #e5e5e5;padding-top:6px">
     (주)비피케이 &nbsp;|&nbsp; TEL (053)716-7600 &nbsp;|&nbsp; bpk90@naver.com &nbsp;|&nbsp; 대구광역시 달서구 문화회관 11길 61(장기동)
   </div>
 </div>`;
@@ -2383,28 +2551,36 @@ async function genPDF(qtId){
       resolvePhotosBatch(productPhotoUrls),
       resolvePhotosBatch(spacePhotoUrls)
     ]);
-    hideApiLoading();
+    // hideApiLoading() 하지 않음 — 캡처 동안 화면이 노출되지 않도록 오버레이 유지
 
-    // ── 사진 누락 시 사용자 확인 (P3-1)
+    // ── 사진 누락 시 사용자 확인 (P3-1) — confirm 동안만 잠시 숨김
     const missing =
       eqPhotos.filter((p,i)=>eqPhotoUrls[i]&&!p).length +
       productPhotos.filter((p,i)=>productPhotoUrls[i]&&!p).length +
       spacePhotos.filter((p,i)=>spacePhotoUrls[i]&&!p).length;
     if(missing>0){
-      if(!confirm(`사진 ${missing}장이 로드되지 않았습니다.\n해당 자리에 빈 공간이 들어간 채로 PDF를 생성할까요?\n\n[확인] 빈칸 상태로 발행  /  [취소] PDF 생성 중단`)){
+      hideApiLoading();
+      const ok = confirm(`사진 ${missing}장이 로드되지 않았습니다.\n해당 자리에 빈 공간이 들어간 채로 PDF를 생성할까요?\n\n[확인] 빈칸 상태로 발행  /  [취소] PDF 생성 중단`);
+      if(!ok){
         showToast('PDF 생성을 취소했습니다.','warn');
         return;
       }
+      showApiLoading('견적서 PDF 생성 중...');
+    } else {
+      showApiLoading('견적서 PDF 생성 중...');
     }
 
     // 이제 템플릿을 화면으로 옮김 (html2canvas 가 캡처할 수 있도록)
+    // 풀스크린 흰 마스크로 화면을 완전히 가린 채 템플릿을 화면 안으로 이동 → html2canvas 정확 캡처
+    // (off-screen 캡처는 폰트 메트릭 부작용 발생, width 옵션 강제도 자간 압축 유발)
+    _showPdfMask('견적서 PDF 생성 중...');
     tpl.style.left='0';tpl.style.top='0';tpl.style.zIndex='-1';
     // 1페이지: 견적서 (JPEG로 변환 — P3-2)
     const c1=await html2canvas(tpl,{scale:1.5,useCORS:true,logging:false,backgroundColor:'#ffffff',imageTimeout:0,removeContainer:true});
     const h1=c1.height*(pgW/c1.width);
     pdf.addImage(c1.toDataURL('image/jpeg',0.85),'JPEG',0,0,pgW,Math.min(h1,pgH));
 
-    // 2페이지~: 장비별 사양 페이지
+    // 2페이지~: 장비별 사양 페이지 — 마스크가 화면을 가리고 있어 노출 없음
     const eTpl=document.getElementById('pdf-equip-tpl');
     eTpl.style.left='0';eTpl.style.top='0';eTpl.style.zIndex='-1';
     for(let _ei=0; _ei<eqInfoList.length; _ei++){
@@ -2426,7 +2602,7 @@ async function genPDF(qtId){
 
       // 사진은 템플릿에 넣지 않고 빈 공간(spacer)만 확보 — html2canvas 이미지 렌더 이슈 완전 우회
       eTpl.innerHTML=`
-<div style="padding:40px 50px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:13px">
+<div style="padding:40px 50px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:13px;min-height:1123px;box-sizing:border-box;position:relative">
   <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1d4ed8;padding-bottom:12px;margin-bottom:24px">
     <div>
       <div style="font-size:10px;color:#6b7280;margin-bottom:4px">장비 사양서 · ${q.id} · ${q.company}</div>
@@ -2441,7 +2617,7 @@ async function genPDF(qtId){
   <table style="width:100%;border-collapse:collapse;font-size:13px">
     ${specRows||`<tr><td colspan="2" style="padding:14px;text-align:center;color:#9ca3af;border:1px solid #d1d5db">등록된 스펙 정보가 없습니다.</td></tr>`}
   </table>
-  <div style="margin-top:48px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:8px">
+  <div style="position:absolute;left:50px;right:50px;bottom:24px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:8px">
     (주)비피케이 &nbsp;|&nbsp; TEL (053)716-7600 &nbsp;|&nbsp; bpk90@naver.com &nbsp;|&nbsp; 대구광역시 달서구 문화회관 11길 61(장기동)
   </div>
 </div>`;
@@ -2543,8 +2719,26 @@ async function genPDF(qtId){
     }
   } finally {
     tpl.style.left='-9999px';tpl.style.zIndex='';
+    const _e=document.getElementById('pdf-equip-tpl'); if(_e){ _e.style.left='-9999px'; _e.style.zIndex=''; }
+    _hidePdfMask();
+    hideApiLoading();
   }
 }
+
+// PDF 캡처 동안 화면을 완전히 가리는 풀스크린 흰 마스크 (z-index 최대값)
+let _pdfMaskEl = null;
+function _showPdfMask(msg){
+  if(!_pdfMaskEl){
+    _pdfMaskEl = document.createElement('div');
+    _pdfMaskEl.id = 'pdf-capture-mask';
+    _pdfMaskEl.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px';
+    _pdfMaskEl.innerHTML = '<div style="width:44px;height:44px;border:5px solid #dbeafe;border-top-color:#1d4ed8;border-radius:50%;animation:spin .8s linear infinite"></div><div id="pdf-mask-msg" style="font-size:14px;color:#1e293b;font-weight:600"></div>';
+    document.body.appendChild(_pdfMaskEl);
+  }
+  _pdfMaskEl.style.display='flex';
+  const m = document.getElementById('pdf-mask-msg'); if(m) m.textContent = msg || 'PDF 생성 중...';
+}
+function _hidePdfMask(){ if(_pdfMaskEl) _pdfMaskEl.style.display='none'; }
 
 async function genEquipPDF(qtId){
   const q=quotes.find(x=>x.id===qtId); if(!q) return;
@@ -2563,19 +2757,27 @@ async function genEquipPDF(qtId){
   const photoUrls = eqList.map(eq => (eq.photos && eq.photos[0]) || null);
   showApiLoading('사진 로딩 중... (' + photoUrls.filter(Boolean).length + '장)');
   const photos = await resolvePhotosBatch(photoUrls);
-  hideApiLoading();
-  // ── 누락 알림 (P3-1)
+  // hideApiLoading() 하지 않음 — 캡처 동안 오버레이 유지로 템플릿 노출 방지
+
+  // ── 누락 알림 (P3-1) — confirm 동안만 잠시 숨김
   const _missing = photos.filter((p,i)=>photoUrls[i]&&!p).length;
-  if(_missing>0 && !confirm(`사진 ${_missing}장이 로드되지 않았습니다.\n빈칸 상태로 PDF를 생성할까요?`)){
-    showToast('PDF 생성을 취소했습니다.','warn');
-    return;
+  if(_missing>0){
+    hideApiLoading();
+    const ok = confirm(`사진 ${_missing}장이 로드되지 않았습니다.\n빈칸 상태로 PDF를 생성할까요?`);
+    if(!ok){
+      showToast('PDF 생성을 취소했습니다.','warn');
+      return;
+    }
   }
+  showApiLoading('장비 사양서 PDF 생성 중...');
 
   const {jsPDF}=window.jspdf;
   const pdf=new jsPDF('p','mm','a4');
   const pgW=pdf.internal.pageSize.getWidth();
   const pgH=pdf.internal.pageSize.getHeight();
   const eTpl=document.getElementById('pdf-equip-tpl');
+  // 풀스크린 흰 마스크로 화면을 완전히 가린 채 템플릿을 화면 안으로 이동
+  _showPdfMask('장비 사양서 PDF 생성 중...');
   eTpl.style.left='0';eTpl.style.top='0';eTpl.style.zIndex='-1';
   let firstPage=true;
 
@@ -2632,6 +2834,8 @@ async function genEquipPDF(qtId){
     }
   }
   eTpl.style.left='-9999px';eTpl.style.zIndex='';
+  _hidePdfMask();
+  hideApiLoading(); // 캡처 종료 — 오버레이 제거
 
   const equipFileName=`BPK_장비사양_${q.company}_${q.appId||q.id}_v${q.version||1}_${(q.date||'').slice(0,10)}.pdf`;
   pdf.save(equipFileName);
