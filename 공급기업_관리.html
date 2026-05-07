@@ -1969,14 +1969,8 @@ async function genPDF(qtId){
     ?`<img src="${jikin}" style="width:62px;height:62px;object-fit:contain;margin-left:6px" />`
     :`<span style="display:inline-block;width:52px;height:52px;border-radius:50%;border:2.5px solid #cc0000;text-align:center;line-height:52px;font-size:10px;font-weight:900;color:#cc0000;transform:rotate(-8deg);margin-left:6px">(인)</span>`;
 
-  const _ver = Number(q.version) || 1;
-  const _verLabel = _ver > 1
-    ? `<div style="position:absolute;top:18px;right:46px;background:#fef3c7;border:1.5px solid #f59e0b;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:#92400e">v${_ver} (재발급)</div>`
-    : `<div style="position:absolute;top:18px;right:46px;background:#dbeafe;border:1.5px solid #93c5fd;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;color:#1e40af">v1 (최초 발급)</div>`;
-
   document.getElementById('pdf-content').innerHTML=`
-<div style="padding:22px 46px 14px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:12.5px;line-height:1.4;position:relative">
-  ${_verLabel}
+<div style="padding:22px 46px 60px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:12.5px;line-height:1.4;position:relative;width:794px;min-height:1123px;box-sizing:border-box">
 
   <div style="text-align:center;font-size:28px;font-weight:900;letter-spacing:20px;margin-bottom:18px">見　積　書</div>
 
@@ -2028,7 +2022,7 @@ async function genPDF(qtId){
     </div>
   </div>
 
-  <div style="margin-top:8px;text-align:center;font-size:9.5px;color:#999;border-top:1px solid #e5e5e5;padding-top:6px">
+  <div style="position:absolute;left:46px;right:46px;bottom:20px;text-align:center;font-size:9.5px;color:#999;border-top:1px solid #e5e5e5;padding-top:6px">
     (주)비피케이 &nbsp;|&nbsp; TEL (053)716-7600 &nbsp;|&nbsp; bpk90@naver.com &nbsp;|&nbsp; 대구광역시 달서구 문화회관 11길 61(장기동)
   </div>
 </div>`;
@@ -2094,7 +2088,7 @@ async function genPDF(qtId){
 
       // 사진은 템플릿에 넣지 않고 빈 공간(spacer)만 확보 — html2canvas 이미지 렌더 이슈 완전 우회
       eTpl.innerHTML=`
-<div style="padding:40px 50px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:13px">
+<div style="padding:40px 50px 60px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:13px;width:794px;min-height:1123px;box-sizing:border-box;position:relative">
   <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1d4ed8;padding-bottom:12px;margin-bottom:24px">
     <div>
       <div style="font-size:10px;color:#6b7280;margin-bottom:4px">장비 사양서 · ${q.id} · ${q.company}</div>
@@ -2109,7 +2103,7 @@ async function genPDF(qtId){
   <table style="width:100%;border-collapse:collapse;font-size:13px">
     ${specRows||`<tr><td colspan="2" style="padding:14px;text-align:center;color:#9ca3af;border:1px solid #d1d5db">등록된 스펙 정보가 없습니다.</td></tr>`}
   </table>
-  <div style="margin-top:48px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:8px">
+  <div style="position:absolute;left:50px;right:50px;bottom:20px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:8px">
     (주)비피케이 &nbsp;|&nbsp; TEL (053)716-7600 &nbsp;|&nbsp; bpk90@naver.com &nbsp;|&nbsp; 대구광역시 달서구 문화회관 11길 61(장기동)
   </div>
 </div>`;
@@ -2263,7 +2257,7 @@ async function genEquipPDF(qtId){
     ).join('');
 
     eTpl.innerHTML=`
-<div style="padding:40px 50px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:13px">
+<div style="padding:40px 50px 60px;font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#111;font-size:13px;width:794px;min-height:1123px;box-sizing:border-box;position:relative">
   <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #1d4ed8;padding-bottom:12px;margin-bottom:24px">
     <div>
       <div style="font-size:10px;color:#6b7280;margin-bottom:4px">장비 사양서 · ${q.id} · ${q.company}</div>
@@ -2278,7 +2272,7 @@ async function genEquipPDF(qtId){
   <table style="width:100%;border-collapse:collapse;font-size:13px">
     ${specRows||`<tr><td colspan="2" style="padding:14px;text-align:center;color:#9ca3af;border:1px solid #d1d5db">등록된 스펙 정보가 없습니다.</td></tr>`}
   </table>
-  <div style="margin-top:48px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:8px">
+  <div style="position:absolute;left:50px;right:50px;bottom:20px;text-align:center;font-size:10px;color:#94a3b8;border-top:1px solid #e5e7eb;padding-top:8px">
     (주)비피케이 &nbsp;|&nbsp; TEL (053)716-7600 &nbsp;|&nbsp; bpk90@naver.com &nbsp;|&nbsp; 대구광역시 달서구 문화회관 11길 61(장기동)
   </div>
 </div>`;
