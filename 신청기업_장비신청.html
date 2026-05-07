@@ -43,10 +43,10 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
 /* LANDING */
-.hero{background:linear-gradient(135deg,#1e40af 0%,#1d4ed8 50%,#3b82f6 100%);color:#fff;text-align:center;padding:64px 24px 56px}
-.hero-tag{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;font-size:13px;font-weight:600;padding:5px 16px;margin-bottom:16px;letter-spacing:.5px}
-.hero-title{font-size:34px;font-weight:800;margin-bottom:14px;letter-spacing:-0.5px;line-height:1.3}
-.hero-sub{font-size:16px;opacity:.9;line-height:1.8;max-width:520px;margin:0 auto}
+.hero{background:linear-gradient(135deg,#eff6ff 0%,#f8fbff 100%);color:var(--g900);text-align:center;padding:64px 24px 56px;border-bottom:1px solid var(--g200)}
+.hero-tag{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid var(--primary-l);color:var(--primary);border-radius:20px;font-size:13px;font-weight:600;padding:5px 14px;margin-bottom:16px;letter-spacing:.3px}
+.hero-title{font-size:34px;font-weight:800;color:var(--g900);margin-bottom:14px;letter-spacing:-0.5px;line-height:1.3}
+.hero-sub{font-size:16px;color:var(--g600);line-height:1.8;max-width:520px;margin:0 auto}
 
 .choice-sec{max-width:880px;margin:0 auto;padding:52px 24px 64px;display:grid;grid-template-columns:1fr 1fr;gap:24px}
 .c-card{background:#fff;border-radius:var(--r);padding:44px 36px;box-shadow:var(--sh-md);cursor:pointer;transition:all .25s;border:2.5px solid var(--g200);text-align:center;position:relative;overflow:hidden}
@@ -57,7 +57,8 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 .c-card.apply:hover{border-color:var(--primary)}
 .c-card.lookup:hover{border-color:var(--accent)}
 .c-card:hover::after{opacity:1}
-.c-icon{font-size:60px;margin-bottom:18px;position:relative;z-index:1;display:block}
+.c-icon{color:var(--primary);margin-bottom:18px;position:relative;z-index:1;display:flex;justify-content:center;align-items:center;height:60px}
+.c-card.lookup .c-icon{color:var(--accent)}
 .c-title{font-size:23px;font-weight:800;color:var(--g900);margin-bottom:10px;position:relative;z-index:1}
 .c-desc{font-size:14px;color:var(--g500);line-height:1.8;margin-bottom:28px;position:relative;z-index:1}
 .c-btn{display:inline-flex;align-items:center;gap:8px;padding:13px 32px;border-radius:10px;font-family:'Pretendard',sans-serif;font-size:15px;font-weight:700;cursor:pointer;border:none;transition:all .2s;position:relative;z-index:1}
@@ -104,6 +105,12 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 .fg{display:flex;flex-direction:column;gap:7px}
 .fg label{font-size:14px;font-weight:600;color:var(--g700)}
 .fg label .req{color:var(--danger);margin-left:2px}
+/* ─── SVG 아이콘 시스템 (단색, currentColor 상속) ─── */
+.ic{width:18px;height:18px;flex-shrink:0;display:inline-block;vertical-align:-3px;stroke-linecap:round;stroke-linejoin:round}
+.ic-sm{width:14px;height:14px;vertical-align:-2px}
+.ic-md{width:20px;height:20px;vertical-align:-4px}
+.ic-lg{width:24px;height:24px;vertical-align:-5px}
+
 .fc{padding:12px 16px;border:2px solid var(--g200);border-radius:var(--r-sm);font-family:'Pretendard',sans-serif;font-size:15px;color:var(--g800);background:#fff;transition:border-color .2s,box-shadow .2s;outline:none;width:100%;height:50px}
 .fc:focus{border-color:var(--primary);box-shadow:0 0 0 4px var(--primary-50)}
 .fc.err{border-color:var(--danger)}
@@ -174,10 +181,11 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 .ai-txt{font-size:17px;font-weight:600;color:var(--g700);margin-bottom:6px}
 .ai-sub{font-size:14px;color:var(--g400)}
 
-.match-hdr{background:linear-gradient(135deg,var(--primary) 0%,#1e3a8a 100%);border-radius:10px;padding:22px 24px;color:#fff;margin-bottom:20px;display:flex;align-items:center;gap:16px}
-.mh-icon{font-size:36px}
-.mh-title{font-size:17px;font-weight:700;margin-bottom:4px}
-.mh-desc{font-size:14px;opacity:.88;line-height:1.5}
+.match-hdr{background:var(--primary-50);border:1.5px solid var(--primary-l);border-radius:10px;padding:18px 22px;color:var(--g800);margin-bottom:20px;display:flex;align-items:center;gap:14px}
+.mh-icon{color:var(--primary);display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;background:#fff;border-radius:10px;flex-shrink:0}
+.mh-icon svg{width:22px;height:22px}
+.mh-title{font-size:15.5px;font-weight:700;color:var(--g900);margin-bottom:3px}
+.mh-desc{font-size:13.5px;color:var(--g600);line-height:1.5}
 
 .eq-card{border:2px solid var(--g200);border-radius:12px;padding:18px;transition:all .2s;cursor:pointer;background:#fff;position:relative}
 .eq-card:hover{border-color:var(--primary);box-shadow:0 2px 16px rgba(29,78,216,.12);transform:translateY(-2px)}
@@ -239,13 +247,16 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 .speed-presets{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
 .speed-btn{border:2px solid var(--g200);border-radius:10px;padding:14px 8px;background:#fff;cursor:pointer;font-family:'Pretendard',sans-serif;text-align:center;transition:all .2s}
 .speed-btn:hover{border-color:var(--primary);background:var(--primary-50)}
-.speed-btn.on{border-color:var(--primary);background:var(--primary);color:#fff}
-.sp-icon{font-size:24px;display:block;margin-bottom:6px}
+.speed-btn.on{border-color:var(--primary);background:var(--primary-50);color:var(--g900)}
+.sp-icon{color:var(--g500);display:flex;align-items:center;justify-content:center;height:24px;margin-bottom:6px}
+.sp-icon svg{width:22px;height:22px}
+.speed-btn.on .sp-icon{color:var(--primary)}
 .sp-name{font-size:13px;font-weight:800;display:block}
-.sp-val{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;display:block;margin-top:2px}
+.speed-btn.on .sp-name{color:var(--primary)}
+.sp-val{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;display:block;margin-top:2px;color:var(--g700)}
 .sp-desc{font-size:11px;color:var(--g400);display:block;margin-top:2px}
-.speed-btn.on .sp-desc{color:rgba(255,255,255,.7)}
-.speed-btn.on .sp-val{color:rgba(255,255,255,.9)}
+.speed-btn.on .sp-val{color:var(--primary)}
+.speed-btn.on .sp-desc{color:var(--g500)}
 @media(max-width:520px){.speed-presets{grid-template-columns:repeat(2,1fr)}}
 /* 공정 그룹 */
 .proc-sec{margin-bottom:24px}
@@ -327,10 +338,10 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 .s-row:last-child{border-bottom:none}
 .s-key{color:var(--g500);flex-shrink:0}
 .s-val{color:var(--g800);font-weight:600;text-align:right}
-.total-box{background:var(--primary);border-radius:10px;padding:18px 22px;color:#fff;display:flex;justify-content:space-between;align-items:center;margin-top:16px}
-.total-lbl{font-size:15px;opacity:.9}
-.total-sub{font-size:12px;opacity:.7;margin-top:2px}
-.total-amt{font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:700}
+.total-box{background:var(--primary-50);border:1.5px solid var(--primary-l);border-radius:10px;padding:18px 22px;color:var(--g800);display:flex;justify-content:space-between;align-items:center;margin-top:16px}
+.total-lbl{font-size:15px;color:var(--g700);font-weight:600}
+.total-sub{font-size:12px;color:var(--g500);margin-top:2px}
+.total-amt{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:800;color:var(--primary)}
 
 /* UPLOAD BANNER (step 5 사진 업로드 진행 — 차분한 톤) */
 .upload-banner{margin:0 auto 16px;max-width:440px;background:var(--primary-50);border:1.5px solid var(--primary-l);border-radius:12px;padding:14px 18px;transition:all .25s ease}
@@ -354,7 +365,8 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 
 /* SUCCESS */
 .suc-screen{text-align:center;padding:48px 24px}
-.suc-icon{font-size:72px;margin-bottom:20px;animation:popIn .4s cubic-bezier(.34,1.56,.64,1);display:block}
+.suc-icon{color:var(--accent);width:64px;height:64px;margin:0 auto 20px;background:var(--accent-50);border:2px solid var(--accent-l);border-radius:50%;display:flex;align-items:center;justify-content:center;animation:popIn .4s cubic-bezier(.34,1.56,.64,1)}
+.suc-icon svg{width:30px;height:30px;stroke-width:2.5}
 @keyframes popIn{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
 .suc-title{font-size:26px;font-weight:800;color:var(--g900);margin-bottom:12px}
 .suc-desc{font-size:16px;color:var(--g500);line-height:1.8;margin-bottom:32px}
@@ -460,6 +472,56 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 </head>
 <body>
 
+<!-- ═══ SVG 아이콘 세트 (모노크롬, currentColor 상속) ═══ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+    <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+    <symbol id="i-package" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16.5 9.4l-9-5.19"/><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.91 5.82L20 11l-6.09 1.91L12 19l-1.91-5.82L4 11l5.82-1.18L12 3z"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+    <symbol id="i-wind" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.59 4.59A2 2 0 1111 8H2m10.59 11.41A2 2 0 1014 16H2m15.73-8.27A2.5 2.5 0 1119.5 12H2"/></symbol>
+    <symbol id="i-ruler" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.3 8.7l-6-6a1 1 0 00-1.4 0l-12 12a1 1 0 000 1.4l6 6a1 1 0 001.4 0l12-12a1 1 0 000-1.4z"/><path d="M7.5 10.5l1 1M11 7l1 1M14.5 3.5l1 1M10.5 14.5l1 1M14 11l1 1M17.5 7.5l1 1"/></symbol>
+    <symbol id="i-droplet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0L12 2.69z"/></symbol>
+    <symbol id="i-droplets" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A10.97 10.97 0 0014 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 01-11.91 4.97"/></symbol>
+    <symbol id="i-grain" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18" cy="12" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="12" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+    <symbol id="i-cube" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7v10l10 5 10-5V7L12 2z"/><polyline points="2 7 12 12 22 7"/><line x1="12" y1="12" x2="12" y2="22"/></symbol>
+    <symbol id="i-bowl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12a10 10 0 0020 0H2z"/><path d="M2 12c0-2 2-3 4-3s2 1 4 1 2-1 4-1 2 1 4 1 2-1 4-1"/></symbol>
+    <symbol id="i-loaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12c0-3 4-5 9-5s9 2 9 5v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6z"/><path d="M7 12v8M12 12v8M17 12v8"/></symbol>
+    <symbol id="i-mix" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path d="M8 12a4 4 0 018 0M16 12a4 4 0 01-8 0"/></symbol>
+    <symbol id="i-cookie" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1010 10c0-.71-.07-1.4-.2-2.07a3 3 0 01-3.7-3.7A10 10 0 0012 2z"/><circle cx="8.5" cy="8.5" r=".5"/><circle cx="15.5" cy="15.5" r=".5"/><circle cx="15.5" cy="8.5" r=".5"/><circle cx="8.5" cy="15.5" r=".5"/></symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 16l3-8 3 8c-2 .8-4 .8-6 0z"/><path d="M2 16l3-8 3 8c-2 .8-4 .8-6 0z"/><path d="M7 21h10M12 3v18M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></symbol>
+    <symbol id="i-bottle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2h6v3l-1 2v3.5C14 12 16 14 16 17v3a2 2 0 01-2 2H10a2 2 0 01-2-2v-3c0-3 2-5 2-6.5V7L9 5V2z"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></symbol>
+    <symbol id="i-tornado" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 4H3M18 8H6M16 12h-4M13 16h-2M11 20h-1"/></symbol>
+    <symbol id="i-shape" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="6" r="3"/><rect x="4" y="14" width="16" height="6" rx="3"/></symbol>
+    <symbol id="i-snail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="3"/><path d="M2 18h20M6 18v-3M18 18V8"/></symbol>
+    <symbol id="i-walk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13" cy="4" r="2"/><path d="M15 21l-2-7-3-3 1-5 3 2 4 1M10 7l-3 4-2 5M7 16l3 5"/></symbol>
+    <symbol id="i-run" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="17" cy="4" r="2"/><path d="M15 22l-2-7-3-3 2-6 4 3 5 1M9 9l-4 1-2 5M9 18l4 4"/></symbol>
+    <symbol id="i-rocket" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+    <symbol id="i-flask" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6L4 18a2 2 0 002 3h12a2 2 0 002-3l-5-10V2"/><line x1="8" y1="2" x2="16" y2="2"/><line x1="7" y1="14" x2="17" y2="14"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+  </defs>
+</svg>
+
 <!-- HEADER -->
 <header class="hdr">
   <a class="logo-wrap" onclick="showView('landing');return false" href="#">
@@ -484,16 +546,16 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
   </div>
   <div class="choice-sec">
     <div class="c-card apply" onclick="showView('apply')">
-      <span class="c-icon">📋</span>
+      <span class="c-icon"><svg style="width:48px;height:48px"><use href="#i-clipboard"/></svg></span>
       <div class="c-title">신규 장비 신청</div>
       <div class="c-desc">처음 신청하시는 분<br>기업정보 입력 → 태그 매칭 → 신청 완료<br>까지 5단계로 간편하게 진행하세요.</div>
-      <button class="c-btn">신청하기 →</button>
+      <button class="c-btn">신청하기 <svg class="ic-sm"><use href="#i-arrow-right"/></svg></button>
     </div>
     <div class="c-card lookup" onclick="showView('lookup')">
-      <span class="c-icon">🔍</span>
+      <span class="c-icon"><svg style="width:48px;height:48px"><use href="#i-search"/></svg></span>
       <div class="c-title">신청 현황 조회</div>
       <div class="c-desc">이미 신청하신 분<br>신청 진행 상태 확인 및 확정 후<br>견적서 PDF를 다운로드하세요.</div>
-      <button class="c-btn">조회하기 →</button>
+      <button class="c-btn">조회하기 <svg class="ic-sm"><use href="#i-arrow-right"/></svg></button>
     </div>
   </div>
 </div>
@@ -523,11 +585,11 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
     <!-- STEP 1 -->
     <div class="page active" id="page1">
       <div class="panel">
-        <div class="panel-title">🏢 기업 정보 입력</div>
+        <div class="panel-title"><svg class="ic-md" style="color:var(--primary);margin-right:6px"><use href="#i-building"/></svg>기업 정보 입력</div>
         <div class="panel-desc">스마트 제조 지원사업 장비 신청을 위한 기업 정보를 입력해 주세요.</div>
         <!-- 테스트 자동입력 샘플 (개발/QA 용) -->
         <div class="sample-bar">
-          <span class="sample-label">🧪 테스트 샘플 자동입력</span>
+          <span class="sample-label"><svg class="ic-sm"><use href="#i-flask"/></svg> 테스트 샘플 자동입력</span>
           <button type="button" class="sample-btn" onclick="fillSample(0)">① 김치공방</button>
           <button type="button" class="sample-btn" onclick="fillSample(1)">② 우리떡공방</button>
           <button type="button" class="sample-btn" onclick="fillSample(2)">③ 한국소스</button>
@@ -571,9 +633,9 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
     <!-- STEP 2 -->
     <div class="page" id="page2">
       <div class="panel">
-        <div class="panel-title">⚙️ 도입 희망 장비 정보</div>
+        <div class="panel-title"><svg class="ic-md" style="color:var(--primary);margin-right:6px"><use href="#i-settings"/></svg>도입 희망 장비 정보</div>
         <div class="panel-desc">현재 생산 제품과 공정 환경을 입력하시면 태그 매칭으로 최적의 장비를 추천해 드립니다.</div>
-        <div class="info-tip">💡 <strong>입력 팁:</strong> 정확한 정보를 입력할수록 더 정밀한 장비 추천이 가능합니다.</div>
+        <div class="info-tip"><svg class="ic-sm" style="margin-right:4px"><use href="#i-info"/></svg><strong>입력 팁:</strong> 정확한 정보를 입력할수록 더 정밀한 장비 추천이 가능합니다.</div>
         <div class="sec-hd">제품 정보</div>
         <div class="frow">
           <div class="fg" id="fg-pname"><label>생산 제품명 <span class="req">*</span></label><input class="fc" id="f-pname" placeholder="예: 된장, 고추장, 소스류, 건나물"/><span class="err-msg">제품명을 입력해 주세요.</span></div>
@@ -584,7 +646,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           <div class="fg"><label>제품 사진 (선택)</label>
             <div class="upload-zone" onclick="document.getElementById('f-photo').click()" id="upload-zone">
               <input type="file" id="f-photo" accept="image/*" multiple onchange="handlePhoto(this)"/>
-              <div class="upload-icon">📷</div>
+              <div class="upload-icon"><svg style="width:32px;height:32px;color:var(--g400)"><use href="#i-camera"/></svg></div>
               <div class="upload-lbl">클릭하여 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 3장</small></div>
             </div>
           </div>
@@ -594,17 +656,17 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           <div class="fg" id="fg-texture">
             <label>제품형태(물성) <span class="req">*</span></label>
             <div class="chip-grp-3" id="texture-grp">
-              <label class="chip chip-v"><input type="radio" name="texture" value="액체류"/><span class="ci">💧</span><div><div class="chip-lbl">액체류</div><div class="chip-ex">주스·소스·간장·우유·참기름</div></div></label>
-              <label class="chip chip-v"><input type="radio" name="texture" value="분말류"/><span class="ci">🌾</span><div><div class="chip-lbl">분말류</div><div class="chip-ex">밀가루·커피가루·조미료</div></div></label>
-              <label class="chip chip-v"><input type="radio" name="texture" value="점액질"/><span class="ci">🍯</span><div><div class="chip-lbl">점액질/고점도</div><div class="chip-ex">꿀·케찹·마요네즈·크림</div></div></label>
-              <label class="chip chip-v"><input type="radio" name="texture" value="유동물질"/><span class="ci">🥣</span><div><div class="chip-lbl">유동성 반고체</div><div class="chip-ex">요거트·죽·스프·소스</div></div></label>
-              <label class="chip chip-v"><input type="radio" name="texture" value="고형물"/><span class="ci">🍱</span><div><div class="chip-lbl">고형물</div><div class="chip-ex">과자·빵·떡·냉동식품</div></div></label>
-              <label class="chip chip-v"><input type="radio" name="texture" value="반죽"/><span class="ci">🍞</span><div><div class="chip-lbl">반죽류</div><div class="chip-ex">밀가루 반죽·떡 반죽</div></div></label>
-              <label class="chip chip-v"><input type="radio" name="texture" value="과립"/><span class="ci">🌰</span><div><div class="chip-lbl">과립/견과류</div><div class="chip-ex">콩·시리얼·씨앗류</div></div></label>
-              <label class="chip chip-v"><input type="radio" name="texture" value="혼합형"/><span class="ci">🍲</span><div><div class="chip-lbl">혼합형</div><div class="chip-ex">김치·국·탕류·건더기 스프</div></div></label>
-              <label class="chip chip-v"><input type="radio" name="texture" value="점착형"/><span class="ci">🍬</span><div><div class="chip-lbl">점착·부착형</div><div class="chip-ex">카라멜 팝콘·젤리·초콜릿</div></div></label>
-              <label class="chip chip-v"><input type="radio" name="texture" value="깨짐형"/><span class="ci">🍪</span><div><div class="chip-lbl">깨짐/부서짐</div><div class="chip-ex">과자·시리얼·건조식품</div></div></label>
-              <label class="chip chip-v"><input type="radio" name="texture" value="기타"/><span class="ci">📦</span><div><div class="chip-lbl">기타</div><div class="chip-ex">위 항목에 해당 없는 경우</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="액체류"/><span class="ci"><svg class="ic-md"><use href="#i-droplet"/></svg></span><div><div class="chip-lbl">액체류</div><div class="chip-ex">주스·소스·간장·우유·참기름</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="분말류"/><span class="ci"><svg class="ic-md"><use href="#i-grain"/></svg></span><div><div class="chip-lbl">분말류</div><div class="chip-ex">밀가루·커피가루·조미료</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="점액질"/><span class="ci"><svg class="ic-md"><use href="#i-droplets"/></svg></span><div><div class="chip-lbl">점액질/고점도</div><div class="chip-ex">꿀·케찹·마요네즈·크림</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="유동물질"/><span class="ci"><svg class="ic-md"><use href="#i-bowl"/></svg></span><div><div class="chip-lbl">유동성 반고체</div><div class="chip-ex">요거트·죽·스프·소스</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="고형물"/><span class="ci"><svg class="ic-md"><use href="#i-cube"/></svg></span><div><div class="chip-lbl">고형물</div><div class="chip-ex">과자·빵·떡·냉동식품</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="반죽"/><span class="ci"><svg class="ic-md"><use href="#i-loaf"/></svg></span><div><div class="chip-lbl">반죽류</div><div class="chip-ex">밀가루 반죽·떡 반죽</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="과립"/><span class="ci"><svg class="ic-md"><use href="#i-grain"/></svg></span><div><div class="chip-lbl">과립/견과류</div><div class="chip-ex">콩·시리얼·씨앗류</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="혼합형"/><span class="ci"><svg class="ic-md"><use href="#i-mix"/></svg></span><div><div class="chip-lbl">혼합형</div><div class="chip-ex">김치·국·탕류·건더기 스프</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="점착형"/><span class="ci"><svg class="ic-md"><use href="#i-cookie"/></svg></span><div><div class="chip-lbl">점착·부착형</div><div class="chip-ex">카라멜 팝콘·젤리·초콜릿</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="깨짐형"/><span class="ci"><svg class="ic-md"><use href="#i-cookie"/></svg></span><div><div class="chip-lbl">깨짐/부서짐</div><div class="chip-ex">과자·시리얼·건조식품</div></div></label>
+              <label class="chip chip-v"><input type="radio" name="texture" value="기타"/><span class="ci"><svg class="ic-md"><use href="#i-package"/></svg></span><div><div class="chip-lbl">기타</div><div class="chip-ex">위 항목에 해당 없는 경우</div></div></label>
             </div>
             <span class="err-msg" id="texture-err">제품형태(물성)을 선택해 주세요.</span>
           </div>
@@ -637,13 +699,13 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
             <div class="prob-type-row">
               <label class="prob-type-btn" id="ptb-replace" onclick="showProblemSub('replace',this)">
                 <input type="radio" name="problem_type" value="구형장비교체"/>
-                <span class="ptb-icon">🔄</span>
+                <span class="ptb-icon"><svg style="width:28px;height:28px;color:var(--primary)"><use href="#i-refresh"/></svg></span>
                 <span class="ptb-title">구형 장비 교체</span>
                 <span class="ptb-sub">기존 노후 장비<br>교체 필요</span>
               </label>
               <label class="prob-type-btn" id="ptb-new" onclick="showProblemSub('new',this)">
                 <input type="radio" name="problem_type" value="신규도입"/>
-                <span class="ptb-icon">✨</span>
+                <span class="ptb-icon"><svg style="width:28px;height:28px;color:var(--primary)"><use href="#i-sparkle"/></svg></span>
                 <span class="ptb-title">신규 도입 필요</span>
                 <span class="ptb-sub">없던 공정·장비<br>새로 도입</span>
               </label>
@@ -730,16 +792,16 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           <div class="fg" id="fg-process">
             <label>개선 희망 공정 <span class="req">*</span> <small style="color:var(--g400);font-weight:400">(중복 선택 가능)</small></label>
             <div class="chip-grp" id="process-grp">
-              <label class="chip"><input type="checkbox" name="process" value="계량"/> ⚖️ 계량</label>
-              <label class="chip"><input type="checkbox" name="process" value="이송"/> 🚚 이송·공급</label>
-              <label class="chip"><input type="checkbox" name="process" value="포장"/> 📦 포장·밀봉</label>
-              <label class="chip"><input type="checkbox" name="process" value="충진"/> 🧴 충진·충전</label>
-              <label class="chip"><input type="checkbox" name="process" value="라벨링"/> 🏷️ 라벨링</label>
-              <label class="chip"><input type="checkbox" name="process" value="검사"/> 🔍 검사·선별</label>
-              <label class="chip"><input type="checkbox" name="process" value="혼합"/> 🌀 혼합·교반</label>
-              <label class="chip"><input type="checkbox" name="process" value="성형"/> 🍡 성형·분할</label>
-              <label class="chip"><input type="checkbox" name="process" value="테이핑"/> 📎 테이핑</label>
-              <label class="chip"><input type="checkbox" name="process" value="제함"/> 📬 제함</label>
+              <label class="chip"><input type="checkbox" name="process" value="계량"/><svg class="ic-sm"><use href="#i-scale"/></svg> 계량</label>
+              <label class="chip"><input type="checkbox" name="process" value="이송"/><svg class="ic-sm"><use href="#i-truck"/></svg> 이송·공급</label>
+              <label class="chip"><input type="checkbox" name="process" value="포장"/><svg class="ic-sm"><use href="#i-package"/></svg> 포장·밀봉</label>
+              <label class="chip"><input type="checkbox" name="process" value="충진"/><svg class="ic-sm"><use href="#i-bottle"/></svg> 충진·충전</label>
+              <label class="chip"><input type="checkbox" name="process" value="라벨링"/><svg class="ic-sm"><use href="#i-tag"/></svg> 라벨링</label>
+              <label class="chip"><input type="checkbox" name="process" value="검사"/><svg class="ic-sm"><use href="#i-search"/></svg> 검사·선별</label>
+              <label class="chip"><input type="checkbox" name="process" value="혼합"/><svg class="ic-sm"><use href="#i-tornado"/></svg> 혼합·교반</label>
+              <label class="chip"><input type="checkbox" name="process" value="성형"/><svg class="ic-sm"><use href="#i-shape"/></svg> 성형·분할</label>
+              <label class="chip"><input type="checkbox" name="process" value="테이핑"/><svg class="ic-sm"><use href="#i-cube"/></svg> 테이핑</label>
+              <label class="chip"><input type="checkbox" name="process" value="제함"/><svg class="ic-sm"><use href="#i-package"/></svg> 제함</label>
             </div>
             <span class="err-msg" id="process-err">개선 희망 공정을 선택해 주세요.</span>
           </div>
@@ -749,25 +811,25 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
             <label>분당 목표 생산 속도</label>
             <div class="speed-presets">
               <button type="button" class="speed-btn" data-speed="5" onclick="setSpeed(5,this)">
-                <span class="sp-icon">🐌</span>
+                <span class="sp-icon"><svg><use href="#i-snail"/></svg></span>
                 <span class="sp-name">소량</span>
                 <span class="sp-val">5개/분</span>
                 <span class="sp-desc">수작업 보조</span>
               </button>
               <button type="button" class="speed-btn" data-speed="15" onclick="setSpeed(15,this)">
-                <span class="sp-icon">🚶</span>
+                <span class="sp-icon"><svg><use href="#i-walk"/></svg></span>
                 <span class="sp-name">저속</span>
                 <span class="sp-val">15개/분</span>
                 <span class="sp-desc">소규모 생산</span>
               </button>
               <button type="button" class="speed-btn on" data-speed="30" onclick="setSpeed(30,this)">
-                <span class="sp-icon">🏃</span>
+                <span class="sp-icon"><svg><use href="#i-run"/></svg></span>
                 <span class="sp-name">중속</span>
                 <span class="sp-val">30개/분</span>
                 <span class="sp-desc">일반 생산</span>
               </button>
               <button type="button" class="speed-btn" data-speed="50" onclick="setSpeed(50,this)">
-                <span class="sp-icon">🚀</span>
+                <span class="sp-icon"><svg><use href="#i-rocket"/></svg></span>
                 <span class="sp-name">고속</span>
                 <span class="sp-val">50개/분</span>
                 <span class="sp-desc">대량 생산</span>
@@ -786,8 +848,8 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           <div class="fg">
             <label>전기 사용 유형 <span style="color:var(--g400);font-size:12px;font-weight:400">(복수 선택 가능)</span></label>
             <div class="chip-grp" id="electric-grp" style="margin-top:8px">
-              <label class="chip"><input type="checkbox" name="electric" value="220V"/> ⚡ 220V 단상</label>
-              <label class="chip"><input type="checkbox" name="electric" value="380V3상"/> ⚡ 380V 3상 (산업용)</label>
+              <label class="chip"><input type="checkbox" name="electric" value="220V"/><svg class="ic-sm"><use href="#i-zap"/></svg> 220V 단상</label>
+              <label class="chip"><input type="checkbox" name="electric" value="380V3상"/><svg class="ic-sm"><use href="#i-zap"/></svg> 380V 3상 (산업용)</label>
             </div>
             <div style="font-size:12px;color:var(--g400);margin-top:6px">단상(220V)은 소·중형 장비, 3상(380V)은 중·대형 산업용 장비에 주로 사용됩니다.</div>
           </div>
@@ -797,15 +859,15 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           <div class="fg">
             <label>공압(에어컴프레서) 설치 여부</label>
             <div class="chip-grp" style="margin-top:8px">
-              <label class="chip"><input type="radio" name="air_yn" value="유"/> 🔧 있음</label>
-              <label class="chip"><input type="radio" name="air_yn" value="무"/> 🚫 없음</label>
+              <label class="chip"><input type="radio" name="air_yn" value="유"/><svg class="ic-sm"><use href="#i-wind"/></svg> 있음</label>
+              <label class="chip"><input type="radio" name="air_yn" value="무"/><svg class="ic-sm"><use href="#i-x"/></svg> 없음</label>
             </div>
             <div id="air-flow-wrap" style="display:none;margin-top:12px;padding:14px 16px;background:var(--primary-50);border-radius:8px;border:1.5px solid var(--primary-l)">
               <div style="font-size:13px;font-weight:700;color:var(--primary);margin-bottom:10px">공압 유량 <span style="font-size:11px;font-weight:400;color:var(--g500)">(설치된 컴프레서 용량 기준)</span></div>
               <div class="chip-grp">
-                <label class="chip"><input type="radio" name="air_flow" value="저유량"/> 🟢 0 ~ 150 NL/Min<br><small style="color:var(--g500)">소형 장비용</small></label>
-                <label class="chip"><input type="radio" name="air_flow" value="중유량"/> 🟡 150 ~ 350 NL/Min<br><small style="color:var(--g500)">중형 장비용</small></label>
-                <label class="chip"><input type="radio" name="air_flow" value="고유량"/> 🔴 350 ~ 700 NL/Min<br><small style="color:var(--g500)">대형 장비용</small></label>
+                <label class="chip"><input type="radio" name="air_flow" value="저유량"/><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10b981;margin-right:6px"></span> 0 ~ 150 NL/Min<br><small style="color:var(--g500)">소형 장비용</small></label>
+                <label class="chip"><input type="radio" name="air_flow" value="중유량"/><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f59e0b;margin-right:6px"></span> 150 ~ 350 NL/Min<br><small style="color:var(--g500)">중형 장비용</small></label>
+                <label class="chip"><input type="radio" name="air_flow" value="고유량"/><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;margin-right:6px"></span> 350 ~ 700 NL/Min<br><small style="color:var(--g500)">대형 장비용</small></label>
               </div>
             </div>
           </div>
@@ -825,7 +887,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
             <label>설치 공간 사진 <span style="color:var(--g400);font-size:12px;font-weight:400">(선택, 최대 2장)</span></label>
             <div class="upload-zone" onclick="document.getElementById('f-space-photo').click()" id="space-upload-zone" style="margin-top:8px">
               <input type="file" id="f-space-photo" accept="image/*" multiple onchange="handleSpacePhoto(this)"/>
-              <div class="upload-icon">📐</div>
+              <div class="upload-icon"><svg style="width:32px;height:32px;color:var(--g400)"><use href="#i-ruler"/></svg></div>
               <div class="upload-lbl">공간 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 2장</small></div>
             </div>
           </div>
@@ -836,7 +898,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
         </div>
         <div class="btn-row">
           <button class="btn btn-outline" onclick="goPage(1)">← 이전</button>
-          <button class="btn btn-primary" onclick="goStep3()">🎯 매칭 시작</button>
+          <button class="btn btn-primary" onclick="goStep3()"><svg class="ic-sm"><use href="#i-target"/></svg> 매칭 시작</button>
         </div>
       </div>
     </div>
@@ -844,7 +906,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
     <!-- STEP 3 -->
     <div class="page" id="page3">
       <div class="panel">
-        <div class="panel-title">🎯 장비 매칭 결과</div>
+        <div class="panel-title"><svg class="ic-md" style="color:var(--primary);margin-right:6px"><use href="#i-target"/></svg>장비 매칭 결과</div>
         <div class="panel-desc">AI가 분석한 추천 장비와 전체 장비 목록에서 도입을 희망하는 장비를 선택해 주세요.</div>
         <div id="ai-loading" class="ai-loading">
           <div class="spinner"></div>
@@ -864,13 +926,13 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           <!-- 탭 -->
           <div class="eq-tab-bar">
             <button class="eq-tab on" id="tab-match" onclick="switchEqTab('match',this)">
-              <span class="eq-tab-icon">🎯</span>
+              <span class="eq-tab-icon"><svg style="width:22px;height:22px"><use href="#i-target"/></svg></span>
               <span class="eq-tab-title">AI 추천 장비</span>
               <span class="eq-tab-sub">내 조건에 맞는 추천</span>
               <span class="eq-tab-badge" id="badge-match">0개</span>
             </button>
             <button class="eq-tab" id="tab-all" onclick="switchEqTab('all',this)">
-              <span class="eq-tab-icon">📦</span>
+              <span class="eq-tab-icon"><svg style="width:22px;height:22px"><use href="#i-package"/></svg></span>
               <span class="eq-tab-title">전체 장비 직접 선택</span>
               <span class="eq-tab-sub">원하는 장비 직접 찾기</span>
               <span class="eq-tab-badge" id="badge-all">0개</span>
@@ -878,14 +940,14 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           </div>
           <!-- AI 추천 탭 -->
           <div id="tab-content-match">
-            <div class="match-hdr"><div class="mh-icon">✅</div><div><div class="mh-title" id="match-title">매칭 완료</div><div class="mh-desc" id="match-summary"></div></div></div>
+            <div class="match-hdr"><div class="mh-icon"><svg><use href="#i-check"/></svg></div><div><div class="mh-title" id="match-title">매칭 완료</div><div class="mh-desc" id="match-summary"></div></div></div>
             <div id="eq-list"></div>
             <div style="margin-top:8px;padding:14px 18px;background:var(--g50);border-radius:8px;font-size:14px;color:var(--g500)">💡 여러 장비를 선택하면 통합 라인 구성이 가능합니다. 원하는 장비가 없으면 <button class="link-btn" onclick="switchEqTab('all',document.getElementById('tab-all'))">전체 장비 목록 →</button></div>
           </div>
           <!-- 전체 목록 탭 -->
           <div id="tab-content-all" style="display:none">
             <div class="eq-search-wrap">
-              <span class="eq-search-icon">🔍</span>
+              <span class="eq-search-icon"><svg style="width:18px;height:18px;color:var(--g400)"><use href="#i-search"/></svg></span>
               <input type="text" id="eq-search-inp" class="fc eq-search-inp"
                 placeholder="장비명, 용도, 키워드로 검색 (예: 분말, 파우치, 소스, 고속…)"
                 oninput="searchAllEq(this.value)"/>
@@ -910,7 +972,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
     <!-- STEP 4 -->
     <div class="page" id="page4">
       <div class="panel">
-        <div class="panel-title">📋 신청 내용 확인</div>
+        <div class="panel-title"><svg class="ic-md" style="color:var(--primary);margin-right:6px"><use href="#i-clipboard"/></svg>신청 내용 확인</div>
         <div class="panel-desc">입력하신 정보와 선택하신 장비를 최종 확인해 주세요.</div>
         <div class="sec-hd">기업 정보</div>
         <div class="sum-block"><div id="company-sum"></div></div>
@@ -930,7 +992,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
     <div class="page" id="page5">
       <div class="panel">
         <div class="suc-screen">
-          <span class="suc-icon">🎉</span>
+          <span class="suc-icon"><svg><use href="#i-check"/></svg></span>
           <div class="suc-title">신청이 완료되었습니다!</div>
           <div class="suc-desc">장비 도입 신청이 정상적으로 접수되었습니다.<br>담당자가 검토 후 <strong>2~3 영업일 내</strong>에 입력하신 연락처로<br>상세 안내 및 견적서를 전달해 드립니다.</div>
 
@@ -967,7 +1029,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
   </div>
   <div class="lookup-wrap">
     <div class="lookup-panel">
-      <div class="lookup-title">🔍 신청 현황 조회</div>
+      <div class="lookup-title"><svg class="ic-md" style="color:var(--primary);margin-right:6px"><use href="#i-search"/></svg>신청 현황 조회</div>
       <div class="lookup-desc">신청 시 입력하신 정보로 진행 현황을 확인하세요.<br>확정 완료 후 견적서 PDF를 다운로드할 수 있습니다.</div>
       <div class="frow full" style="margin-bottom:16px">
         <div class="fg" id="fg-lc"><label>회사명 <span class="req">*</span></label><input class="fc" id="l-company" placeholder="신청 시 입력한 기업명"/><span class="err-msg">회사명을 입력해 주세요.</span></div>
@@ -976,7 +1038,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
         <div class="fg" id="fg-lb"><label>사업자 등록번호 <span class="req">*</span></label><input class="fc" id="l-bizno" placeholder="000-00-00000" maxlength="12"/><span class="err-msg">사업자등록번호를 입력해 주세요.</span></div>
         <div class="fg" id="fg-lp"><label>휴대폰 번호 <span class="req">*</span></label><input class="fc" id="l-phone" placeholder="010-0000-0000" maxlength="13"/><span class="err-msg">휴대폰 번호를 입력해 주세요.</span></div>
       </div>
-      <button class="btn btn-primary" style="width:100%;height:52px;font-size:16px;margin-top:8px" onclick="doLookup()">🔍 조회하기</button>
+      <button class="btn btn-primary" style="width:100%;height:52px;font-size:16px;margin-top:8px" onclick="doLookup()"><svg class="ic-sm"><use href="#i-search"/></svg> 조회하기</button>
       <div id="lookup-result"></div>
     </div>
   </div>
@@ -997,7 +1059,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
       <div class="eq-modal-price" id="em-price"></div>
       <div class="eq-modal-desc" id="em-desc"></div>
       <div id="em-photos-pkg-wrap" style="display:none;margin-top:16px">
-        <div style="font-size:12px;font-weight:700;color:#1d4ed8;letter-spacing:.8px;padding:6px 10px;background:#dbeafe;border-radius:6px;margin-bottom:10px;display:inline-flex;align-items:center;gap:6px">📦 포장 제품 사진</div>
+        <div style="font-size:12px;font-weight:700;color:#1d4ed8;letter-spacing:.8px;padding:6px 10px;background:#dbeafe;border-radius:6px;margin-bottom:10px;display:inline-flex;align-items:center;gap:6px"><svg class="ic-sm"><use href="#i-package"/></svg> 포장 제품 사진</div>
         <div id="em-photos-pkg" class="eq-modal-photos" style="display:block"></div>
       </div>
       <div id="em-videos-wrap" style="display:none;margin-top:16px">
@@ -1169,7 +1231,7 @@ function resetAllFormsAndState(){
   const pZone = document.getElementById('upload-zone');
   if(pZone){
     pZone.classList.remove('has-file');
-    pZone.innerHTML = `<input type="file" id="f-photo" accept="image/*" multiple onchange="handlePhoto(this)"/><div class="upload-icon">📷</div><div class="upload-lbl">클릭하여 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 3장</small></div>`;
+    pZone.innerHTML = `<input type="file" id="f-photo" accept="image/*" multiple onchange="handlePhoto(this)"/><div class="upload-icon"><svg style="width:32px;height:32px;color:var(--g400)"><use href="#i-camera"/></svg></div><div class="upload-lbl">클릭하여 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 3장</small></div>`;
   }
   const sZone = document.getElementById('space-upload-zone');
   if(sZone){
@@ -1256,9 +1318,9 @@ let _productPhotos=[];
 function handlePhoto(inp){
   const z=document.getElementById('upload-zone');
   _productPhotos=[];
-  if(!inp.files.length){ z.innerHTML=`<div class="upload-icon">📷</div><div class="upload-lbl">클릭하여 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 3장</small></div>`; return; }
+  if(!inp.files.length){ z.innerHTML=`<div class="upload-icon"><svg style="width:32px;height:32px;color:var(--g400)"><use href="#i-camera"/></svg></div><div class="upload-lbl">클릭하여 사진 업로드<br><small style="color:var(--g400)">JPG, PNG · 최대 3장</small></div>`; return; }
   const files=[...inp.files].slice(0,3);
-  z.innerHTML=`<div style="font-size:13px;color:var(--accent);font-weight:600">📷 ${files.map(f=>f.name).join(', ')} (${files.length}장)</div>`;
+  z.innerHTML=`<div style="font-size:13px;color:var(--accent);font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px"><svg class="ic-sm"><use href="#i-camera"/></svg> ${files.map(f=>f.name).join(', ')} (${files.length}장)</div>`;
   files.forEach(f=>{ const r=new FileReader(); r.onload=e=>_productPhotos.push(e.target.result); r.readAsDataURL(f); });
 }
 
@@ -1410,8 +1472,8 @@ const PROC_MAP_G={
   '테이핑':['테이핑'],'제함':['제함','박스']
 };
 const PROC_ICON_G={
-  '계량':'⚖️','이송':'🚚','포장':'📦','충진':'🧴','라벨링':'🏷️',
-  '검사':'🔍','혼합':'🌀','성형':'🍡','테이핑':'📎','제함':'📬'
+  '계량':'i-scale','이송':'i-truck','포장':'i-package','충진':'i-bottle','라벨링':'i-tag',
+  '검사':'i-search','혼합':'i-tornado','성형':'i-shape','테이핑':'i-cube','제함':'i-package'
 };
 
 const DEFAULT_SCORING_CFG={
@@ -1618,7 +1680,7 @@ function renderScoreMatch(processGroups,integratedItems){
   // 통합 섹션
   if(integratedItems.length&&processes.length>1){
     const sec=document.createElement('div'); sec.className='proc-sec';
-    sec.innerHTML=`<div class="proc-sec-hd">🔗 통합 공정 추천 <span style="font-size:11px;opacity:.7;font-weight:400">(복수 공정 동시 커버)</span></div>`;
+    sec.innerHTML=`<div class="proc-sec-hd"><svg class="ic-sm"><use href="#i-target"/></svg> 통합 공정 추천 <span style="font-size:11px;opacity:.7;font-weight:400">(복수 공정 동시 커버)</span></div>`;
     const grid=document.createElement('div'); grid.className='eq-grid';
     integratedItems.forEach(item=>grid.appendChild(makeCard(item)));
     sec.appendChild(grid); list.appendChild(sec);
@@ -1628,9 +1690,9 @@ function renderScoreMatch(processGroups,integratedItems){
   processes.forEach(proc=>{
     const items=processGroups[proc]||[];
     if(!items.length) return;
-    const icon=PROC_ICON_G[proc]||'⚙️';
+    const iconId=PROC_ICON_G[proc]||'i-settings';
     const sec=document.createElement('div'); sec.className='proc-sec';
-    sec.innerHTML=`<div class="proc-sec-hd">${icon} ${proc} 공정 추천</div>`;
+    sec.innerHTML=`<div class="proc-sec-hd"><svg class="ic-sm"><use href="#${iconId}"/></svg> ${proc} 공정 추천</div>`;
     const grid=document.createElement('div'); grid.className='eq-grid';
     items.forEach(item=>grid.appendChild(makeCard(item)));
     sec.appendChild(grid); list.appendChild(sec);
@@ -2066,11 +2128,11 @@ async function doLookup(){
 function renderLookupResult(app, quote){
   const res = document.getElementById('lookup-result'); if(!res) return;
   const statuses=['신청접수','검토중','수정중','확정'];
-  const icons=['📬','🔍','✏️','✅'];
+  const icons=['i-mail','i-eye','i-edit','i-check'];
   const curIdx=statuses.indexOf(app.status);
   const tlHtml=statuses.map((s,i)=>{
     const cls=i<curIdx?'done':i===curIdx?'cur':'';
-    return `<div class="stl-item"><div class="stl-dot ${cls}">${icons[i]}</div><div class="stl-lbl ${cls}">${s}</div></div>${i<3?`<div class="stl-line ${i<curIdx?'done':''}"></div>`:''}`;
+    return `<div class="stl-item"><div class="stl-dot ${cls}"><svg class="ic-sm"><use href="#${icons[i]}"/></svg></div><div class="stl-lbl ${cls}">${s}</div></div>${i<3?`<div class="stl-line ${i<curIdx?'done':''}"></div>`:''}`;
   }).join('');
   // 장비 목록: 견적서가 있으면 견적 항목 우선 (수정/재발급 사항 반영)
   // 없으면 신청서 원본 장비 배열 사용
@@ -2114,8 +2176,8 @@ function renderLookupResult(app, quote){
     </div>
     <div class="res-total"><span class="res-total-lbl">총 예상 금액 (VAT 별도)</span><span class="res-total-amt">${total.toLocaleString('ko-KR')}원</span></div>
     ${isConfirmed && quote
-      ? `<div style="text-align:center"><button class="pdf-btn" onclick="downloadPDF('${app.id}')">📄 견적서 PDF 다운로드</button></div>`
-      : `<button class="pdf-btn-locked" disabled>🔒 견적서 확정 후 다운로드 가능</button>
+      ? `<div style="text-align:center"><button class="pdf-btn" onclick="downloadPDF('${app.id}')"><svg class="ic"><use href="#i-download"/></svg> 견적서 PDF 다운로드</button></div>`
+      : `<button class="pdf-btn-locked" disabled><svg class="ic"><use href="#i-lock"/></svg> 견적서 확정 후 다운로드 가능</button>
          <div class="status-msg info" style="margin-top:12px">현재 상태: <strong>${app.status}</strong> — 담당자 확정 후 견적서를 다운로드할 수 있습니다.</div>`
     }
   </div>`;
@@ -2274,7 +2336,7 @@ async function downloadPDF(appId){
     // P3-2: PNG → JPEG 0.85 (파일 크기 ~50% 절감)
     pdf.addImage(canvas.toDataURL('image/jpeg',0.85),'JPEG',0,0,w,Math.min(imgH,h));
     pdf.save(`BPK_견적서_${app.company}_${appId}.pdf`);
-    showToast('📄 견적서 PDF 다운로드 완료');
+    showToast('견적서 PDF 다운로드 완료');
   } finally {
     tpl.style.left='-9999px'; tpl.style.zIndex='';
   }
