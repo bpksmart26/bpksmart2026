@@ -28,12 +28,12 @@ const APP_COLS = ['id','company','ceo','bizno','phone','email','address',
 // T1-3: pdfHash/equipPdfHash 추가 — Drive 재업로드 스킵 판정용 (자동 마이그레이션)
 // version/isLatest 추가 — 같은 appId 의 견적 버전 추적용
 const QT_COLS  = ['id','company','appId','process','memo','validUntil',
-                  'items','total','eqCount','status','date','pdfUrl','equipPdfUrl',
+                  'items','options','total','eqCount','status','date','pdfUrl','equipPdfUrl',
                   'pdfHash','equipPdfHash','version','isLatest'];
 
 const EQ_ARR   = ['photos','photos_pkg','videos'];
 const APP_ARR  = ['processes','pkgtypes','problem_points','equipment','electric','space_photos','product_photos'];
-const QT_ARR   = ['items'];
+const QT_ARR   = ['items','options'];
 
 // ============================================================
 // 스프레드시트 접근

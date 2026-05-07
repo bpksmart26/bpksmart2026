@@ -943,6 +943,11 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
         <div id="q-items"></div>
         <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="addQItem()">+ 항목 추가</button>
       </div>
+      <div class="fg" style="margin-top:14px">
+        <label>옵션 / 추가 사양 <span style="font-size:12px;color:var(--g400);font-weight:400">(직접 입력 — 견적서 PDF 에 함께 표시)</span></label>
+        <div id="q-options"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="addQOption()">+ 옵션 추가</button>
+      </div>
       <div style="background:var(--g50);border-radius:var(--r-sm);padding:14px 18px;margin-top:8px;display:flex;justify-content:space-between;align-items:center">
         <span style="font-size:15px;font-weight:700;color:var(--g700)">합계 금액 (VAT 별도)</span>
         <span class="price-text" style="font-size:20px" id="q-total-disp">0원</span>
@@ -2136,21 +2141,47 @@ function openQuoteModal(appId,qtId){
   } else {
     itemsEl.insertAdjacentHTML('beforeend',_makeQItemRow(null,1));
   }
+  // 옵션(수기) 로드 — 재발급 시 기존 옵션 그대로 채움, 신규는 빈 상태
+  const optionsEl=document.getElementById('q-options');
+  optionsEl.innerHTML='';
+  if(existQt?.options&&existQt.options.length){
+    existQt.options.forEach(opt=>optionsEl.insertAdjacentHTML('beforeend',_makeQOptionRow(opt.name,opt.qty,opt.price)));
+  }
   calcQTotal();
   openModal('modal-quote');
 }
 
 function addQItem(){ document.getElementById('q-items').insertAdjacentHTML('beforeend',_makeQItemRow(null,1)); }
 
+// 옵션(수기 입력) — 항목명 / 수량 / 금액. 단위는 항상 SET 자동 적용.
+// 폭은 견적 항목 row(드롭박스 flex:3 + 수량 64px + 합계 flex:1.2)와 동일하게 맞춤
+function _makeQOptionRow(name, qty, price){
+  const _esc = s => String(s||'').replace(/"/g,'&quot;');
+  return `<div class="q-opt" style="align-items:center;gap:8px;margin-bottom:8px;display:flex">
+    <input class="fc q-opt-name" type="text" placeholder="옵션명 (예: 추가 노즐 세트, 운반·설치비)" value="${_esc(name)}" style="flex:3;height:40px;font-size:13px"/>
+    <input class="fc q-opt-qty" type="number" min="0" step="1" value="${qty||1}" style="flex:0 0 64px;height:40px;font-size:13px;text-align:center" oninput="calcQTotal()"/>
+    <input class="fc q-opt-price" type="number" min="0" step="1000" value="${price||0}" placeholder="금액" style="flex:1.2;height:40px;font-size:13px;text-align:right;font-family:'JetBrains Mono',monospace" oninput="calcQTotal()"/>
+    <button class="btn btn-sm btn-danger" onclick="this.closest('.q-opt').remove();calcQTotal()">✕</button>
+  </div>`;
+}
+function addQOption(){ document.getElementById('q-options').insertAdjacentHTML('beforeend',_makeQOptionRow('',1,0)); }
+
 function calcQTotal(){
-  const total=[...document.querySelectorAll('#q-items .q-item')].reduce((s,row)=>{
+  // 1) 견적 항목 합
+  const itemsTotal=[...document.querySelectorAll('#q-items .q-item')].reduce((s,row)=>{
     const sel=row.querySelector('select');
     const qty=parseInt(row.querySelector('.q-qty')?.value||1)||1;
     const price=parseInt(sel?.options[sel.selectedIndex]?.dataset.price||0)||0;
     row.querySelector('.q-price-disp').textContent=price?((price*qty).toLocaleString('ko-KR')+'원'):'-';
     return s+price*qty;
   },0);
-  document.getElementById('q-total-disp').textContent=total.toLocaleString('ko-KR')+'원';
+  // 2) 옵션(수기) 합 — 합계 disp 없이 모달 하단 q-total-disp 에서만 표시
+  const optsTotal=[...document.querySelectorAll('#q-options .q-opt')].reduce((s,row)=>{
+    const qty=parseInt(row.querySelector('.q-opt-qty')?.value||0)||0;
+    const price=parseInt(row.querySelector('.q-opt-price')?.value||0)||0;
+    return s+qty*price;
+  },0);
+  document.getElementById('q-total-disp').textContent=(itemsTotal+optsTotal).toLocaleString('ko-KR')+'원';
 }
 
 function getQData(status){
@@ -2167,9 +2198,17 @@ function getQData(status){
     const qty=parseInt(row.querySelector('.q-qty')?.value||1)||1;
     return {name:eq.name,model:eq.model||'',qty,unit:'SET',price:eq.price};
   }).filter(Boolean);
-  const total=items.reduce((s,i)=>s+i.qty*i.price,0);
+  // 옵션 — 항목명이 비어있거나 단가/수량이 모두 0인 row 는 제외. 단위는 항상 'SET' 고정
+  const options=[...document.querySelectorAll('#q-options .q-opt')].map(row=>{
+    const name=(row.querySelector('.q-opt-name')?.value||'').trim();
+    const qty=parseInt(row.querySelector('.q-opt-qty')?.value||0)||0;
+    const price=parseInt(row.querySelector('.q-opt-price')?.value||0)||0;
+    if(!name || (qty===0 && price===0)) return null;
+    return {name,qty,price,unit:'SET'};
+  }).filter(Boolean);
+  const total=items.reduce((s,i)=>s+i.qty*i.price,0)+options.reduce((s,o)=>s+o.qty*o.price,0);
   // 견적서 작성/수정 일시 — 'YYYY-MM-DD HH:MM' (common.js)
-  return{company,appId,process,memo,items,total,eqCount:items.length,status,date:nowDateTime()};
+  return{company,appId,process,memo,items,options,total,eqCount:items.length,status,date:nowDateTime()};
 }
 
 async function saveQDraft(){
@@ -2252,7 +2291,16 @@ async function genPDF(qtId){
     ${_td(it.unit||'SET','text-align:center')}
     ${_td((it.qty*it.price).toLocaleString('ko-KR')+'원','text-align:right')}
   </tr>`).join('');
-  const padCount=Math.max(0,5-q.items.length);
+  // 옵션(수기) — 견적 항목 표 안에 '[옵션]옵션명' 텍스트로 함께 표시. 단위는 SET 고정. 합계는 q.total 에 이미 포함됨
+  const opts=Array.isArray(q.options)?q.options:[];
+  const optionRows=opts.map(op=>`<tr>
+    ${_td(`[옵션]${op.name||''}`)}
+    ${_td(op.qty||0,'text-align:center')}
+    ${_td('SET','text-align:center')}
+    ${_td(((op.qty||0)*(op.price||0)).toLocaleString('ko-KR')+'원','text-align:right')}
+  </tr>`).join('');
+  const totalRowCount=q.items.length+opts.length;
+  const padCount=Math.max(0,5-totalRowCount);
   const padRows=padCount?Array(padCount).fill(`<tr>${_td('&nbsp;')}${_td('')}${_td('')}${_td('')}</tr>`).join(''):'';
 
   const stampHtml=jikin
@@ -2293,7 +2341,7 @@ async function genPDF(qtId){
 
   <table style="width:100%;border-collapse:collapse;font-size:12px">
     <thead><tr>${_th('품&nbsp;&nbsp;&nbsp;&nbsp;명')}${_th('수&nbsp;량','width:13%')}${_th('단&nbsp;위','width:13%')}${_th('합&nbsp;&nbsp;&nbsp;&nbsp;계','width:27%')}</tr></thead>
-    <tbody>${itemRows}</tbody>
+    <tbody>${itemRows}${optionRows}</tbody>
   </table>
 
   <table style="width:100%;border-collapse:collapse;font-size:12px">
