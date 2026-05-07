@@ -73,7 +73,7 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 .logout-btn:hover{background:var(--danger-l);color:var(--danger)}
 
 /* ─── MAIN WRAP ─── */
-.main-wrap{margin-left:var(--sidebar);flex:1;min-height:100vh;display:flex;flex-direction:column}
+.main-wrap{margin-left:var(--sidebar);flex:1;min-width:0;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
 .topbar{background:#fff;border-bottom:1.5px solid var(--g200);padding:0 28px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--sh)}
 .topbar-title{font-size:18px;font-weight:800;color:var(--g900)}
 .topbar-right{display:flex;align-items:center;gap:14px}
@@ -81,7 +81,7 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 .topbar-user{display:flex;align-items:center;gap:8px;background:var(--g100);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--g700)}
 
 /* ─── CONTENT ─── */
-.content{padding:28px;display:none;flex:1}
+.content{padding:28px;display:none;flex:1;min-width:0;max-width:100%;box-sizing:border-box}
 .content.active{display:block}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -98,7 +98,7 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 .ic-xl{width:28px;height:28px;vertical-align:-6px}
 .content.active{animation:fadeUp .25s ease}
 
-/* ─── STAT CARDS ─── */
+/* ─── STAT CARDS (대시보드 등 다른 섹션에서 사용) ─── */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
 .stat-card{background:#fff;border:1px solid var(--g200);border-radius:var(--r);padding:22px;box-shadow:var(--sh)}
 .stat-icon{float:right;color:var(--g300);margin-top:-2px;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--g50);border-radius:10px}
@@ -107,8 +107,97 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 .stat-value{font-size:30px;font-weight:800;color:var(--g900);font-family:'JetBrains Mono',monospace;clear:both}
 .stat-sub{font-size:12px;color:var(--g400);margin-top:4px}
 
+/* ─── METRIC BAR (신청업체 관리: 독립 박스 3개 + 클릭 필터) ─── */
+.metric-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px;box-sizing:border-box;max-width:100%;min-width:0}
+.metric{position:relative;display:flex;align-items:center;gap:18px;padding:20px 24px;cursor:pointer;background:#fff;border:1px solid var(--g200);border-radius:var(--r);box-shadow:var(--sh);transition:background .15s, transform .15s, box-shadow .15s, border-color .15s;min-width:0;box-sizing:border-box;min-height:104px;overflow:hidden}
+.metric:hover{background:var(--g50);transform:translateY(-2px);box-shadow:0 6px 20px rgba(15,23,42,.08);border-color:var(--g300)}
+.metric:active{transform:translateY(0)}
+.metric.active{background:#f5f8ff;border-color:var(--primary-l)}
+.metric.active::after{content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--primary)}
+.metric-ic{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;background:var(--g50);color:var(--g500);border-radius:11px;flex-shrink:0}
+.metric-ic svg{width:22px;height:22px}
+/* 3줄 수직 스택 — 라벨 → 큰 숫자 → 보조설명. 모든 메트릭의 행 위치가 정확히 일치 */
+.metric-text{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0;flex:1}
+.metric-label{font-size:12px;color:var(--g500);font-weight:600;line-height:1.1;white-space:nowrap;letter-spacing:.1px}
+.metric-value{font-size:28px;font-weight:800;color:var(--g900);font-family:'JetBrains Mono',monospace;line-height:1;letter-spacing:-.5px}
+.metric-sub{font-size:11px;color:var(--g400);font-weight:600;line-height:1.1;white-space:nowrap;letter-spacing:.1px}
+
+/* ─── 대시보드 차트 (공정/물품) — 통일 row 디자인 ─── */
+.chart-row{display:flex;align-items:center;gap:12px;padding:9px 0}
+.chart-row + .chart-row{border-top:1px solid var(--g50)}
+.chart-ic{width:32px;height:32px;border-radius:9px;background:var(--g50);color:var(--g500);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px}
+.chart-ic svg{width:16px;height:16px}
+.chart-ic.zero{background:var(--g50);color:var(--g300)}
+.chart-ic.gold{background:var(--primary);color:#fff}
+.chart-ic.silver{background:var(--primary-l);color:var(--primary)}
+.chart-ic.bronze{background:var(--primary-50);color:var(--primary)}
+.chart-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.chart-name-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.chart-name{font-size:13px;font-weight:600;color:var(--g700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chart-name.zero{color:var(--g400)}
+.chart-count{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:800;color:var(--primary);flex-shrink:0;letter-spacing:-.3px}
+.chart-count.zero{color:var(--g300)}
+.chart-count small{font-family:'Pretendard',sans-serif;font-size:10.5px;font-weight:600;color:var(--g400);margin-left:3px;letter-spacing:.1px}
+.chart-bar{height:6px;background:var(--g100);border-radius:3px;overflow:hidden}
+.chart-bar-fill{height:100%;background:var(--primary);border-radius:3px;transition:width .4s ease}
+.chart-bar-fill.gold{background:var(--primary)}
+.chart-bar-fill.silver{background:#60a5fa}
+.chart-bar-fill.bronze{background:#93c5fd}
+.chart-bar-fill.dim{background:#cbd5e1}
+.chart-bar-fill.zero{background:var(--g200);width:0 !important}
+/* 차트 컨테이너 — 카드 헤더에 요약 표시용 */
+.chart-summary{font-size:12px;color:var(--g500);font-weight:600}
+.chart-summary b{color:var(--primary);font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;margin-right:2px}
+
+/* ─── ALERT CARD (풀폭, 회사 칩 가로 wrap) ─── */
+.alert-card{background:#fff;border:1px solid var(--g200);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:24px;padding:14px 20px;box-sizing:border-box;max-width:100%;min-width:0;overflow:hidden}
+.alert-hdr{display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--g100);margin-bottom:12px}
+.alert-hdr-ic{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;background:var(--orange-l);color:var(--orange);border-radius:7px;flex-shrink:0}
+.alert-hdr-ic svg{width:15px;height:15px}
+.alert-title{font-size:13px;font-weight:700;color:var(--g800);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alert-counts{display:inline-flex;align-items:center;gap:8px;flex-shrink:0}
+.alert-counts .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:7px;background:var(--g50);border:1px solid var(--g100);line-height:1}
+.alert-counts .pill .n{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:800;letter-spacing:-.3px}
+.alert-counts .pill .l{font-family:'Pretendard',sans-serif;font-size:11px;font-weight:700;letter-spacing:.2px;color:var(--g600)}
+.alert-counts .pill.dup .n{color:var(--accent)}
+.alert-counts .pill.chg .n{color:var(--orange)}
+/* 회사 칩 가로 wrap — 200개 회사도 자연스럽게 다행 wrap + 스크롤 */
+.alert-list{display:flex;flex-wrap:wrap;gap:10px;max-height:160px;overflow-y:auto;padding-right:4px}
+.alert-list::-webkit-scrollbar{width:6px}
+.alert-list::-webkit-scrollbar-thumb{background:var(--g200);border-radius:3px}
+.alert-list::-webkit-scrollbar-thumb:hover{background:var(--g300)}
+/* 알림 칩 — 좌측 카테고리 컬러 dot + 회사명 + vertical divider + 카운트(숫자만 컬러) */
+.alert-chip{display:inline-flex;align-items:center;gap:9px;padding:7px 12px 7px 11px;border-radius:9px;background:#fff;border:1px solid var(--g200);font-size:12px;line-height:1.4;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.alert-chip .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 2px #fff}
+.alert-chip.dup .dot{background:var(--accent)}
+.alert-chip.chg .dot{background:var(--orange)}
+.alert-chip.both .dot{background:#a855f7}
+.alert-chip .ic-c{width:13px;height:13px;color:var(--g500);flex-shrink:0}
+.alert-chip .nm{font-weight:700;color:var(--g900);letter-spacing:-.1px}
+.alert-chip .sep{width:1px;height:13px;background:var(--g200);flex-shrink:0}
+.alert-chip .tg{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--g500);letter-spacing:.2px}
+.alert-chip .tg .n{font-family:'JetBrains Mono',monospace;font-weight:800;font-size:13px;letter-spacing:-.3px}
+.alert-chip .tg.dup .n{color:var(--accent)}
+.alert-chip .tg.chg .n{color:var(--orange)}
+.alert-empty{font-size:12px;color:var(--g400);padding:14px 0;text-align:center;width:100%}
+
+/* ─── 신청업체 목록 — 한 줄 강제 + 컬럼 너비 드래그 조절 ─── */
+/* width:100% + table-layout:fixed → col widths 는 비율 가이드로 사용되어
+   화면 폭을 절대 넘지 않음. 한 컬럼 늘리면 다른 컬럼이 비율로 줄어듦. */
+#sec-applications table{table-layout:fixed;width:100%}
+#sec-applications thead th{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;user-select:none}
+#sec-applications tbody tr:not(.grp-hdr-row) td{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sec-applications tbody tr:not(.grp-hdr-row) td .badge{display:inline-flex;vertical-align:middle}
+/* 컬럼 리사이저 핸들 — 헤더 우측 가장자리 6px 영역 드래그 */
+#sec-applications .col-resizer{position:absolute;right:0;top:0;bottom:0;width:6px;cursor:col-resize;z-index:3;background:transparent;transition:background .15s}
+#sec-applications .col-resizer::after{content:'';position:absolute;right:2px;top:25%;bottom:25%;width:2px;background:transparent;border-radius:1px;transition:background .15s}
+#sec-applications .col-resizer:hover::after,
+#sec-applications .col-resizer.dragging::after{background:var(--primary)}
+#sec-applications .col-resizer.dragging{background:rgba(29,78,216,.06)}
+body.col-resizing{cursor:col-resize !important;user-select:none}
+
 /* ─── CARD ─── */
-.card{background:#fff;border:1px solid var(--g200);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:20px}
+.card{background:#fff;border:1px solid var(--g200);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:20px;box-sizing:border-box;max-width:100%;min-width:0}
 .card-hdr{padding:18px 22px;border-bottom:1px solid var(--g100);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .card-hdr-title{font-size:16px;font-weight:700;color:var(--g900)}
 .card-hdr-desc{font-size:12px;color:var(--g400);margin-top:2px}
@@ -451,11 +540,44 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
 
     <!-- SEC: 신청 업체 관리 -->
     <div class="content active" id="sec-applications">
-      <div class="stat-row">
-        <div class="stat-card"><div class="stat-icon"><svg><use href="#i-inbox"/></svg></div><div class="stat-label">전체 신청</div><div class="stat-value" id="st-total">0</div><div class="stat-sub">누적 접수</div></div>
-        <div class="stat-card"><div class="stat-icon" style="color:var(--primary);background:var(--primary-50)"><svg><use href="#i-mail"/></svg></div><div class="stat-label">신규 (미확인)</div><div class="stat-value" style="color:var(--primary)" id="st-new">0</div><div class="stat-sub">확인 필요</div></div>
-        <div class="stat-card"><div class="stat-icon" style="color:var(--accent);background:var(--accent-50)"><svg><use href="#i-check"/></svg></div><div class="stat-label">확정 완료</div><div class="stat-value" style="color:var(--accent)" id="st-ok">0</div><div class="stat-sub">견적 확정</div></div>
-        <div class="stat-card"><div class="stat-icon" style="color:var(--orange);background:var(--orange-l)"><svg><use href="#i-clock"/></svg></div><div class="stat-label">검토·수정 중</div><div class="stat-value" style="color:var(--orange)" id="st-rev">0</div><div class="stat-sub">진행 중</div></div>
+      <!-- 메트릭바: 가로형 통계 + 클릭 필터 (3개) -->
+      <div class="metric-bar">
+        <div class="metric active" data-stfilter="" onclick="setStatFilter('')" title="전체 신청 보기">
+          <div class="metric-ic"><svg><use href="#i-inbox"/></svg></div>
+          <div class="metric-text">
+            <div class="metric-label">전체 신청</div>
+            <div class="metric-value" id="st-total">0</div>
+            <div class="metric-sub">누적 접수</div>
+          </div>
+        </div>
+        <div class="metric" data-stfilter="신청접수" onclick="setStatFilter('신청접수')" title="신규(미확인)만 보기">
+          <div class="metric-ic" style="background:var(--primary-50);color:var(--primary)"><svg><use href="#i-mail"/></svg></div>
+          <div class="metric-text">
+            <div class="metric-label">신규 (미확인)</div>
+            <div class="metric-value" style="color:var(--primary)" id="st-new">0</div>
+            <div class="metric-sub">확인 필요</div>
+          </div>
+        </div>
+        <div class="metric" data-stfilter="확정" onclick="setStatFilter('확정')" title="확정 완료만 보기">
+          <div class="metric-ic" style="background:var(--accent-50);color:var(--accent)"><svg><use href="#i-check"/></svg></div>
+          <div class="metric-text">
+            <div class="metric-label">확정 완료</div>
+            <div class="metric-value" style="color:var(--accent)" id="st-ok">0</div>
+            <div class="metric-sub">견적 확정</div>
+          </div>
+        </div>
+      </div>
+      <!-- 알림 카드: 풀폭, 회사 칩 가로 wrap -->
+      <div class="alert-card" id="st-alert">
+        <div class="alert-hdr">
+          <span class="alert-hdr-ic"><svg><use href="#i-clock"/></svg></span>
+          <span class="alert-title">중복 / 변경 알림</span>
+          <span class="alert-counts">
+            <span class="pill dup"><span class="n" id="st-dup">0</span><span class="l">중복</span></span>
+            <span class="pill chg"><span class="n" id="st-chg">0</span><span class="l">변경</span></span>
+          </span>
+        </div>
+        <div class="alert-list" id="st-alert-list"><div class="alert-empty">알림 없음</div></div>
       </div>
       <div class="card">
         <div class="card-hdr">
@@ -482,8 +604,21 @@ textarea.fc{height:auto;min-height:90px;resize:vertical;line-height:1.7}
           </select>
         </div>
         <div style="overflow-x:auto">
-          <table><thead><tr><th>접수번호</th><th>기업명</th><th>담당자</th><th>연락처</th><th>제품</th><th>희망 공정</th><th>선택 장비</th><th>상태</th><th>접수일</th><th>관리</th></tr></thead>
-          <tbody id="app-tbody"></tbody></table>
+          <table id="app-table">
+            <colgroup>
+              <col data-key="recv"   style="width:170px">
+              <col data-key="mgr"    style="width:90px">
+              <col data-key="phone"  style="width:140px">
+              <col data-key="prod"   style="width:155px">
+              <col data-key="proc"   style="width:160px">
+              <col data-key="eq"     style="width:240px">
+              <col data-key="stat"   style="width:115px">
+              <col data-key="date"   style="width:150px">
+              <col data-key="act"    style="width:180px">
+            </colgroup>
+            <thead><tr><th>접수번호</th><th>담당자</th><th>연락처</th><th>제품</th><th>희망 공정</th><th>선택 장비</th><th>상태</th><th>접수일</th><th>관리</th></tr></thead>
+            <tbody id="app-tbody"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1151,6 +1286,19 @@ function filterApps(q){appQ=q;renderApps();}
 function filterAppStatus(v){appSt=v;renderApps();}
 function filterAppProcess(v){appProc=v;renderApps();}
 
+// 카운팅 박스 클릭 → 상태 필터 + 드롭다운 동기화
+function setStatFilter(v){
+  appSt = v;
+  const dd = document.getElementById('app-status-filter');
+  if(dd){
+    // 드롭다운에 해당 값이 존재하면 동기화 (검토중/수정중 등 카드에 없는 값은 그대로 둠)
+    const has = Array.from(dd.options).some(o => o.value === v);
+    if(has) dd.value = v;
+    else if(v === '') dd.value = '';
+  }
+  renderApps();
+}
+
 // 펼쳐진 그룹 추적 (재렌더 시 상태 유지)
 let _expandedGroups = new Set();
 function toggleAppGroup(groupId){
@@ -1168,7 +1316,7 @@ function renderApps(){
   });
   const tb=document.getElementById('app-tbody');
   if(!data.length){
-    tb.innerHTML = `<tr><td colspan="10"><div class="empty"><svg class="empty-icon" style="width:42px;height:42px;color:var(--g300)"><use href="#i-inbox"/></svg><div class="empty-txt">신청 내역이 없습니다.</div></div></td></tr>`;
+    tb.innerHTML = `<tr><td colspan="9"><div class="empty"><svg class="empty-icon" style="width:42px;height:42px;color:var(--g300)"><use href="#i-inbox"/></svg><div class="empty-txt">신청 내역이 없습니다.</div></div></td></tr>`;
   } else {
     const groups = groupAppsByBizno(data);
     tb.innerHTML = groups.map(g => _renderAppGroup(g)).join('');
@@ -1177,8 +1325,133 @@ function renderApps(){
   document.getElementById('st-total').textContent=applications.length;
   document.getElementById('st-new').textContent=applications.filter(a=>a.status==='신청접수').length;
   document.getElementById('st-ok').textContent=applications.filter(a=>a.status==='확정').length;
-  document.getElementById('st-rev').textContent=applications.filter(a=>a.status==='검토중'||a.status==='수정중').length;
   document.getElementById('badge-new').textContent=applications.filter(a=>a.status==='신청접수').length;
+
+  // 메트릭바 active 상태 동기화 (필터에 해당하는 메트릭에만 .active)
+  document.querySelectorAll('.metric[data-stfilter]').forEach(c => {
+    c.classList.toggle('active', c.dataset.stfilter === appSt);
+  });
+
+  // 중복 / 변경 알림 카드 — 전체 데이터 기준으로 회사별 중복·변경 집계
+  _renderStatAlert();
+
+  // 컬럼 리사이저 초기화 (한 번만) + 저장된 폭 복원
+  _initColResizers();
+}
+
+// ── 컬럼 리사이저 (헤더 우측 6px 영역 드래그로 폭 조절, 저장)
+const _COL_LS_KEY = 'bpk_app_col_widths_v1';
+function _restoreColWidths(){
+  try{
+    const raw = localStorage.getItem(_COL_LS_KEY);
+    if(!raw) return;
+    const map = JSON.parse(raw);
+    const cols = document.querySelectorAll('#app-table colgroup col');
+    cols.forEach(col => {
+      const k = col.dataset.key;
+      if(k && map[k]) col.style.width = map[k] + 'px';
+    });
+  }catch(e){}
+}
+function _saveColWidths(){
+  const cols = document.querySelectorAll('#app-table colgroup col');
+  const map = {};
+  cols.forEach(col => {
+    const k = col.dataset.key;
+    if(k) map[k] = col.offsetWidth;
+  });
+  try{ localStorage.setItem(_COL_LS_KEY, JSON.stringify(map)); }catch(e){}
+}
+function _initColResizers(){
+  const table = document.getElementById('app-table');
+  if(!table || table._resizerWired) return;
+  table._resizerWired = true;
+  _restoreColWidths();
+  const ths = table.querySelectorAll('thead th');
+  const cols = table.querySelectorAll('colgroup col');
+  ths.forEach((th, i) => {
+    if(i === ths.length - 1) return; // 마지막 컬럼은 핸들 생략
+    const col = cols[i];
+    if(!col) return;
+    const handle = document.createElement('span');
+    handle.className = 'col-resizer';
+    handle.title = '드래그하여 폭 조절 · 더블클릭 시 초기화';
+    th.appendChild(handle);
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const startX = e.clientX;
+      const startW = col.offsetWidth;
+      handle.classList.add('dragging');
+      document.body.classList.add('col-resizing');
+      const onMove = (ev) => {
+        const newW = Math.max(60, startW + (ev.clientX - startX));
+        col.style.width = newW + 'px';
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        handle.classList.remove('dragging');
+        document.body.classList.remove('col-resizing');
+        _saveColWidths();
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+    // 더블클릭 → 해당 컬럼만 초기 폭으로
+    handle.addEventListener('dblclick', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      col.style.width = '';  // colgroup 의 inline 기본 width 로 복귀 → 사실 inline 이라 비우면 0; 대신 attribute 기본값 재적용
+      const defAttr = col.getAttribute('style');
+      // 기본은 HTML 정의시점의 width — 간단히 dataset 보존이 없으므로 LS 의 해당 키만 제거 후 페이지 reload 권장
+      try{
+        const raw = localStorage.getItem(_COL_LS_KEY);
+        if(raw){
+          const map = JSON.parse(raw);
+          delete map[col.dataset.key];
+          localStorage.setItem(_COL_LS_KEY, JSON.stringify(map));
+        }
+      }catch(_e){}
+    });
+  });
+}
+
+// 중복(같은 contentHash 2건+) / 변경(서로 다른 contentHash 2건+) 회사 집계 + 표시
+function _renderStatAlert(){
+  const allGroups = groupAppsByBizno(applications);
+  const dupCompanies = [];
+  const chgCompanies = [];
+  allGroups.forEach(g => {
+    const counts = {};
+    g.all.forEach(a => { const h = a.contentHash || '__none__'; counts[h] = (counts[h] || 0) + 1; });
+    const dupCnt = Object.values(counts).filter(c => c >= 2).reduce((s,c)=>s+c,0); // 중복으로 묶인 행 수
+    const variants = Object.keys(counts).length; // 서로 다른 내용 가짓수
+    if(g.hasDuplicates) dupCompanies.push({ name: g.company || '(상호 미입력)', count: dupCnt });
+    if(g.hasChanges)    chgCompanies.push({ name: g.company || '(상호 미입력)', count: variants });
+  });
+  const dupEl = document.getElementById('st-dup');
+  const chgEl = document.getElementById('st-chg');
+  if(dupEl) dupEl.textContent = dupCompanies.length;
+  if(chgEl) chgEl.textContent = chgCompanies.length;
+  const listEl = document.getElementById('st-alert-list');
+  if(!listEl) return;
+  if(!dupCompanies.length && !chgCompanies.length){
+    listEl.innerHTML = '<div class="alert-empty">알림 없음</div>';
+    return;
+  }
+  // 회사별로 묶기 (중복+변경 동시 가능) → 가로 wrap 칩
+  const byName = {};
+  dupCompanies.forEach(d => { (byName[d.name] = byName[d.name] || {}).dup = d.count; });
+  chgCompanies.forEach(c => { (byName[c.name] = byName[c.name] || {}).chg = c.count; });
+  listEl.innerHTML = Object.keys(byName).map(name => {
+    const r = byName[name];
+    // 카테고리 — dup/chg/both 에 따라 좌측 dot 컬러 분류
+    const cls = (r.dup && r.chg) ? 'both' : r.dup ? 'dup' : 'chg';
+    const tags = [];
+    if(r.dup) tags.push(`<span class="tg dup">중복<span class="n">${r.dup}</span></span>`);
+    if(r.chg) tags.push(`<span class="tg chg">변경<span class="n">${r.chg}</span></span>`);
+    const tagBlock = tags.join('<span class="sep"></span>');
+    return `<div class="alert-chip ${cls}"><span class="dot"></span><svg class="ic-c"><use href="#i-clipboard"/></svg><span class="nm">${name}</span><span class="sep"></span>${tagBlock}</div>`;
+  }).join('');
 }
 
 // 그룹 헤더 + 자식 행
@@ -1190,7 +1463,7 @@ function _renderAppGroup(g){
   const isMulti = g.all.length >= 2;
 
   let html = `<tr class="grp-hdr-row" data-grp="${groupId}" onclick="toggleAppGroup('${groupId}')">
-    <td colspan="10" style="padding:12px 16px;background:var(--g50);cursor:pointer;border-bottom:1px solid var(--g200)">
+    <td colspan="9" style="padding:12px 16px;background:var(--g50);cursor:pointer;border-bottom:1px solid var(--g200)">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <svg class="ic" style="color:var(--primary);flex-shrink:0"><use href="#i-clipboard"/></svg>
         <span class="fw" style="font-size:14.5px">${g.company||'(이름없음)'}</span>
@@ -1216,17 +1489,16 @@ function _renderAppRow(a, i, g){
   const sameHashCount = g.all.filter(x => (x.contentHash||x.id) === (a.contentHash||a.id)).length;
   let label = '';
   if(g.all.length>1){
-    if(i===0) label = '<span class="badge b-new" style="margin-right:4px;font-size:10px">최신</span>';
-    if(sameHashCount>=2 && i>0) label += '<span class="badge b-rej" style="margin-right:4px;font-size:10px">중복</span>';
+    if(i===0) label = '<span class="badge b-new" style="margin-left:6px;font-size:10px;vertical-align:middle">최신</span>';
+    if(sameHashCount>=2 && i>0) label += '<span class="badge b-rej" style="margin-left:6px;font-size:10px;vertical-align:middle">중복</span>';
   }
   return `<tr onclick="openAppDetail('${a.id}')" style="cursor:pointer">
-    <td><span class="mono">${a.id}</span></td>
-    <td>${label}<span style="color:var(--g500);font-size:12px">${a.company}</span></td>
+    <td><span class="mono">${a.id}</span>${label}</td>
     <td>${a.manager||'-'}</td>
     <td><span class="mono" style="font-size:11px">${a.phone||''}</span></td>
     <td>${a.pname||'-'}</td>
     <td>${(a.processes||[]).map(p=>`<span class="badge b-new" style="margin:1px;font-size:11px">${p}</span>`).join('')}</td>
-    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--g500)">${eqNames||'-'}</td>
+    <td style="font-size:12px;color:var(--g500)">${eqNames||'-'}</td>
     <td>${statusBadge(a.status)}</td>
     <td><span class="mono" style="font-size:10px">${a.date}</span></td>
     <td onclick="event.stopPropagation()" style="white-space:nowrap">
@@ -2341,15 +2613,68 @@ function renderDashboard(){
   document.getElementById('db-rate').textContent=rate+'%';
   document.getElementById('db-rate-sub').textContent=`${confirmed}/${applications.length}건 확정`;
   document.getElementById('db-eq').textContent=equipment.filter(e=>e.status==='active').length;
-  // Process chart
-  const pc={}; applications.forEach(a=>(a.processes||[]).forEach(p=>{pc[p]=(pc[p]||0)+1;}));
-  const ps=Object.entries(pc).sort((a,b)=>b[1]-a[1]); const mx=ps[0]?.[1]||1;
-  document.getElementById('proc-chart').innerHTML=ps.length?ps.map(([n,c])=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="font-weight:600;color:var(--g700)">${n}</span><span class="mono" style="color:var(--primary)">${c}건</span></div><div class="prog-bar"><div class="prog-fill" style="width:${c/mx*100}%"></div></div></div>`).join(''):`<div class="empty" style="padding:20px"><span style="font-size:13px">데이터 없음</span></div>`;
-  // Product chart
-  const eqc={}; applications.forEach(a=>(a.equipment||[]).forEach(id=>{eqc[id]=(eqc[id]||0)+1;}));
-  const tp=Object.entries(eqc).sort((a,b)=>b[1]-a[1]).slice(0,5); const mx2=tp[0]?.[1]||1;
-  const colors=['','green','orange','','green'];
-  document.getElementById('prod-chart').innerHTML=tp.length?tp.map(([id,c],i)=>{const eq=equipment.find(e=>e.id===parseInt(id));return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:600;color:var(--g700);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px">${eq?.name||''}</span><span class="mono" style="color:var(--primary);flex-shrink:0;margin-left:8px">${c}건</span></div><div class="prog-bar"><div class="prog-fill ${colors[i]}" style="width:${c/mx2*100}%"></div></div></div>`;}).join(''):`<div class="empty" style="padding:20px"><span style="font-size:13px">데이터 없음</span></div>`;
+  // ═══ Process chart — 신청 폼의 공정 10종을 모두 고정 표시 (0건 포함) ═══
+  // 신청기업_장비신청.html:845-854 의 공정 정의와 동기화
+  const PROC_LIST = [
+    {key:'계량',   label:'계량',       icon:'i-scale'},
+    {key:'이송',   label:'이송·공급',   icon:'i-truck'},
+    {key:'포장',   label:'포장·밀봉',   icon:'i-package'},
+    {key:'충진',   label:'충진·충전',   icon:'i-bottle'},
+    {key:'라벨링', label:'라벨링',      icon:'i-tag'},
+    {key:'검사',   label:'검사·선별',   icon:'i-search'},
+    {key:'혼합',   label:'혼합·교반',   icon:'i-tornado'},
+    {key:'성형',   label:'성형·분할',   icon:'i-shape'},
+    {key:'테이핑', label:'테이핑',      icon:'i-cube'},
+    {key:'제함',   label:'제함',        icon:'i-package'}
+  ];
+  const pc = {}; applications.forEach(a => (a.processes||[]).forEach(p => { pc[p] = (pc[p]||0) + 1; }));
+  const procData = PROC_LIST.map(p => ({...p, count: pc[p.key] || 0}))
+                            .sort((a,b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'));
+  const mx = Math.max(1, ...procData.map(p => p.count));
+  const totalProcSel = procData.reduce((s,p) => s+p.count, 0);
+  const procActive = procData.filter(p => p.count > 0).length;
+  document.getElementById('proc-chart').innerHTML =
+    `<div class="chart-summary" style="padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--g100)">활성 공정 <b>${procActive}</b>/10 · 총 선택 <b>${totalProcSel}</b>건</div>` +
+    procData.map((p, i) => {
+      const pct = mx ? (p.count / mx * 100) : 0;
+      const isZero = p.count === 0;
+      const fillCls = isZero ? 'zero' : (i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : 'dim');
+      const icCls = isZero ? 'zero' : '';
+      return `<div class="chart-row">
+        <div class="chart-ic ${icCls}"><svg><use href="#${p.icon}"/></svg></div>
+        <div class="chart-info">
+          <div class="chart-name-row">
+            <span class="chart-name ${isZero?'zero':''}">${p.label}</span>
+            <span class="chart-count ${isZero?'zero':''}">${p.count}<small>건</small></span>
+          </div>
+          <div class="chart-bar"><div class="chart-bar-fill ${fillCls}" style="width:${pct}%"></div></div>
+        </div>
+      </div>`;
+    }).join('');
+
+  // ═══ Product chart — 선택 빈도 TOP 5 ═══
+  const eqc = {}; applications.forEach(a => (a.equipment||[]).forEach(id => { eqc[id] = (eqc[id]||0) + 1; }));
+  const tp = Object.entries(eqc).sort((a,b) => b[1]-a[1]).slice(0,5);
+  const mx2 = tp[0]?.[1] || 1;
+  const totalEqSel = Object.values(eqc).reduce((s,c) => s+c, 0);
+  const uniqueEq = Object.keys(eqc).length;
+  document.getElementById('prod-chart').innerHTML = tp.length ?
+    `<div class="chart-summary" style="padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--g100)">선택 물품 <b>${uniqueEq}</b>종 · 총 선택 <b>${totalEqSel}</b>건 · 상위 <b>${tp.length}</b>개</div>` +
+    tp.map(([id, c], i) => {
+      const eq = equipment.find(e => e.id === parseInt(id));
+      const pct = c / mx2 * 100;
+      const rankCls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+      return `<div class="chart-row">
+        <div class="chart-ic ${rankCls}">${i+1}</div>
+        <div class="chart-info">
+          <div class="chart-name-row">
+            <span class="chart-name" title="${eq?.name||''}">${eq?.name || '(삭제된 물품)'}</span>
+            <span class="chart-count">${c}<small>건</small></span>
+          </div>
+          <div class="chart-bar"><div class="chart-bar-fill ${rankCls||'dim'}" style="width:${pct}%"></div></div>
+        </div>
+      </div>`;
+    }).join('') : `<div class="empty" style="padding:20px"><span style="font-size:13px">선택된 물품이 없습니다.</span></div>`;
   // Timeline
   document.getElementById('tl-list').innerHTML=[...applications].reverse().slice(0,6).map(a=>{
     const tlIc={'신청접수':'i-mail','검토중':'i-clock','수정중':'i-edit','확정':'i-check','반려':'i-x'}[a.status]||'i-mail';
