@@ -92,12 +92,47 @@ body{font-family:'Pretendard',sans-serif;background:var(--g100);color:var(--g800
 .page{display:none}
 .page.active{display:block;animation:fadeUp .3s ease}
 
-.panel{background:#fff;border-radius:var(--r);box-shadow:var(--sh-md);padding:40px;margin-bottom:20px;border:1px solid var(--g200)}
+.panel{background:#fff;border-radius:var(--r);box-shadow:var(--sh-md);padding:36px 40px 40px;margin-bottom:20px;border:1px solid var(--g200)}
 .panel-title{font-size:22px;font-weight:800;color:var(--g900);margin-bottom:6px}
 .panel-desc{font-size:15px;color:var(--g500);margin-bottom:32px;line-height:1.8}
 
-.sec-hd{font-size:12px;font-weight:700;color:var(--primary);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:18px;margin-top:4px;display:flex;align-items:center;gap:10px}
-.sec-hd::after{content:'';flex:1;height:1px;background:var(--primary-l)}
+/* 섹션 헤더 — counter 로 자동 넘버링, 큰 글씨, 하단 강조선, 충분한 여백 */
+.panel{counter-reset:section}
+.sec-hd{
+  counter-increment:section;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin:36px 0 18px;
+  padding-bottom:12px;
+  border-bottom:2px solid var(--primary-l);
+  font-size:16px;
+  font-weight:800;
+  color:var(--g900);
+  letter-spacing:-.3px;
+  text-transform:none;
+  line-height:1.3;
+}
+.sec-hd::before{
+  content:counter(section,decimal-leading-zero);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:32px;
+  height:30px;
+  padding:0 10px;
+  background:var(--primary);
+  color:#fff;
+  border-radius:8px;
+  font-size:12px;
+  font-weight:700;
+  font-family:'JetBrains Mono','Pretendard',monospace;
+  letter-spacing:.5px;
+  flex-shrink:0;
+  box-shadow:0 1px 3px rgba(29,78,216,.25)
+}
+.sec-hd::after{display:none}
+.panel > .sec-hd:first-of-type{margin-top:8px}
 
 /* FORMS */
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
@@ -604,7 +639,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
         <div class="frow full">
           <div class="fg" id="fg-addr"><label>사업장 주소 <span class="req">*</span></label><input class="fc" id="f-addr" placeholder="시/도 시/군/구 읍/면/동 상세주소" autocomplete="off"/><span class="err-msg">주소를 입력해 주세요.</span></div>
         </div>
-        <div class="sec-hd" style="margin-top:8px">담당자 정보</div>
+        <div class="sec-hd">담당자 정보</div>
         <div class="frow">
           <div class="fg" id="fg-ceo"><label>대표자명 <span class="req">*</span></label><input class="fc" id="f-ceo" placeholder="홍길동" autocomplete="off"/><span class="err-msg">대표자명을 입력해 주세요.</span></div>
           <div class="fg" id="fg-manager"><label>담당자명 <span class="req">*</span></label><input class="fc" id="f-manager" placeholder="담당자 성함" autocomplete="off"/><span class="err-msg">담당자명을 입력해 주세요.</span></div>
@@ -613,7 +648,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           <div class="fg" id="fg-phone"><label>휴대폰 번호 <span class="req">*</span></label><input class="fc" id="f-phone" placeholder="010-0000-0000" maxlength="13" autocomplete="off"/><span class="err-msg">올바른 휴대폰 번호를 입력해 주세요.</span></div>
           <div class="fg" id="fg-email"><label>이메일 <span class="req">*</span></label><input class="fc" id="f-email" placeholder="example@company.com" autocomplete="off"/><span class="err-msg">올바른 이메일을 입력해 주세요.</span></div>
         </div>
-        <div class="sec-hd" style="margin-top:8px">개인정보 수집 동의</div>
+        <div class="sec-hd">개인정보 수집 동의</div>
         <div class="consent-box">
           <strong>개인정보 수집·이용 동의서</strong><br><br>
           수집 항목: 기업명, 사업자등록번호, 대표자명, 담당자명, 휴대폰번호, 이메일, 사업장 주소<br>
@@ -651,7 +686,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
             </div>
           </div>
         </div>
-        <div class="sec-hd" style="margin-top:8px">제품형태(물성) 및 포장 형태</div>
+        <div class="sec-hd">제품형태(물성) 및 포장 형태</div>
         <div class="frow full">
           <div class="fg" id="fg-texture">
             <label>제품형태(물성) <span class="req">*</span></label>
@@ -692,7 +727,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
             <span class="err-msg" id="pkg-err">포장지 형태를 선택해 주세요.</span>
           </div>
         </div>
-        <div class="sec-hd" style="margin-top:8px">현재 공정의 문제점</div>
+        <div class="sec-hd">현재 공정의 문제점</div>
         <div class="frow full">
           <div class="fg">
             <label>장비 도입 목적을 선택해 주세요 <span class="req">*</span></label>
@@ -787,7 +822,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           </div>
         </div>
 
-        <div class="sec-hd" style="margin-top:8px">개선 공정 및 생산 속도</div>
+        <div class="sec-hd">개선 공정 및 생산 속도</div>
         <div class="frow full">
           <div class="fg" id="fg-process">
             <label>개선 희망 공정 <span class="req">*</span> <small style="color:var(--g400);font-weight:400">(중복 선택 가능)</small></label>
@@ -842,7 +877,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
             </div>
           </div>
         </div>
-        <div class="sec-hd" style="margin-top:8px">설치 환경 정보</div>
+        <div class="sec-hd">설치 환경 정보</div>
 
         <div class="frow full">
           <div class="fg">
