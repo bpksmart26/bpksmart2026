@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>OG Source — BPK Smart 2026</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1200px;height:630px;overflow:hidden;font-family:'Pretendard',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  .canvas{
+    width:1200px;height:630px;position:relative;
+    background:
+      radial-gradient(ellipse 1200px 600px at 100% 100%, rgba(251,191,36,.10), transparent 60%),
+      radial-gradient(ellipse 1000px 500px at 0% 0%, rgba(29,78,216,.06), transparent 55%),
+      linear-gradient(135deg, #fafbfc 0%, #f1f5f9 100%);
+    display:flex;align-items:center;padding:80px 90px;gap:60px;
+    overflow:hidden
+  }
+  /* 배경 데코 헥사고 (옅게) */
+  .canvas::before{
+    content:'';position:absolute;
+    right:-180px;top:-100px;
+    width:520px;height:520px;
+    background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><polygon points='40,5 70.5,22.5 70.5,57.5 40,75 9.5,57.5 9.5,22.5' fill='none' stroke='%23f97316' stroke-width='1' stroke-linejoin='round'/></svg>") center/contain no-repeat;
+    opacity:.10;transform:rotate(20deg);pointer-events:none
+  }
+  .canvas::after{
+    content:'';position:absolute;
+    left:60%;bottom:-180px;
+    width:380px;height:380px;
+    background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><polygon points='40,5 70.5,22.5 70.5,57.5 40,75 9.5,57.5 9.5,22.5' fill='none' stroke='%231d4ed8' stroke-width='1' stroke-linejoin='round'/></svg>") center/contain no-repeat;
+    opacity:.07;transform:rotate(-10deg);pointer-events:none
+  }
+  /* 좌측 헥사고 로고 */
+  .logo-wrap{flex-shrink:0;width:300px;height:300px;display:flex;align-items:center;justify-content:center;position:relative;z-index:2}
+  .logo-wrap svg{width:100%;height:100%;filter:drop-shadow(0 14px 32px rgba(249,115,22,.25))}
+  /* 우측 텍스트 */
+  .text{flex:1;display:flex;flex-direction:column;gap:18px;position:relative;z-index:2;min-width:0}
+  .pill{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:8px 14px;background:#fff;border:1.5px solid #dbeafe;
+    border-radius:999px;font-size:13px;font-weight:700;
+    color:#1d4ed8;letter-spacing:.4px;align-self:flex-start;
+    box-shadow:0 2px 8px rgba(15,23,42,.05)
+  }
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.18)}
+  .brand{
+    font-size:80px;font-weight:900;line-height:1;
+    color:#0f172a;letter-spacing:-2.5px;
+    font-family:'Pretendard','JetBrains Mono',sans-serif
+  }
+  .brand .accent{
+    background:linear-gradient(135deg,#f97316 0%,#fb923c 50%,#fbbf24 100%);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;
+    color:transparent
+  }
+  .subtitle{
+    font-size:26px;font-weight:600;color:#475569;
+    letter-spacing:-.5px;line-height:1.35;margin-top:4px
+  }
+  .meta{
+    margin-top:18px;display:flex;align-items:center;gap:14px;
+    font-size:15px;color:#64748b;font-weight:600;letter-spacing:.2px
+  }
+  .meta .sep{width:1px;height:14px;background:#cbd5e1}
+  .meta b{color:#1e293b;font-weight:800;font-family:'JetBrains Mono','Pretendard',monospace}
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="logo-wrap">
+    <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="hex-grad" x1="15%" y1="5%" x2="85%" y2="95%">
+          <stop offset="0%" stop-color="#f97316"/>
+          <stop offset="55%" stop-color="#fb923c"/>
+          <stop offset="100%" stop-color="#fbbf24"/>
+        </linearGradient>
+      </defs>
+      <polygon points="40,5 70.5,22.5 70.5,57.5 40,75 9.5,57.5 9.5,22.5"
+               fill="none" stroke="url(#hex-grad)" stroke-width="5"
+               stroke-linejoin="round" stroke-linecap="round"/>
+      <polygon points="40,23 55,31 40,39 25,31" fill="#e5e7eb"/>
+      <polygon points="25,31 40,39 40,57 25,49" fill="#9ca3af"/>
+      <polygon points="55,31 55,49 40,57 40,39" fill="#d1d5db"/>
+    </svg>
+  </div>
+  <div class="text">
+    <div class="pill"><span class="dot"></span>2026 스마트제조 지원사업</div>
+    <div class="brand">BPK <span class="accent">Smart</span><br>2026</div>
+    <div class="subtitle">식품 포장기계 견적 매칭 시스템</div>
+    <div class="meta">
+      <span>Best Pack Korea</span>
+      <span class="sep"></span>
+      <span><b>(주)비피케이</b></span>
+    </div>
+  </div>
+</div>
+</body>
+</html>
