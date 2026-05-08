@@ -462,3 +462,62 @@ function _test_ensureSchema() {
   const r2 = ensureNotionSchema();
   Logger.log('2차 (캐시): ' + JSON.stringify(r2));
 }
+
+// ─────────────────────────────────────────────────────────────
+// formatItemsForNotion: items + options (raw JSON) → 사람 읽기 텍스트
+// 노션의 '견적요약' 속성에 들어갈 텍스트 (rich_text 2000자 제한 고려해 잘림)
+// ─────────────────────────────────────────────────────────────
+function formatItemsForNotion(items, options) {
+  const parts = [];
+  function won(n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; }
+
+  if (items && items.length) {
+    items.forEach(function(it, i) {
+      const name = it.name || it.eqName || ('장비' + (i + 1));
+      const model = it.model ? ' (' + it.model + ')' : '';
+      const qty = it.qty || 1;
+      const lineTotal = (it.price || 0) * qty;
+      parts.push('[' + (i + 1) + '] ' + name + model + ' × ' + qty + ' = ' + won(lineTotal));
+    });
+  } else {
+    parts.push('(견적 항목 없음)');
+  }
+
+  if (options && options.length) {
+    const optStr = options.map(function(o) {
+      return (o.name || '옵션') + ' ' + won(o.amount);
+    }).join(', ');
+    parts.push('[옵션] ' + optStr);
+  }
+
+  let total = 0;
+  (items || []).forEach(function(it) { total += (it.price || 0) * (it.qty || 1); });
+  (options || []).forEach(function(o) { total += Number(o.amount || 0); });
+
+  parts.push('─────────────────────');
+  parts.push('합계: ' + won(total) + ' (부가세 별도)');
+
+  const result = parts.join('\n');
+  return result.length > 1900 ? result.slice(0, 1900) + '...' : result;
+}
+
+// 테스트 — Apps Script 에디터에서 실행
+function _test_formatItems() {
+  const items = [
+    { name:'자동포장기', model:'AP-300', qty:2, price:15000000 },
+    { name:'라벨러', model:'LB-100', qty:1, price:8000000 }
+  ];
+  const options = [
+    { name:'설치비', amount:500000 },
+    { name:'출장비', amount:200000 }
+  ];
+  Logger.log(formatItemsForNotion(items, options));
+
+  // 빈 케이스
+  Logger.log('--- 빈 items ---');
+  Logger.log(formatItemsForNotion([], []));
+
+  // 옵션 없음
+  Logger.log('--- 옵션 없음 ---');
+  Logger.log(formatItemsForNotion(items, []));
+}
