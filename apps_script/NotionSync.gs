@@ -114,3 +114,63 @@ function _cleanup_test_unified() {
   }
   Logger.log('테스트 데이터 정리 완료');
 }
+
+// ─────────────────────────────────────────────────────────────
+// 시트 조회 헬퍼 — doPost 라우터의 sync hook에서 사용
+// ─────────────────────────────────────────────────────────────
+
+// 신청 시트에서 id로 신청 객체 1건 찾기
+function _findApp(appId) {
+  if (!appId) return null;
+  const apps = getRows(SN.APP, APP_COLS, APP_ARR);
+  return apps.find(a => String(a.id) === String(appId)) || null;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 신청 삭제 후 통합정보 reconcile
+// 잔여 신청 있으면 가장 최근으로 통합정보 갱신, 없으면 통합정보 row 삭제
+// (노션 archive 호출은 Task 15에서 추가)
+// ─────────────────────────────────────────────────────────────
+function _reconcileAfterDelete(deletedIds) {
+  if (!deletedIds || !deletedIds.length) return;
+
+  const apps = getRows(SN.APP, APP_COLS, APP_ARR);
+  const quotes = getRows(SN.QT, QT_COLS, QT_ARR, {total:'number',eqCount:'number'});
+  const unified = getSheet(SN.UNIFIED);
+  const data = unified.getDataRange().getValues();
+  const idIdx = UNIFIED_COLS.indexOf('id');
+  const biznoIdx = UNIFIED_COLS.indexOf('bizno');
+
+  // 영향받은 사업자번호 수집 (통합정보에서 deletedIds와 매칭되는 row의 bizno)
+  const deletedIdSet = new Set(deletedIds.map(String));
+  const affectedBiznos = new Set();
+  for (let i = 1; i < data.length; i++) {
+    if (deletedIdSet.has(String(data[i][idIdx]))) {
+      const bz = String(data[i][biznoIdx]);
+      if (bz) affectedBiznos.add(bz);
+    }
+  }
+
+  affectedBiznos.forEach(bizno => {
+    // 잔여 신청 중 가장 최근 1건 (date 내림차순)
+    const remaining = apps.filter(a => String(a.bizno) === bizno)
+                          .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+
+    if (remaining.length === 0) {
+      // 통합정보 row 삭제 (아래에서 위로 순회해서 인덱스 안 깨지게)
+      const freshData = unified.getDataRange().getValues();
+      for (let i = freshData.length - 1; i >= 1; i--) {
+        if (String(freshData[i][biznoIdx]) === bizno) {
+          unified.deleteRow(i + 1);
+          Logger.log('통합정보 row 삭제 (bizno=' + bizno + ')');
+        }
+      }
+      // 노션 archive는 Task 15의 archiveNotionPage가 처리
+    } else {
+      // 가장 최근 신청 + 그 신청의 isLatest=1 견적으로 갱신
+      const latestApp = remaining[0];
+      const latestQuote = quotes.filter(q => String(q.appId) === String(latestApp.id) && String(q.isLatest) === '1')[0];
+      upsertUnified(latestApp, latestQuote || null);
+    }
+  });
+}

@@ -105,13 +105,34 @@ function doPost(e) {
       case 'bulkSaveEq':  result = bulkSave(SN.EQ,   EQ_COLS,  EQ_ARR,  data); break;
 
       case 'getApps':     result = { ok:true, data: getRows(SN.APP, APP_COLS, APP_ARR) }; break;
-      case 'saveApp':     result = appendRow(SN.APP,  APP_COLS, APP_ARR, data); break;
-      case 'updateApp':   result = updateRow(SN.APP,  APP_COLS, APP_ARR, data, 'id'); break;
+      case 'saveApp':
+        result = appendRow(SN.APP,  APP_COLS, APP_ARR, data);
+        try { upsertUnified(data); } catch(e) { Logger.log('upsertUnified after saveApp 실패: ' + e); }
+        break;
+      case 'updateApp':
+        result = updateRow(SN.APP,  APP_COLS, APP_ARR, data, 'id');
+        try { upsertUnified(data); } catch(e) { Logger.log('upsertUnified after updateApp 실패: ' + e); }
+        break;
 
       case 'getQts':      result = { ok:true, data: getRows(SN.QT,  QT_COLS,  QT_ARR,  {total:'number',eqCount:'number'}) }; break;
-      case 'saveQt':      result = saveQuoteWithVersion(data); break;
-      case 'updateQt':    result = updateRow(SN.QT,   QT_COLS,  QT_ARR,  data, 'id'); break;
-      case 'deleteApps':  result = deleteApps(data); break;
+      case 'saveQt':
+        result = saveQuoteWithVersion(data);
+        try {
+          const app = _findApp(data.appId);
+          if (app) upsertUnified(app, data);
+        } catch(e) { Logger.log('upsertUnified after saveQt 실패: ' + e); }
+        break;
+      case 'updateQt':
+        result = updateRow(SN.QT,   QT_COLS,  QT_ARR,  data, 'id');
+        try {
+          const app = _findApp(data.appId);
+          if (app) upsertUnified(app, data);
+        } catch(e) { Logger.log('upsertUnified after updateQt 실패: ' + e); }
+        break;
+      case 'deleteApps':
+        result = deleteApps(data);
+        try { _reconcileAfterDelete(data.ids || []); } catch(e) { Logger.log('reconcile after delete 실패: ' + e); }
+        break;
 
       case 'getCfg':      result = { ok:true, data: getCfg() }; break;
       case 'saveCfg':     result = saveCfg(data); break;
