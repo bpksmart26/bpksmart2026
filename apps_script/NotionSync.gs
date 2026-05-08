@@ -3,6 +3,66 @@
 // 같은 프로젝트의 Code.gs와 글로벌 네임스페이스 공유
 // ============================================================
 
+// ─────────────────────────────────────────────────────────────
+// 노션 매핑 — 시트 영문 컬럼 ↔ 노션 한글 속성명
+// 단일 출처: 시트 컬럼명·노션 속성명·타입·양방향 여부 모두 여기에서 결정
+// 양방향 4개 필드(status/manager/memo/quoteMemo)만 노션→시트 sync 대상
+// ─────────────────────────────────────────────────────────────
+const NOTION_PROP_MAP = {
+  // 신청
+  id:             { name: '신청ID',         type: 'rich_text' },
+  company:        { name: '회사명',         type: 'title' },
+  ceo:            { name: '대표자',         type: 'rich_text' },
+  bizno:          { name: '사업자번호',     type: 'rich_text' },
+  phone:          { name: '연락처',         type: 'phone_number' },
+  email:          { name: '이메일',         type: 'email' },
+  address:        { name: '주소',           type: 'rich_text' },
+  pname:          { name: '제품명',         type: 'rich_text' },
+  texture:        { name: '제품특성',       type: 'rich_text' },
+  processes:      { name: '공정',           type: 'multi_select' },
+  pkgtypes:       { name: '포장형태',       type: 'multi_select' },
+  qty:            { name: '수량',           type: 'rich_text' },
+  speed:          { name: '속도',           type: 'rich_text' },
+  problem_type:   { name: '문제유형',       type: 'select' },
+  problem_points: { name: '문제점',         type: 'multi_select' },
+  equipment:      { name: '추천장비',       type: 'multi_select' },
+  electric:       { name: '전기',           type: 'multi_select' },
+  air_yn:         { name: '에어유무',       type: 'select' },
+  air_flow:       { name: '에어유량',       type: 'rich_text' },
+  space_w:        { name: '설치공간_가로',  type: 'rich_text' },
+  space_h:        { name: '설치공간_세로',  type: 'rich_text' },
+  space_photos:   { name: '설치공간사진',   type: 'files' },
+  product_photos: { name: '제품사진',       type: 'files' },
+  date:           { name: '신청일',         type: 'date' },
+  status:         { name: '신청상태',       type: 'select',     bidirectional: true },
+  manager:        { name: '담당자',         type: 'rich_text',  bidirectional: true },
+  memo:           { name: '신청메모',       type: 'rich_text',  bidirectional: true },
+  // 견적
+  quoteId:        { name: '견적ID',         type: 'rich_text' },
+  quoteProcess:   { name: '견적공정',       type: 'rich_text' },
+  quoteMemo:      { name: '견적메모',       type: 'rich_text',  bidirectional: true },
+  validUntil:     { name: '견적유효기간',   type: 'date' },
+  __summary:      { name: '견적요약',       type: 'rich_text' },  // items+options 변환 (formatItemsForNotion)
+  total:          { name: '견적총액',       type: 'number' },
+  eqCount:        { name: '장비수',         type: 'number' },
+  quoteStatus:    { name: '견적상태',       type: 'select' },
+  quoteDate:      { name: '견적생성일',     type: 'date' },
+  pdfUrl:         { name: '견적PDF',        type: 'url' },
+  equipPdfUrl:    { name: '장비사양PDF',    type: 'url' },
+  version:        { name: '견적버전',       type: 'number' }
+};
+
+// 양방향 필드 — 시트와 노션 둘 다 source 가능
+const BIDIRECTIONAL_FIELDS = ['status','manager','memo','quoteMemo'];
+
+// 시트 컬럼 (영문) → 노션 속성명 (한글) 매핑
+const SHEET_TO_NOTION_NAME = {};
+Object.keys(NOTION_PROP_MAP).forEach(k => { SHEET_TO_NOTION_NAME[k] = NOTION_PROP_MAP[k].name; });
+
+// 노션 속성명 (한글) → 시트 컬럼 (영문) 역매핑
+const NOTION_NAME_TO_SHEET = {};
+Object.keys(NOTION_PROP_MAP).forEach(k => { NOTION_NAME_TO_SHEET[NOTION_PROP_MAP[k].name] = k; });
+
 // quote 객체 키 → 통합정보 row 키 매핑 (한 곳에서 관리, fromNotion 등 다른 곳에서도 재사용)
 const QUOTE_FIELD_MAP = {
   id:'quoteId', process:'quoteProcess', memo:'quoteMemo', status:'quoteStatus', date:'quoteDate',
@@ -223,4 +283,22 @@ function rebuildUnified() {
 
   Logger.log('rebuildUnified 완료: ' + count + ' 건');
   return { ok:true, count:count };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 매핑 정합성 체크 — Apps Script 에디터에서 실행
+// ─────────────────────────────────────────────────────────────
+function _test_notionMap() {
+  // 양방향 필드 모두 NOTION_PROP_MAP에 존재하고 bidirectional 마킹 됐는지
+  BIDIRECTIONAL_FIELDS.forEach(f => {
+    if (!NOTION_PROP_MAP[f]) throw new Error('BIDIRECTIONAL_FIELDS의 ' + f + ' 가 NOTION_PROP_MAP 에 없음');
+    if (!NOTION_PROP_MAP[f].bidirectional) throw new Error(f + ' bidirectional 마킹 누락');
+  });
+  // SHEET_TO_NOTION_NAME / NOTION_NAME_TO_SHEET 양방향 일치
+  Object.keys(NOTION_PROP_MAP).forEach(k => {
+    const name = NOTION_PROP_MAP[k].name;
+    if (SHEET_TO_NOTION_NAME[k] !== name) throw new Error('SHEET_TO_NOTION_NAME 불일치: ' + k);
+    if (NOTION_NAME_TO_SHEET[name] !== k) throw new Error('NOTION_NAME_TO_SHEET 불일치: ' + name);
+  });
+  Logger.log('NOTION_PROP_MAP 정합성 OK — 매핑 ' + Object.keys(NOTION_PROP_MAP).length + '개, 양방향 ' + BIDIRECTIONAL_FIELDS.length + '개');
 }
