@@ -966,3 +966,95 @@ function _diagnoseLastQuoteSync_force() {
     }
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// 노션 property → 시트값 역변환 (syncFromNotion이 사용)
+// 양방향 4 필드만 시트로 가져올 때 사용 (onlyBidirectional=true)
+// ─────────────────────────────────────────────────────────────
+
+// 단일 property 값 추출
+function _fromNotionValue(prop) {
+  if (!prop) return '';
+  switch (prop.type) {
+    case 'title':
+      return (prop.title || []).map(function(t) { return t.plain_text || ''; }).join('');
+    case 'rich_text':
+      return (prop.rich_text || []).map(function(t) { return t.plain_text || ''; }).join('');
+    case 'number':
+      return prop.number == null ? '' : prop.number;
+    case 'select':
+      return prop.select ? prop.select.name : '';
+    case 'multi_select':
+      return (prop.multi_select || []).map(function(o) { return o.name; });
+    case 'date':
+      return prop.date ? prop.date.start : '';
+    case 'phone_number':
+      return prop.phone_number || '';
+    case 'email':
+      return prop.email || '';
+    case 'url':
+      return prop.url || '';
+    case 'files':
+      return (prop.files || []).map(function(f) {
+        return (f.external && f.external.url) || (f.file && f.file.url) || '';
+      });
+    case 'checkbox':
+      return !!prop.checkbox;
+    default:
+      return '';
+  }
+}
+
+// 노션 페이지 → 시트값 객체 (영문 키)
+// onlyBidirectional=true 이면 양방향 4필드 + bizno만 추출 (syncFromNotion용)
+// onlyBidirectional=false 면 알려진 모든 NOTION_PROP_MAP 키 추출 (디버깅·확장용)
+function fromNotionPage(page, onlyBidirectional) {
+  const out = {
+    __pageId: page.id,
+    __lastEdited: page.last_edited_time
+  };
+  Object.keys(page.properties || {}).forEach(function(notionName) {
+    const sheetKey = NOTION_NAME_TO_SHEET[notionName];
+    if (!sheetKey) return;  // 운영자 자유 컬럼 — sync 무관
+    if (sheetKey === '__summary') return;  // 가상 키, 역변환 안 함
+    if (onlyBidirectional && BIDIRECTIONAL_FIELDS.indexOf(sheetKey) < 0) {
+      // 양방향만 모드 — bizno는 매칭 키이므로 항상 포함
+      if (sheetKey !== 'bizno') return;
+    }
+    out[sheetKey] = _fromNotionValue(page.properties[notionName]);
+  });
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 테스트 — 가상 노션 페이지 객체로 역변환 확인
+// (실제 노션 호출 안 함 — 노션 API 응답 형태 모킹)
+// ─────────────────────────────────────────────────────────────
+function _test_fromNotionPage() {
+  const mockPage = {
+    id: 'test-page-id-abc',
+    last_edited_time: '2026-05-08T12:00:00.000Z',
+    properties: {
+      '회사명': { type: 'title', title: [{ plain_text: '테스트회사', type: 'text' }] },
+      '신청ID': { type: 'rich_text', rich_text: [{ plain_text: 'NO-260508-9999', type: 'text' }] },
+      '사업자번호': { type: 'rich_text', rich_text: [{ plain_text: '999-99-99999', type: 'text' }] },
+      '신청상태': { type: 'select', select: { name: '검토중' } },
+      '담당자': { type: 'rich_text', rich_text: [{ plain_text: '홍길동', type: 'text' }] },
+      '신청메모': { type: 'rich_text', rich_text: [{ plain_text: '전화 예정', type: 'text' }] },
+      '견적메모': { type: 'rich_text', rich_text: [{ plain_text: '협의 중', type: 'text' }] },
+      '연락처': { type: 'phone_number', phone_number: '010-1234-5678' },
+      '공정': { type: 'multi_select', multi_select: [{ name: '인쇄' }, { name: '후가공' }] },
+      '신청일': { type: 'date', date: { start: '2026-05-08' } },
+      '견적총액': { type: 'number', number: 15000000 },
+      '운영자_자유컬럼': { type: 'rich_text', rich_text: [{ plain_text: '메모', type: 'text' }] }  // sync 무관
+    }
+  };
+
+  Logger.log('--- 양방향만 추출 (onlyBidirectional=true) ---');
+  Logger.log(JSON.stringify(fromNotionPage(mockPage, true), null, 2));
+
+  Logger.log('--- 전체 추출 (onlyBidirectional=false) ---');
+  Logger.log(JSON.stringify(fromNotionPage(mockPage, false), null, 2));
+
+  // 운영자_자유컬럼은 NOTION_PROP_MAP에 없으므로 두 모드 모두에서 제외되어야 함 ✓
+}
