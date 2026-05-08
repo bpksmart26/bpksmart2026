@@ -495,13 +495,18 @@ function _test_ensureSchema() {
 // ─────────────────────────────────────────────────────────────
 function formatItemsForNotion(items, options) {
   // 견적 없음 (items + options 모두 비어있음) → 빈 문자열
-  // 노션 견적요약 컬럼이 빈 칸으로 표시되도록
   const hasItems = items && items.length;
   const hasOptions = options && options.length;
   if (!hasItems && !hasOptions) return '';
 
   const parts = [];
   function won(n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; }
+
+  // 옵션 가격 추출 — 옛 스키마({name, amount})와 새 스키마({name, qty, price, unit}) 모두 지원
+  // 새 스키마: price가 그 옵션의 총 금액 (qty 곱셈 없음 — frontend 디자인과 일치)
+  function _optAmount(o) {
+    return o.amount !== undefined ? Number(o.amount || 0) : Number(o.price || 0);
+  }
 
   if (hasItems) {
     items.forEach(function(it, i) {
@@ -512,18 +517,24 @@ function formatItemsForNotion(items, options) {
       parts.push('[' + (i + 1) + '] ' + name + model + ' × ' + qty + ' = ' + won(lineTotal));
     });
   }
-  // hasItems가 false인 경우는 옵션만 있음 — 그냥 옵션 줄로 시작
 
   if (hasOptions) {
-    const optStr = options.map(function(o) {
-      return (o.name || '옵션') + ' ' + won(o.amount);
+    const optStr = options.map(function(o, i) {
+      const name = o.name || ('옵션' + (i + 1));
+      const amount = _optAmount(o);
+      // qty가 1보다 크면 (X SET) 형태로 부가 정보 표시 (가격은 그 옵션의 총 금액)
+      if (o.qty && Number(o.qty) > 1) {
+        const unit = o.unit ? ' ' + o.unit : '';
+        return name + ' (' + Number(o.qty) + unit + ') ' + won(amount);
+      }
+      return name + ' ' + won(amount);
     }).join(', ');
     parts.push('[옵션] ' + optStr);
   }
 
   let total = 0;
   (items || []).forEach(function(it) { total += (it.price || 0) * (it.qty || 1); });
-  (options || []).forEach(function(o) { total += Number(o.amount || 0); });
+  (options || []).forEach(function(o) { total += _optAmount(o); });
 
   parts.push('─────────────────────');
   parts.push('합계: ' + won(total) + ' (부가세 별도)');
@@ -538,19 +549,34 @@ function _test_formatItems() {
     { name:'자동포장기', model:'AP-300', qty:2, price:15000000 },
     { name:'라벨러', model:'LB-100', qty:1, price:8000000 }
   ];
+  // 신 스키마: {name, qty, price, unit} — qty는 메타정보, price=총금액
   const options = [
+    { name:'대형노즐', qty:4, price:500000, unit:'SET' },
+    { name:'소형노즐', qty:10, price:700000, unit:'SET' }
+  ];
+  Logger.log('--- 신 스키마 (qty>1) ---');
+  Logger.log(formatItemsForNotion(items, options));
+
+  // 옛 스키마 호환성 — {name, amount}
+  const optionsLegacy = [
     { name:'설치비', amount:500000 },
     { name:'출장비', amount:200000 }
   ];
-  Logger.log(formatItemsForNotion(items, options));
+  Logger.log('--- 옛 스키마 (amount) ---');
+  Logger.log(formatItemsForNotion(items, optionsLegacy));
 
   // 빈 케이스
-  Logger.log('--- 빈 items ---');
+  Logger.log('--- 견적 없음 ---');
   Logger.log(formatItemsForNotion([], []));
 
   // 옵션 없음
   Logger.log('--- 옵션 없음 ---');
   Logger.log(formatItemsForNotion(items, []));
+
+  // qty=1 옵션 (qty 표시 안 함)
+  const optionsSingle = [{ name:'설치비', qty:1, price:300000, unit:'SET' }];
+  Logger.log('--- qty=1 옵션 ---');
+  Logger.log(formatItemsForNotion(items, optionsSingle));
 }
 
 // ─────────────────────────────────────────────────────────────
