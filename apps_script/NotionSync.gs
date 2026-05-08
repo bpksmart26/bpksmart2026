@@ -263,7 +263,12 @@ function _reconcileAfterDelete(deletedIds) {
       } else if (deletedCount === 1) {
         Logger.log('통합정보 row 삭제 (bizno=' + bizno + ')');
       }
-      // 노션 archive는 Task 15의 archiveNotionPage가 처리
+      // 노션 페이지도 archive (휴지통 30일 보관)
+      try {
+        archiveNotionPage(bizno);
+      } catch (e) {
+        Logger.log('archiveNotionPage 실패 bizno=' + bizno + ': ' + e);
+      }
     } else {
       // 가장 최근 신청 + 그 신청의 isLatest=1 견적으로 갱신
       const latestApp = remaining[0];
@@ -1204,4 +1209,37 @@ function _applyNotionPageToSheet(page) {
 
   Logger.log('synced ' + bizno + ' fields=' + Object.keys(changes).join(','));
   return true;
+}
+
+// ─────────────────────────────────────────────────────────────
+// archiveNotionPage: 사업자번호로 노션 페이지 찾아 archive (휴지통 30일 보관)
+// _reconcileAfterDelete에서 사업자의 잔여 신청이 0건일 때 호출
+// 운영자가 노션 휴지통에서 30일 안에 복원 가능
+// ─────────────────────────────────────────────────────────────
+function archiveNotionPage(bizno) {
+  if (!bizno) return { ok: false, reason: 'no_bizno' };
+  const page = _findNotionPageByBizno(bizno);
+  if (!page) {
+    Logger.log('archiveNotionPage: 노션 페이지 없음 (이미 archive 됐거나 push 실패) bizno=' + bizno);
+    return { ok: true, action: 'no_page' };
+  }
+  const r = notionFetch('PATCH', '/pages/' + page.id, { archived: true });
+  if (!r.ok) {
+    // 큐 적재 (Task 16에서 _enqueueSync 정의)
+    if (typeof _enqueueSync === 'function') {
+      _enqueueSync('archiveNotionPage', { bizno: bizno }, r.error);
+    }
+    Logger.log('archiveNotionPage 실패 bizno=' + bizno + ' code=' + r.code);
+    return r;
+  }
+  // 해시도 정리 (다음 신청 시 새 페이지 만들 수 있도록)
+  PropertiesService.getScriptProperties().deleteProperty('hash_' + bizno);
+  Logger.log('archiveNotionPage 성공 bizno=' + bizno + ' page=' + page.id);
+  return { ok: true, action: 'archived', pageId: page.id };
+}
+
+// 테스트 — 999-99-99991 사업자번호의 노션 페이지를 archive
+function _test_archiveNotionPage() {
+  const r = archiveNotionPage('999-99-99991');
+  Logger.log(JSON.stringify(r));
 }
