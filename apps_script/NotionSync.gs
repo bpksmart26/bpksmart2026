@@ -1243,3 +1243,133 @@ function _test_archiveNotionPage() {
   const r = archiveNotionPage('999-99-99991');
   Logger.log(JSON.stringify(r));
 }
+
+// ─────────────────────────────────────────────────────────────
+// _sync_queue: Notion API 실패 시 적재 → 다음 syncFromNotion 폴링에서 재처리
+// 3회 실패 시 큐에서 제거 + 운영자 로그 (무한 retry 방지)
+// QUEUE_COLS = ['id','action','payload_json','retry_count','last_error','created_at']
+// ─────────────────────────────────────────────────────────────
+
+// 큐 적재 — pushToNotion / archiveNotionPage 실패 시 호출됨
+function _enqueueSync(action, payload, error) {
+  try {
+    const sheet = getSheet(SN.QUEUE);
+    ensureHeader(sheet, QUEUE_COLS);
+
+    const id = 'q' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const row = [
+      id,
+      action,
+      JSON.stringify(payload || {}),
+      0,
+      String(error == null ? '' : error).slice(0, 500),
+      new Date().toISOString()
+    ];
+    sheet.appendRow(row);
+    Logger.log('큐 적재: ' + id + ' (' + action + ')');
+  } catch (e) {
+    Logger.log('_enqueueSync 자체 실패: ' + e);
+  }
+}
+
+// 큐 재처리 — syncFromNotion 끝에 호출됨
+// 성공/3회 실패 시 row 삭제, 그 외엔 retry_count + 1 + last_error 갱신
+function _processSyncQueue() {
+  const sheet = getSheet(SN.QUEUE);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return { ok: true, processed: 0, failed: 0 };
+
+  let processed = 0;
+  let failed = 0;
+  // 위에서 아래로 읽되 row 삭제는 거꾸로 진행 (인덱스 안 깨지게)
+  for (let i = data.length - 1; i >= 1; i--) {
+    const row = data[i];
+    const id = row[0];
+    const action = row[1];
+    const payloadStr = row[2];
+    const retryCount = Number(row[3]) || 0;
+
+    let payload;
+    try {
+      payload = JSON.parse(payloadStr || '{}');
+    } catch (e) {
+      Logger.log('큐 항목 payload 파싱 실패 → 삭제: ' + id);
+      sheet.deleteRow(i + 1);
+      continue;
+    }
+
+    let r;
+    try {
+      switch (action) {
+        case 'pushToNotion':
+          // payload: { bizno, unifiedRow }
+          // unifiedRow는 stale 가능성 있으므로 시트에서 다시 로드 (있으면)
+          var fresh = payload.bizno ? _loadUnifiedByBizno(payload.bizno) : null;
+          r = pushToNotion(fresh || payload.unifiedRow);
+          break;
+        case 'archiveNotionPage':
+          // payload: { bizno }
+          r = archiveNotionPage(payload.bizno);
+          break;
+        default:
+          Logger.log('알 수 없는 큐 action → 삭제: ' + action);
+          sheet.deleteRow(i + 1);
+          continue;
+      }
+    } catch (e) {
+      r = { ok: false, error: e.toString() };
+    }
+
+    if (r && r.ok) {
+      sheet.deleteRow(i + 1);
+      processed++;
+      Logger.log('큐 처리 성공: ' + id + ' (' + action + ')');
+    } else {
+      const newCount = retryCount + 1;
+      if (newCount >= 3) {
+        // 3회 실패 — 포기. 큐에서 삭제 + 운영자 알림용 로그
+        Logger.log('⚠️ 큐 항목 3회 실패 → 포기: ' + id + ' (' + action + ', bizno=' + (payload.bizno || '') + '): ' + ((r && r.error) || ''));
+        sheet.deleteRow(i + 1);
+        failed++;
+      } else {
+        // 재시도 카운트 + 마지막 에러 갱신
+        sheet.getRange(i + 1, 4).setValue(newCount);
+        sheet.getRange(i + 1, 5).setValue(String((r && r.error) || '').slice(0, 500));
+      }
+    }
+  }
+  if (processed || failed) {
+    Logger.log('큐 처리 완료: 성공 ' + processed + ', 포기 ' + failed);
+  }
+  return { ok: true, processed: processed, failed: failed };
+}
+
+// 테스트 — 의도적으로 큐에 항목 적재 후 처리
+function _test_syncQueue() {
+  // 1) 가상 실패 항목 적재
+  _enqueueSync('pushToNotion', { bizno: '999-99-99991', unifiedRow: { bizno: '999-99-99991', company: 'Q테스트' } }, '테스트용 가상 실패');
+  Logger.log('큐 적재 후');
+
+  // 2) 큐 처리 (실제로는 pushToNotion 호출되지만 테스트라 결과 따름)
+  const r = _processSyncQueue();
+  Logger.log(JSON.stringify(r));
+}
+
+// 큐 전체 보기 (디버깅)
+function _peek_syncQueue() {
+  const sheet = getSheet(SN.QUEUE);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    Logger.log('큐 비어있음');
+    return;
+  }
+  for (let i = 1; i < data.length; i++) {
+    Logger.log(JSON.stringify({
+      id: data[i][0],
+      action: data[i][1],
+      retry: data[i][3],
+      err: String(data[i][4]).slice(0, 100),
+      created: data[i][5]
+    }));
+  }
+}
