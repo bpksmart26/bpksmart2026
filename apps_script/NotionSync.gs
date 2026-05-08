@@ -393,3 +393,72 @@ function _checkPrereqs() {
   Logger.log('TOKEN: ' + (p.getProperty('NOTION_TOKEN') ? '✓ exists' : '✗ MISSING'));
   Logger.log('DB_ID: ' + (p.getProperty('NOTION_DB_ID') ? '✓ exists' : '✗ MISSING'));
 }
+
+// ─────────────────────────────────────────────────────────────
+// ensureNotionSchema: NOTION_PROP_MAP 정의된 속성이 DB에 없으면 자동 추가
+// 매 sync 시작 시 호출 (메모리 캐시로 1세션 1회만 실행)
+// 사용자가 핵심 컬럼만 미리 만들고 나머지는 GAS가 자동 보충하는 워크플로우 (옵션 C)
+// ─────────────────────────────────────────────────────────────
+let _schemaCheckedAt = 0;  // 메모리 캐시 (실행마다 reset)
+
+function ensureNotionSchema() {
+  // 같은 실행 안에서 중복 호출 방지 (60초 내)
+  if (_schemaCheckedAt && Date.now() - _schemaCheckedAt < 60000) {
+    return { ok: true, cached: true };
+  }
+
+  const config = getNotionConfig();
+  const r = notionFetch('GET', '/databases/' + config.dbId);
+  if (!r.ok) return { ok: false, error: r.error };
+
+  const existingProps = r.data.properties || {};
+  const existingNames = Object.keys(existingProps);
+  const missingProps = {};
+
+  Object.keys(NOTION_PROP_MAP).forEach(function(sheetKey) {
+    const def = NOTION_PROP_MAP[sheetKey];
+    if (!existingNames.includes(def.name)) {
+      missingProps[def.name] = _propertySchemaFor(def.type);
+    }
+  });
+
+  if (Object.keys(missingProps).length === 0) {
+    _schemaCheckedAt = Date.now();
+    return { ok: true, added: 0 };
+  }
+
+  const patchRes = notionFetch('PATCH', '/databases/' + config.dbId, { properties: missingProps });
+  if (!patchRes.ok) return { ok: false, error: patchRes.error };
+
+  Logger.log('ensureNotionSchema: ' + Object.keys(missingProps).length + ' 속성 자동 추가 → ' + Object.keys(missingProps).join(', '));
+  _schemaCheckedAt = Date.now();
+  return { ok: true, added: Object.keys(missingProps).length };
+}
+
+// type → Notion property schema 변환
+// NOTION_PROP_MAP 의 type 값을 Notion API 가 받는 schema 객체로 변환
+function _propertySchemaFor(type) {
+  switch (type) {
+    case 'title':         return { title: {} };
+    case 'rich_text':     return { rich_text: {} };
+    case 'number':        return { number: { format: 'number' } };
+    case 'select':        return { select: { options: [] } };
+    case 'multi_select':  return { multi_select: { options: [] } };
+    case 'date':          return { date: {} };
+    case 'phone_number':  return { phone_number: {} };
+    case 'email':         return { email: {} };
+    case 'url':           return { url: {} };
+    case 'files':         return { files: {} };
+    case 'checkbox':      return { checkbox: {} };
+    default: throw new Error('알 수 없는 Notion 속성 타입: ' + type);
+  }
+}
+
+// 테스트 — 사용자가 만든 노션 DB에 빠진 속성이 있으면 자동 추가
+// 두 번째 호출은 cached:true 반환 (60초 캐시)
+function _test_ensureSchema() {
+  const r = ensureNotionSchema();
+  Logger.log('1차: ' + JSON.stringify(r));
+  const r2 = ensureNotionSchema();
+  Logger.log('2차 (캐시): ' + JSON.stringify(r2));
+}
