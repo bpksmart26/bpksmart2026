@@ -537,16 +537,30 @@ function _toNotionValue(type, val) {
     case 'rich_text':
       return { rich_text: [{ text: { content: String(val).slice(0, 2000) } }] };
     case 'number':
-      return { number: Number(val) || 0 };
+      const n = Number(val);
+      return { number: isNaN(n) ? null : n };
     case 'select':
       return { select: { name: String(val).slice(0, 100) } };
-    case 'multi_select':
-      const arr = Array.isArray(val) ? val
-                 : (typeof val === 'string' ? _safeParseArr(val) : [val]);
+    case 'multi_select': {
+      let arr;
+      if (Array.isArray(val)) {
+        arr = val;
+      } else if (typeof val === 'string') {
+        // 시트 JSON 직렬화 결과면 파싱, 아니면 단일 값으로 wrap
+        const trimmed = val.trim();
+        if (trimmed.charAt(0) === '[') {
+          arr = _safeParseArr(val);
+        } else {
+          arr = [val];
+        }
+      } else {
+        arr = [val];
+      }
       return {
         multi_select: arr.filter(function(x) { return x !== null && x !== undefined && x !== ''; })
                          .map(function(x) { return { name: String(x).slice(0, 100) }; })
       };
+    }
     case 'date':
       const d = _normalizeDate(val);
       return d ? { date: { start: d } } : _emptyValueFor(type);
