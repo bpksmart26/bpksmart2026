@@ -352,7 +352,10 @@ function notionFetch(method, path, payload, _retry) {
   // Rate limit (429) — retry-after 헤더 따라 대기 후 1회 재시도
   if (code === 429 && !_retry) {
     const headers = res.getHeaders();
-    const ra = headers['Retry-After'] || headers['retry-after'] || '1';
+    let ra = '1';
+    for (const k in headers) {
+      if (k.toLowerCase() === 'retry-after') { ra = headers[k]; break; }
+    }
     Utilities.sleep((Number(ra) || 1) * 1000);
     return notionFetch(method, path, payload, true);
   }
