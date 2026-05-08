@@ -224,15 +224,18 @@ function serializeRow(cols, arrCols, obj) {
   });
 }
 
-// date 컬럼이 있으면 해당 셀을 plain text 포맷으로 + 값 재작성 (Sheets가 'YYYY-MM-DD HH:MM' 을 datetime 으로 자동 변환해 시간 잘라내는 현상 방지)
-function _enforceTextDate(sheet, rowIdx, cols, obj) {
-  const dateIdx = cols.indexOf('date');
-  if (dateIdx < 0) return;
+// date / quoteDate 등 날짜 컬럼을 plain text 포맷으로 강제 + 값 재작성
+// (Sheets가 'YYYY-MM-DD HH:MM' 을 datetime 으로 자동 변환해 시간 잘라내는 현상 방지)
+// colName 생략 시 'date' 컬럼 (기존 호출처 호환)
+function _enforceTextDate(sheet, rowIdx, cols, obj, colName) {
+  const target = colName || 'date';
+  const idx = cols.indexOf(target);
+  if (idx < 0) return;
   try {
-    const cell = sheet.getRange(rowIdx, dateIdx + 1);
-    cell.setNumberFormat('@');                 // 1) 셀 포맷을 plain text 로
-    if (obj && obj.date != null) {
-      cell.setValue(String(obj.date));         // 2) text 포맷이 적용된 후 값을 다시 명시적 String 으로 setValue
+    const cell = sheet.getRange(rowIdx, idx + 1);
+    cell.setNumberFormat('@');
+    if (obj && obj[target] != null) {
+      cell.setValue(String(obj[target]));
     }
   } catch (e) {}
 }

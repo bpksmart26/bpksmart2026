@@ -3,6 +3,14 @@
 // 같은 프로젝트의 Code.gs와 글로벌 네임스페이스 공유
 // ============================================================
 
+// quote 객체 키 → 통합정보 row 키 매핑 (한 곳에서 관리, fromNotion 등 다른 곳에서도 재사용)
+const QUOTE_FIELD_MAP = {
+  id:'quoteId', process:'quoteProcess', memo:'quoteMemo', status:'quoteStatus', date:'quoteDate',
+  validUntil:'validUntil', items:'items', options:'options', total:'total', eqCount:'eqCount',
+  pdfUrl:'pdfUrl', equipPdfUrl:'equipPdfUrl', pdfHash:'pdfHash', equipPdfHash:'equipPdfHash',
+  version:'version', isLatest:'isLatest'
+};
+
 // ─────────────────────────────────────────────────────────────
 // upsertUnified: 신청 + (선택)견적 → 통합정보 시트 upsert
 // 매칭 키: 사업자번호 (bizno) — 같은 사업자 재신청 시 row 교체
@@ -11,57 +19,51 @@ function upsertUnified(app, quote) {
   const sheet = getSheet(SN.UNIFIED);
   ensureHeader(sheet, UNIFIED_COLS);
 
-  const bizno = String(app && app.bizno || '').trim();
+  const bizno = String((app && app.bizno) || '').trim();
   if (!bizno) {
     Logger.log('upsertUnified: bizno 없음, skip — id=' + (app && app.id));
     return { ok:false, reason:'no_bizno' };
   }
 
-  // 기존 행 검색 (bizno 매칭)
+  // 기존 행 검색 (bizno 매칭, -1 = 없음)
   const data = sheet.getDataRange().getValues();
   const biznoIdx = UNIFIED_COLS.indexOf('bizno');
-  let existingRow = -1;  // 1-based sheet row index
+  let existingRow = -1;
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][biznoIdx]) === bizno) { existingRow = i + 1; break; }
   }
 
-  // 신청 객체 → 통합정보 row (영문 키 그대로)
+  // merged row 구성
   const merged = {};
-  // 신청 컬럼 복사
+  // 신청 컬럼 복사 (UNIFIED_COLS에 있는 키만)
   Object.keys(app || {}).forEach(k => {
     if (UNIFIED_COLS.includes(k)) merged[k] = app[k];
   });
-  // 견적이 있으면 quote* prefix + 직접 컬럼 채우기
+
   if (quote) {
-    merged.quoteId = quote.id || '';
-    merged.quoteProcess = quote.process || '';
-    merged.quoteMemo = quote.memo || '';
-    merged.quoteStatus = quote.status || '';
-    merged.quoteDate = quote.date || '';
-    ['validUntil','items','options','total','eqCount','pdfUrl','equipPdfUrl','pdfHash','equipPdfHash','version','isLatest']
-      .forEach(k => { if (quote[k] !== undefined) merged[k] = quote[k]; });
-  } else if (existingRow < 0) {
-    // 새 행이고 견적 없음: 견적 컬럼 빈 값으로 초기화 (덮어쓰기 방지)
-    ['quoteId','quoteProcess','quoteMemo','validUntil','items','options','total','eqCount',
-     'quoteStatus','quoteDate','pdfUrl','equipPdfUrl','pdfHash','equipPdfHash','version','isLatest']
-      .forEach(k => { merged[k] = ''; });
+    // 견적 → quote* prefix 매핑
+    Object.entries(QUOTE_FIELD_MAP).forEach(([qk, mk]) => {
+      if (quote[qk] !== undefined) merged[mk] = quote[qk];
+    });
   } else {
-    // 같은 사업자 재신청 — 기존 견적 컬럼은 비움 (새 신청에 대한 견적은 아직 없음)
-    ['quoteId','quoteProcess','quoteMemo','validUntil','items','options','total','eqCount',
-     'quoteStatus','quoteDate','pdfUrl','equipPdfUrl','pdfHash','equipPdfHash','version','isLatest']
-      .forEach(k => { merged[k] = ''; });
+    // 견적 없음 (신규/재신청 동일) — 견적 컬럼 모두 빈 값으로 초기화
+    Object.values(QUOTE_FIELD_MAP).forEach(k => { merged[k] = ''; });
   }
 
   const values = serializeRow(UNIFIED_COLS, UNIFIED_ARR, merged);
+  const targetRow = existingRow > 0 ? existingRow : sheet.getLastRow() + 1;
+  sheet.getRange(targetRow, 1, 1, values.length).setValues([values]);
 
-  if (existingRow > 0) {
-    sheet.getRange(existingRow, 1, 1, values.length).setValues([values]);
-    return { ok:true, action:'updated', row:existingRow, bizno };
-  } else {
-    const newRow = sheet.getLastRow() + 1;
-    sheet.getRange(newRow, 1, 1, values.length).setValues([values]);
-    return { ok:true, action:'inserted', row:newRow, bizno };
-  }
+  // 날짜 컬럼 plain text 포맷 강제 (Sheets datetime 자동 변환 방지)
+  _enforceTextDate(sheet, targetRow, UNIFIED_COLS, merged);                  // 'date'
+  _enforceTextDate(sheet, targetRow, UNIFIED_COLS, merged, 'quoteDate');     // 'quoteDate'
+
+  return {
+    ok: true,
+    action: existingRow > 0 ? 'updated' : 'inserted',
+    row: targetRow,
+    bizno: bizno
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
