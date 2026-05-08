@@ -13,7 +13,7 @@ const ADMIN_ID       = 'bpkadmin';
 const ADMIN_PW       = 'BPK2026!';   // 반드시 변경하세요
 const PHOTO_FOLDER   = 'BPK_Smart_Photos';
 
-const SN = { EQ:'장비', APP:'신청', QT:'견적', CFG:'설정' };
+const SN = { EQ:'장비', APP:'신청', QT:'견적', CFG:'설정', UNIFIED:'통합정보', QUEUE:'_sync_queue' };
 
 const EQ_COLS  = ['id','name','model','price','category','desc','status',
                   'photos','photos_pkg','videos','tags','tag_texture','tag_pkg',
@@ -34,6 +34,31 @@ const QT_COLS  = ['id','company','appId','process','memo','validUntil',
 const EQ_ARR   = ['photos','photos_pkg','videos'];
 const APP_ARR  = ['processes','pkgtypes','problem_points','equipment','electric','space_photos','product_photos'];
 const QT_ARR   = ['items','options'];
+
+// 통합정보 시트 — 신청 28 + 견적 16 (company/appId 제외, 충돌 컬럼은 quote* prefix)
+const UNIFIED_COLS = [
+  // 신청 (28)
+  'id','company','ceo','bizno','phone','email','address',
+  'pname','texture','processes','pkgtypes','qty','speed','memo',
+  'problem_type','problem_points','equipment','electric','air_yn','air_flow',
+  'space_w','space_h','space_photos','product_photos',
+  'status','date','manager','contentHash',
+  // 견적 (16)
+  'quoteId','quoteProcess','quoteMemo','validUntil',
+  'items','options','total','eqCount',
+  'quoteStatus','quoteDate','pdfUrl','equipPdfUrl',
+  'pdfHash','equipPdfHash','version','isLatest'
+];
+
+const UNIFIED_ARR = [
+  'processes','pkgtypes','problem_points','equipment','electric',
+  'space_photos','product_photos','items','options'
+];
+
+const UNIFIED_NUM = { total:'number', eqCount:'number', version:'number' };
+
+// _sync_queue 시트 — Notion API 실패 재시도용
+const QUEUE_COLS = ['id','action','payload_json','retry_count','last_error','created_at'];
 
 // ============================================================
 // 스프레드시트 접근
@@ -80,13 +105,74 @@ function doPost(e) {
       case 'bulkSaveEq':  result = bulkSave(SN.EQ,   EQ_COLS,  EQ_ARR,  data); break;
 
       case 'getApps':     result = { ok:true, data: getRows(SN.APP, APP_COLS, APP_ARR) }; break;
-      case 'saveApp':     result = appendRow(SN.APP,  APP_COLS, APP_ARR, data); break;
-      case 'updateApp':   result = updateRow(SN.APP,  APP_COLS, APP_ARR, data, 'id'); break;
+      case 'saveApp':
+        Logger.log('[saveApp] entered. id=' + data.id + ', bizno=' + data.bizno + ', company=' + data.company);
+        result = appendRow(SN.APP,  APP_COLS, APP_ARR, data);
+        _safeSync('upsertUnified after saveApp', function() {
+          var r = upsertUnified(data);
+          Logger.log('[saveApp] upsertUnified result: ' + JSON.stringify(r));
+        });
+        _safeSync('pushToNotion after saveApp', function() {
+          var row = _loadUnifiedByBizno(data.bizno);
+          if (row) {
+            var r = pushToNotion(row);
+            Logger.log('[saveApp] pushToNotion result: ' + JSON.stringify(r));
+          }
+        });
+        break;
+      case 'updateApp':
+        result = updateRow(SN.APP,  APP_COLS, APP_ARR, data, 'id');
+        _safeSync('upsertUnified after updateApp', function() { upsertUnified(data); });
+        _safeSync('pushToNotion after updateApp', function() {
+          var row = _loadUnifiedByBizno(data.bizno);
+          if (row) pushToNotion(row);
+        });
+        break;
 
       case 'getQts':      result = { ok:true, data: getRows(SN.QT,  QT_COLS,  QT_ARR,  {total:'number',eqCount:'number'}) }; break;
-      case 'saveQt':      result = saveQuoteWithVersion(data); break;
-      case 'updateQt':    result = updateRow(SN.QT,   QT_COLS,  QT_ARR,  data, 'id'); break;
-      case 'deleteApps':  result = deleteApps(data); break;
+      case 'saveQt':
+        Logger.log('[saveQt] entered. appId=' + data.appId + ', items=' + ((data.items||[]).length) + ', total=' + data.total);
+        result = saveQuoteWithVersion(data);
+        Logger.log('[saveQt] saveQuoteWithVersion done: ' + JSON.stringify(result));
+        _safeSync('upsertUnified after saveQt', function() {
+          var app = _findApp(data.appId);
+          Logger.log('[saveQt] _findApp(' + data.appId + ') → ' + (app ? 'found bizno=' + app.bizno : 'NULL'));
+          if (app) {
+            var r = upsertUnified(app, data);
+            Logger.log('[saveQt] upsertUnified result: ' + JSON.stringify(r));
+          }
+        });
+        _safeSync('pushToNotion after saveQt', function() {
+          var app = _findApp(data.appId);
+          if (app) {
+            var row = _loadUnifiedByBizno(app.bizno);
+            Logger.log('[saveQt] _loadUnifiedByBizno(' + app.bizno + ') → ' + (row ? 'found id=' + row.id : 'NULL'));
+            if (row) {
+              var r = pushToNotion(row);
+              Logger.log('[saveQt] pushToNotion result: ' + JSON.stringify(r));
+            }
+          }
+        });
+        break;
+      case 'updateQt':
+        result = updateRow(SN.QT,   QT_COLS,  QT_ARR,  data, 'id');
+        _safeSync('upsertUnified after updateQt', function() {
+          var app = _findApp(data.appId);
+          if (app) upsertUnified(app, data);
+        });
+        _safeSync('pushToNotion after updateQt', function() {
+          var app = _findApp(data.appId);
+          if (app) {
+            var row = _loadUnifiedByBizno(app.bizno);
+            if (row) pushToNotion(row);
+          }
+        });
+        break;
+      case 'deleteApps':
+        result = deleteApps(data);
+        _safeSync('reconcile after deleteApps', function() { _reconcileAfterDelete(data.ids || []); });
+        // 노션 archive는 Task 15에서 추가됨 (현재는 reconcile 내부에서 처리할 예정)
+        break;
 
       case 'getCfg':      result = { ok:true, data: getCfg() }; break;
       case 'saveCfg':     result = saveCfg(data); break;
@@ -131,7 +217,11 @@ function checkAuth(data) {
 // 시트 자동 초기화
 // ============================================================
 function autoInitSheets() {
-  [[SN.EQ, EQ_COLS], [SN.APP, APP_COLS], [SN.QT, QT_COLS]].forEach(([name, cols]) => {
+  // 기존 시트 (장비/신청/견적) + 신규 (통합정보/_sync_queue)
+  [
+    [SN.EQ, EQ_COLS], [SN.APP, APP_COLS], [SN.QT, QT_COLS],
+    [SN.UNIFIED, UNIFIED_COLS], [SN.QUEUE, QUEUE_COLS]
+  ].forEach(([name, cols]) => {
     const sheet = getSheet(name);
     if (sheet.getLastRow() === 0) {
       sheet.appendRow(cols);
@@ -143,6 +233,7 @@ function autoInitSheets() {
       sheet.getRange(1, 1, 1, cols.length).setValues([cols]);
     }
   });
+  // 설정 시트 (기존 동작)
   const cfgSheet = getSheet(SN.CFG);
   if (cfgSheet.getLastRow() === 0) { cfgSheet.appendRow(['cfg']); cfgSheet.appendRow(['{}']); }
 }
@@ -189,20 +280,28 @@ function ensureHeader(sheet, cols) {
 
 function serializeRow(cols, arrCols, obj) {
   return cols.map(col => {
-    if (arrCols && arrCols.includes(col)) return JSON.stringify(obj[col] || []);
+    if (arrCols && arrCols.includes(col)) {
+      const v = obj[col];
+      // 빈 배열/null/undefined는 빈 셀로 (시트 가독성)
+      if (!v || (Array.isArray(v) && v.length === 0)) return '';
+      return JSON.stringify(v);
+    }
     return (obj[col] !== undefined && obj[col] !== null) ? obj[col] : '';
   });
 }
 
-// date 컬럼이 있으면 해당 셀을 plain text 포맷으로 + 값 재작성 (Sheets가 'YYYY-MM-DD HH:MM' 을 datetime 으로 자동 변환해 시간 잘라내는 현상 방지)
-function _enforceTextDate(sheet, rowIdx, cols, obj) {
-  const dateIdx = cols.indexOf('date');
-  if (dateIdx < 0) return;
+// date / quoteDate 등 날짜 컬럼을 plain text 포맷으로 강제 + 값 재작성
+// (Sheets가 'YYYY-MM-DD HH:MM' 을 datetime 으로 자동 변환해 시간 잘라내는 현상 방지)
+// colName 생략 시 'date' 컬럼 (기존 호출처 호환)
+function _enforceTextDate(sheet, rowIdx, cols, obj, colName) {
+  const target = colName || 'date';
+  const idx = cols.indexOf(target);
+  if (idx < 0) return;
   try {
-    const cell = sheet.getRange(rowIdx, dateIdx + 1);
-    cell.setNumberFormat('@');                 // 1) 셀 포맷을 plain text 로
-    if (obj && obj.date != null) {
-      cell.setValue(String(obj.date));         // 2) text 포맷이 적용된 후 값을 다시 명시적 String 으로 setValue
+    const cell = sheet.getRange(rowIdx, idx + 1);
+    cell.setNumberFormat('@');
+    if (obj && obj[target] != null) {
+      cell.setValue(String(obj[target]));
     }
   } catch (e) {}
 }
