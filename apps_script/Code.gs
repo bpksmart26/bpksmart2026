@@ -106,11 +106,18 @@ function doPost(e) {
 
       case 'getApps':     result = { ok:true, data: getRows(SN.APP, APP_COLS, APP_ARR) }; break;
       case 'saveApp':
+        Logger.log('[saveApp] entered. id=' + data.id + ', bizno=' + data.bizno + ', company=' + data.company);
         result = appendRow(SN.APP,  APP_COLS, APP_ARR, data);
-        _safeSync('upsertUnified after saveApp', function() { upsertUnified(data); });
+        _safeSync('upsertUnified after saveApp', function() {
+          var r = upsertUnified(data);
+          Logger.log('[saveApp] upsertUnified result: ' + JSON.stringify(r));
+        });
         _safeSync('pushToNotion after saveApp', function() {
           var row = _loadUnifiedByBizno(data.bizno);
-          if (row) pushToNotion(row);
+          if (row) {
+            var r = pushToNotion(row);
+            Logger.log('[saveApp] pushToNotion result: ' + JSON.stringify(r));
+          }
         });
         break;
       case 'updateApp':
@@ -124,16 +131,26 @@ function doPost(e) {
 
       case 'getQts':      result = { ok:true, data: getRows(SN.QT,  QT_COLS,  QT_ARR,  {total:'number',eqCount:'number'}) }; break;
       case 'saveQt':
+        Logger.log('[saveQt] entered. appId=' + data.appId + ', items=' + ((data.items||[]).length) + ', total=' + data.total);
         result = saveQuoteWithVersion(data);
+        Logger.log('[saveQt] saveQuoteWithVersion done: ' + JSON.stringify(result));
         _safeSync('upsertUnified after saveQt', function() {
           var app = _findApp(data.appId);
-          if (app) upsertUnified(app, data);
+          Logger.log('[saveQt] _findApp(' + data.appId + ') → ' + (app ? 'found bizno=' + app.bizno : 'NULL'));
+          if (app) {
+            var r = upsertUnified(app, data);
+            Logger.log('[saveQt] upsertUnified result: ' + JSON.stringify(r));
+          }
         });
         _safeSync('pushToNotion after saveQt', function() {
           var app = _findApp(data.appId);
           if (app) {
             var row = _loadUnifiedByBizno(app.bizno);
-            if (row) pushToNotion(row);
+            Logger.log('[saveQt] _loadUnifiedByBizno(' + app.bizno + ') → ' + (row ? 'found id=' + row.id : 'NULL'));
+            if (row) {
+              var r = pushToNotion(row);
+              Logger.log('[saveQt] pushToNotion result: ' + JSON.stringify(r));
+            }
           }
         });
         break;
