@@ -679,13 +679,15 @@ function _safeParseArr(s) {
 }
 
 // 'YYYY-MM-DD' 또는 'YYYY-MM-DD HH:MM' → Notion ISO 8601 date
+// 시간 컴포넌트가 있으면 KST(+09:00) offset 명시 — 시트 시각이 KST 기준
+// (offset 없으면 Notion이 UTC로 가정해 9시간 drift 발생)
 function _normalizeDate(v) {
   if (!v) return null;
   const s = String(v).trim();
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
   if (!m) return null;
   return m[4]
-    ? m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':00'
+    ? m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':00+09:00'
     : m[1] + '-' + m[2] + '-' + m[3];
 }
 
@@ -730,6 +732,14 @@ function _test_toNotionProperties() {
     pdfUrl: 'https://example.com/q.pdf'
   };
   Logger.log(JSON.stringify(toNotionProperties(row), null, 2));
+
+  // 시간대 검증 — KST 시각이 노션에서도 KST로 보여야 함
+  Logger.log('--- 시간대 검증 ---');
+  const dateRow = { date: '2026-05-08 19:17', quoteDate: '2026-05-08 14:30' };
+  const dateProps = toNotionProperties(dateRow);
+  Logger.log('신청일 (KST 19:17 기대): ' + JSON.stringify(dateProps['신청일']));
+  Logger.log('견적생성일 (KST 14:30 기대): ' + JSON.stringify(dateProps['견적생성일']));
+  // 기대: { date: { start: '2026-05-08T19:17:00+09:00' } }
 }
 
 // ─────────────────────────────────────────────────────────────
