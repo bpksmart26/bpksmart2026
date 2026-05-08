@@ -408,6 +408,33 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
 .upload-banner.error .upload-bar-fill{background:var(--danger)}
 .upload-bar-info{font-size:11px;font-weight:600;color:var(--g500);text-align:right;font-family:'JetBrains Mono','Pretendard',monospace;letter-spacing:.2px}
 
+/* CENTER BLOCKING MODAL (사진 업로드 / 매칭 분석 진행 — 강제 닫기 불가) */
+.cm-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);z-index:9999;display:none;align-items:center;justify-content:center;padding:24px}
+.cm-overlay.open{display:flex;animation:cmFade .2s ease}
+@keyframes cmFade{from{opacity:0}to{opacity:1}}
+.cm-box{width:100%;max-width:460px;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:28px 26px;font-family:'Pretendard',sans-serif;animation:cmPop .25s cubic-bezier(.34,1.56,.64,1)}
+@keyframes cmPop{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
+.cm-title{font-size:17px;font-weight:800;color:var(--g900);margin-bottom:6px;text-align:center;line-height:1.4}
+.cm-sub{font-size:13px;color:var(--g500);text-align:center;line-height:1.6;margin-bottom:18px}
+.cm-bar-track{width:100%;height:8px;background:var(--g100);border-radius:4px;overflow:hidden;margin-bottom:8px}
+.cm-bar-fill{height:100%;background:var(--primary);width:0%;transition:width .3s ease;border-radius:4px}
+.cm-bar-info{font-size:12px;font-weight:600;color:var(--g600);text-align:center;font-family:'JetBrains Mono','Pretendard',monospace;letter-spacing:.2px;margin-bottom:14px}
+.cm-warn{font-size:12px;color:var(--g500);text-align:center;line-height:1.5;background:var(--warn-l);border:1px solid #fde68a;border-radius:8px;padding:10px 12px}
+.cm-warn strong{color:var(--warn)}
+.cm-fail-msg{font-size:14px;color:var(--danger);text-align:center;line-height:1.6;margin:8px 0 16px;padding:14px 12px;background:var(--danger-l);border:1px solid #fca5a5;border-radius:8px}
+.cm-btn-row{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.cm-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:10px;font-family:'Pretendard',sans-serif;font-size:14px;font-weight:700;cursor:pointer;border:1.5px solid transparent;transition:all .2s}
+.cm-btn-retry{background:var(--primary);color:#fff;border-color:var(--primary)}
+.cm-btn-retry:hover{background:var(--primary-h)}
+.cm-btn-skip{background:#fff;color:var(--g600);border-color:var(--g300)}
+.cm-btn-skip:hover{background:var(--g50);border-color:var(--g400)}
+.cm-spin{display:inline-block;width:14px;height:14px;border:2.5px solid rgba(29,78,216,.18);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:8px}
+
+/* SAVE MODAL (step 5 saveApp — 빠른 저장 표시) */
+.sm-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9998;display:none;align-items:center;justify-content:center;padding:24px}
+.sm-overlay.open{display:flex;animation:cmFade .2s ease}
+.sm-box{background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:22px 28px;display:flex;align-items:center;gap:14px;font-size:14px;font-weight:600;color:var(--g800);font-family:'Pretendard',sans-serif}
+
 /* suc-desc 와 영수증 박스 사이 간격 정리 */
 .suc-desc{margin-bottom:24px}
 
@@ -1049,24 +1076,13 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
           <div class="suc-title">신청이 완료되었습니다!</div>
           <div class="suc-desc">장비 도입 신청이 정상적으로 접수되었습니다.<br>담당자가 검토 후 <strong>2~3 영업일 내</strong>에 입력하신 연락처로<br>상세 안내 및 견적서를 전달해 드립니다.</div>
 
-          <!-- 사진 업로드 진행 배너 (업로드 중에만 표시) -->
-          <div class="upload-banner" id="upload-banner" style="display:none">
-            <div class="upload-banner-head">
-              <div class="upload-title" id="upload-title">사진을 업로드하고 있습니다</div>
-              <div class="upload-warn" id="upload-warn">완료될 때까지 페이지를 닫지 마세요</div>
-            </div>
-            <div class="upload-progress">
-              <div class="upload-bar-track"><div class="upload-bar-fill" id="upload-bar-fill"></div></div>
-              <div class="upload-bar-info" id="upload-bar-info">0 / 0 사진 업로드 중...</div>
-            </div>
-          </div>
-
+          <!-- 사진 업로드는 step 3 매칭 시작 시점에 이미 완료됨. step 5 는 saveApp 만 호출. -->
           <div class="receipt-box">
             <div class="receipt-note" id="receipt-note"></div>
           </div>
           <div class="btn-row" style="justify-content:center;margin-top:24px;border-top:none;padding-top:0">
-            <button class="btn btn-outline" id="step5-btn-lookup" onclick="viewMySubmission()" title="업로드 완료 후 클릭 가능">📋 신청 현황 조회</button>
-            <button class="btn btn-primary" id="step5-btn-reset" onclick="location.reload()" title="업로드 완료 후 클릭 가능">처음으로</button>
+            <button class="btn btn-outline" id="step5-btn-lookup" onclick="viewMySubmission()">📋 신청 현황 조회</button>
+            <button class="btn btn-primary" id="step5-btn-reset" onclick="location.reload()">처음으로</button>
           </div>
         </div>
       </div>
@@ -1094,6 +1110,34 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
       <button class="btn btn-primary" style="width:100%;height:52px;font-size:16px;margin-top:8px" onclick="doLookup()"><svg class="ic-sm"><use href="#i-search"/></svg> 조회하기</button>
       <div id="lookup-result"></div>
     </div>
+  </div>
+</div>
+
+<!-- ============================================================ 중앙 차단 모달 (사진 업로드 / 매칭 분석 진행) -->
+<div class="cm-overlay" id="cm-overlay" role="dialog" aria-modal="true" aria-labelledby="cm-title">
+  <div class="cm-box" id="cm-box">
+    <div class="cm-title" id="cm-title">사진 업로드 + 매칭 분석 중...</div>
+    <div class="cm-sub" id="cm-sub">조건에 맞는 장비를 분석하고 있습니다.</div>
+    <div id="cm-progress-wrap">
+      <div class="cm-bar-track"><div class="cm-bar-fill" id="cm-bar-fill"></div></div>
+      <div class="cm-bar-info" id="cm-bar-info">사진 0 / 0 업로드 중 (0%)</div>
+      <div class="cm-warn">❗ <strong>페이지를 닫지 마세요.</strong> 완료되면 자동으로 다음 단계가 표시됩니다.</div>
+    </div>
+    <div id="cm-fail-wrap" style="display:none">
+      <div class="cm-fail-msg" id="cm-fail-msg">사진 업로드에 실패했습니다.</div>
+      <div class="cm-btn-row">
+        <button class="cm-btn cm-btn-retry" id="cm-btn-retry" type="button">🔄 다시 시도</button>
+        <button class="cm-btn cm-btn-skip" id="cm-btn-skip" type="button">📋 사진 없이 진행</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ 저장 모달 (step 5 신청 확정 — 빠른 표시) -->
+<div class="sm-overlay" id="sm-overlay" role="dialog" aria-modal="true" aria-labelledby="sm-title">
+  <div class="sm-box">
+    <span class="cm-spin" aria-hidden="true"></span>
+    <span id="sm-title">💾 신청 정보를 저장하고 있습니다...</span>
   </div>
 </div>
 
@@ -1276,9 +1320,10 @@ function resetAllFormsAndState(){
   if(typeof formData !== 'undefined') formData = {};
   if(typeof selectedEq !== 'undefined') selectedEq = new Set();
 
-  // ── 9) Step 5 영수증 / 업로드 배너 / 매칭 결과
+  // ── 9) Step 5 영수증 / 진행 모달 / 매칭 결과
   const rn = document.getElementById('receipt-note');     if(rn) rn.innerHTML = '';
-  const ub = document.getElementById('upload-banner');    if(ub){ ub.style.display = 'none'; ub.classList.remove('success','error'); }
+  const cmOv = document.getElementById('cm-overlay');     if(cmOv) cmOv.classList.remove('open');
+  const smOv = document.getElementById('sm-overlay');     if(smOv) smOv.classList.remove('open');
   const eqList = document.getElementById('eq-list');      if(eqList) eqList.innerHTML = '';
   const allEq = document.getElementById('all-eq-list');   if(allEq) allEq.innerHTML = '';
   const selBarList = document.getElementById('sel-bar-list'); if(selBarList){ selBarList.innerHTML = ''; selBarList.style.display='none'; }
@@ -1423,9 +1468,11 @@ function goStep2(){
 }
 
 // ═══════════════════════════════════════════
-// STEP 2 → 3 (AI MATCHING)
+// STEP 2 → 3 (AI MATCHING) — "매칭 시작" 버튼
+// 사진은 base64 → Drive 업로드 후 URL 로 교체 (formData 안의 사진 데이터 자체를 URL 로 변환)
+// 업로드 진행은 중앙 차단 모달에서 표시. 완료 후 page 3 + runScoring().
 // ═══════════════════════════════════════════
-function goStep3(){
+async function goStep3(){
   clearErr(); let ok=true;
   if(!val('f-pname')){ setErr('pname'); ok=false; }
   if(!document.getElementById('f-weight-num').value){ setErr('weight'); ok=false; }
@@ -1452,7 +1499,174 @@ function goStep3(){
   formData.space_w=document.getElementById('f-space-w').value||'';
   formData.space_h=document.getElementById('f-space-h').value||'';
   formData.space_photos=_spacePhotos.slice();
+
+  // ── 사진 Drive 업로드 (선택. API 비활성화 시 base64 그대로 유지)
+  // 이 시점에서 페이지 이동/모달 차단으로 데이터 유실 방지.
+  const _spaceCount = (formData.space_photos||[]).length;
+  const _productCount = (formData.product_photos||[]).length;
+  const _totalPhotos = _spaceCount + _productCount;
+
+  if(API_ENABLED && _totalPhotos > 0){
+    const result = await _uploadPhotosWithModal(formData.company || '');
+    if(result.ok){
+      formData.space_photos   = result.spaceUrls;
+      formData.product_photos = result.productUrls;
+    } else if(result.skipped){
+      // 사진 없이 진행
+      formData.space_photos = [];
+      formData.product_photos = [];
+    } else {
+      // 사용자 cancel — step 3 진입 막음 (모달이 끝나기 전엔 여기 도달 X 이지만 안전망)
+      return;
+    }
+  }
+
   goPage(3); runScoring();
+}
+
+// ═══════════════════════════════════════════
+// 중앙 차단 모달 — 사진 업로드 진행 / 실패 처리
+// 완료 또는 사용자 선택(다시 시도 / 사진 없이 진행) 전엔 절대 닫히지 않음
+// ESC, 외부 클릭 차단. beforeunload 는 모달 표시 중에만 등록.
+// 반환: { ok:true, spaceUrls, productUrls } | { ok:false, skipped:true }
+// ═══════════════════════════════════════════
+function _uploadPhotosWithModal(company){
+  return new Promise((resolve) => {
+    const overlay  = document.getElementById('cm-overlay');
+    const titleEl  = document.getElementById('cm-title');
+    const subEl    = document.getElementById('cm-sub');
+    const progWrap = document.getElementById('cm-progress-wrap');
+    const failWrap = document.getElementById('cm-fail-wrap');
+    const failMsg  = document.getElementById('cm-fail-msg');
+    const barFill  = document.getElementById('cm-bar-fill');
+    const barInfo  = document.getElementById('cm-bar-info');
+    const btnRetry = document.getElementById('cm-btn-retry');
+    const btnSkip  = document.getElementById('cm-btn-skip');
+
+    const spacePhotos   = (formData.space_photos   || []).slice();
+    const productPhotos = (formData.product_photos || []).slice();
+    const total = spacePhotos.length + productPhotos.length;
+
+    console.log('[upload modal] start', {
+      spaceCount: spacePhotos.length,
+      productCount: productPhotos.length,
+      total: total,
+      apiEnabled: typeof API_ENABLED !== 'undefined' ? API_ENABLED : 'undefined',
+      firstSpacePhotoIsBase64: spacePhotos.length > 0 ? spacePhotos[0].startsWith('data:') : 'n/a',
+      firstProductPhotoIsBase64: productPhotos.length > 0 ? productPhotos[0].startsWith('data:') : 'n/a'
+    });
+
+    // beforeunload — 모달 표시 중에만 등록
+    const beforeUnload = (e) => {
+      e.preventDefault();
+      e.returnValue = '사진 업로드가 진행 중입니다. 정말 페이지를 닫으시겠습니까?';
+      return e.returnValue;
+    };
+    // ESC / 외부 클릭 / 닫기 버튼 차단
+    const blockKey = (e) => { if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); } };
+    const blockClick = (e) => { if(e.target === overlay){ e.preventDefault(); e.stopPropagation(); } };
+
+    const showProgress = () => {
+      progWrap.style.display = '';
+      failWrap.style.display = 'none';
+      titleEl.textContent = '사진 업로드 + 매칭 분석 중...';
+      subEl.textContent = '조건에 맞는 장비를 분석하고 있습니다.';
+    };
+    const showFail = (msg) => {
+      progWrap.style.display = 'none';
+      failWrap.style.display = '';
+      titleEl.textContent = '사진 업로드 실패';
+      subEl.textContent = '아래에서 다음 단계를 선택해 주세요.';
+      failMsg.textContent = msg || '사진 업로드에 실패했습니다.';
+    };
+    const setProgress = (done, t) => {
+      const pct = t > 0 ? Math.round(done/t*100) : 0;
+      barFill.style.width = pct + '%';
+      barInfo.textContent = `사진 ${done} / ${t} 업로드 중 (${pct}%)`;
+    };
+    const cleanup = () => {
+      window.removeEventListener('beforeunload', beforeUnload);
+      document.removeEventListener('keydown', blockKey, true);
+      overlay.removeEventListener('click', blockClick, true);
+      overlay.classList.remove('open');
+      btnRetry.onclick = null;
+      btnSkip.onclick = null;
+    };
+
+    // 모달 표시 + 차단 핸들러 등록
+    let startMs = Date.now();
+    showProgress();
+    setProgress(0, total);
+    overlay.classList.add('open');
+    window.addEventListener('beforeunload', beforeUnload);
+    document.addEventListener('keydown', blockKey, true);
+    overlay.addEventListener('click', blockClick, true);
+
+    // 업로드 시도 (apiUploadPhotos 는 실패해도 base64 폴백을 반환하므로
+    // 진짜 실패 = 네트워크 오류로 reject 된 경우만 잡는다.)
+    const tryUpload = async () => {
+      showProgress();
+      setProgress(0, total);
+      let done = 0;
+      const onPhotoDone = () => { done++; setProgress(done, total); };
+      try {
+        const id = `tmp_${Date.now()}`;
+        const [spaceUrls, productUrls] = await Promise.all([
+          spacePhotos.length
+            ? apiUploadPhotos(spacePhotos,   `space_${id}`,   { type:'space',   company }, onPhotoDone)
+            : Promise.resolve([]),
+          productPhotos.length
+            ? apiUploadPhotos(productPhotos, `product_${id}`, { type:'product', company }, onPhotoDone)
+            : Promise.resolve([])
+        ]);
+        console.log('[upload modal] urls received', {
+          spaceUrlSample: spaceUrls[0]?.slice(0, 60),
+          productUrlSample: productUrls[0]?.slice(0, 60),
+          spaceUrlsAllBase64: spaceUrls.every(u => typeof u === 'string' && u.startsWith('data:')),
+          productUrlsAllBase64: productUrls.every(u => typeof u === 'string' && u.startsWith('data:'))
+        });
+        // 모든 사진이 base64 폴백으로 돌아왔다면 = 사실상 업로드 실패
+        const allFell = total > 0
+          && spaceUrls.every(u   => typeof u === 'string' && u.startsWith('data:'))
+          && productUrls.every(u => typeof u === 'string' && u.startsWith('data:'));
+        if(allFell){
+          showFail('사진 업로드에 실패했습니다. (서버 응답 없음)');
+          return;
+        }
+        // 성공 — 완료 표시 후 1초 뒤 cleanup (사용자가 모달을 인지할 수 있도록)
+        console.log('[upload modal] success', { spaceUrls, productUrls });
+        const elapsedMs = Date.now() - startMs;
+        const minDisplayMs = 1500;  // 모달 최소 표시 시간
+        const remaining = Math.max(0, minDisplayMs - elapsedMs);
+
+        // 진행률 100% 표시
+        barFill.style.width = '100%';
+        barInfo.textContent = `사진 ${total} / ${total} 업로드 완료`;
+
+        setTimeout(() => {
+          // 완료 메시지로 전환
+          titleEl.textContent = '✅ 업로드 완료';
+          subEl.textContent = '다음 단계로 이동합니다...';
+          // 0.6초 후 모달 닫고 resolve
+          setTimeout(() => {
+            cleanup();
+            resolve({ ok:true, spaceUrls, productUrls });
+          }, 600);
+        }, remaining);
+      } catch (err) {
+        console.warn('[upload modal] error:', err);
+        showFail('사진 업로드에 실패했습니다. ' + (err && err.message ? '('+err.message+')' : ''));
+      }
+    };
+
+    btnRetry.onclick = () => { startMs = Date.now(); tryUpload(); };
+    btnSkip.onclick  = () => {
+      cleanup();
+      resolve({ ok:false, skipped:true });
+    };
+
+    tryUpload();
+  });
 }
 
 // ═══════════════════════════════════════════
@@ -1961,7 +2175,9 @@ function goStep4(){
 }
 
 // ═══════════════════════════════════════════
-// STEP 4 → 5 (SUBMIT)
+// STEP 4 → 5 (SUBMIT) — "신청 확정하기" 버튼
+// 사진은 step 3 매칭 시작 시점에 이미 Drive URL 로 변환됨 → 여기서는 saveApp 만 호출.
+// 작은 저장 모달(1~3초)로 시각적 피드백.
 // ═══════════════════════════════════════════
 async function goStep5(){
   const _now=new Date();
@@ -1976,10 +2192,6 @@ async function goStep5(){
   app.contentHash = (typeof appContentHash === 'function') ? appContentHash(app) : '';
   // 신청 현황 조회 버튼에서 즉시 사용
   _submittedApp = app;
-
-  const _spaceCount = (app.space_photos||[]).length;
-  const _productCount = (app.product_photos||[]).length;
-  const _totalPhotos = _spaceCount + _productCount;
 
   // ── 영수증 박스 갱신 헬퍼
   const _renderReceipt = (statusLine) => {
@@ -1998,102 +2210,38 @@ async function goStep5(){
       (statusLine ? `<div class="receipt-status">${statusLine}</div>` : '');
   };
 
-  // ── 업로드 중 step5 버튼 비활성화/활성화 (업로드 미완료 상태에서 이탈 방지)
-  const _setStep5BtnsEnabled = (enabled) => {
-    const btnLookup = document.getElementById('step5-btn-lookup');
-    const btnReset  = document.getElementById('step5-btn-reset');
-    if(btnLookup){ btnLookup.disabled = !enabled; btnLookup.title = enabled ? '' : '업로드 완료 후 클릭 가능'; }
-    if(btnReset) { btnReset.disabled  = !enabled; btnReset.title  = enabled ? '' : '업로드 완료 후 클릭 가능'; }
+  // ── 작은 저장 모달 (saveApp 진행 중 — 1~3초)
+  const smOverlay = document.getElementById('sm-overlay');
+  const smTitle   = document.getElementById('sm-title');
+  const showSaveModal = (msg) => {
+    if(smTitle) smTitle.textContent = msg || '💾 신청 정보를 저장하고 있습니다...';
+    if(smOverlay) smOverlay.classList.add('open');
+  };
+  const hideSaveModal = () => {
+    if(smOverlay) smOverlay.classList.remove('open');
   };
 
-  // ── 업로드 진행 배너 헬퍼
-  const banner = document.getElementById('upload-banner');
-  const barFill = document.getElementById('upload-bar-fill');
-  const barInfo = document.getElementById('upload-bar-info');
-  const titleEl = document.getElementById('upload-title');
-  const setBannerProgress = (done, total) => {
-    if(!barFill||!barInfo) return;
-    const pct = total > 0 ? Math.round(done/total*100) : 0;
-    barFill.style.width = pct + '%';
-    barInfo.textContent = `${done} / ${total} 사진 업로드 중... (${pct}%)`;
-  };
-  const setBannerSuccess = (msg) => {
-    if(!banner) return;
-    banner.classList.remove('error');
-    banner.classList.add('success');
-    if(titleEl) titleEl.textContent = msg || '업로드 + 신청 접수 완료';
-    if(barInfo) barInfo.textContent = `${_totalPhotos} / ${_totalPhotos} 완료`;
-  };
-  const setBannerError = (msg) => {
-    if(!banner) return;
-    banner.classList.remove('success');
-    banner.classList.add('error');
-    if(titleEl) titleEl.textContent = msg || '일부 단계 실패';
-    if(barInfo) barInfo.textContent = '로컬에 임시 저장되었습니다';
-  };
-
-  // ── 1) 완료 화면 즉시 표시
-  if(_totalPhotos > 0 && API_ENABLED){
-    banner.style.display = '';
-    banner.classList.remove('success','error');
-    if(titleEl) titleEl.textContent = `사진 ${_totalPhotos}장을 업로드하고 있습니다`;
-    setBannerProgress(0, _totalPhotos);
-    _renderReceipt('');
-    _setStep5BtnsEnabled(false); // 업로드 미완료 동안 버튼 비활성
-  } else {
-    if(banner) banner.style.display = 'none';
-    _renderReceipt(`<small style="color:#059669;font-weight:700">✅ 접수 완료</small>`);
-    _setStep5BtnsEnabled(true);
-  }
-  goPage(5);
-
-  // ── 2) 백그라운드: 사진 병렬 업로드 + 저장
   if(API_ENABLED){
-    // 업로드 중 페이지 이탈 시 브라우저 확인 다이얼로그
-    const _beforeUnload = (e) => {
-      e.preventDefault();
-      e.returnValue = '사진 업로드가 완료되지 않았습니다. 정말 페이지를 닫으시겠습니까?';
-      return e.returnValue;
-    };
-    if(_totalPhotos > 0) window.addEventListener('beforeunload', _beforeUnload);
-
-    let _done = 0;
-    const _onPhotoDone = () => {
-      _done++;
-      setBannerProgress(_done, _totalPhotos);
-    };
+    showSaveModal('💾 신청 정보를 저장하고 있습니다...');
     try {
-      const [spaceUrls, productUrls] = await Promise.all([
-        _spaceCount   ? apiUploadPhotos(app.space_photos,   `space_${id}`,   { type:'space',   company: formData.company }, _onPhotoDone) : Promise.resolve([]),
-        _productCount ? apiUploadPhotos(app.product_photos, `product_${id}`, { type:'product', company: formData.company }, _onPhotoDone) : Promise.resolve([])
-      ]);
-      app.space_photos = spaceUrls;
-      app.product_photos = productUrls;
-
-      // 저장 단계 표시
-      if(_totalPhotos > 0 && titleEl){
-        titleEl.textContent = '신청 내용을 저장하는 중...';
-        if(barInfo) barInfo.textContent = `${_totalPhotos} / ${_totalPhotos} 사진 업로드 완료, 저장 중...`;
-      }
-
       await apiCall('saveApp', app);
-      if(_totalPhotos > 0) setBannerSuccess('사진 업로드 + 신청 접수 완료');
+      hideSaveModal();
+      _renderReceipt(`<small style="color:#059669;font-weight:700">✅ 접수 완료</small>`);
     } catch(e) {
+      hideSaveModal();
       const apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
       apps.push(app);
       localStorage.setItem(SK.APP,JSON.stringify(apps));
       console.warn('서버 저장 실패, 로컬 임시 저장됨', e);
-      if(_totalPhotos > 0) setBannerError('서버 저장 실패');
       _renderReceipt(`<small style="color:#dc2626;font-weight:700">⚠️ 서버 저장에 일부 문제가 있어 로컬에 임시 저장되었습니다. 담당자가 곧 확인합니다.</small>`);
-    } finally {
-      if(_totalPhotos > 0) window.removeEventListener('beforeunload', _beforeUnload);
-      _setStep5BtnsEnabled(true); // 성공/실패 무관 — 사용자가 다음 작업 가능하도록
     }
   } else {
     const apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
     apps.push(app);
     localStorage.setItem(SK.APP,JSON.stringify(apps));
+    _renderReceipt(`<small style="color:#059669;font-weight:700">✅ 접수 완료</small>`);
   }
+  goPage(5);
 }
 
 // ═══════════════════════════════════════════

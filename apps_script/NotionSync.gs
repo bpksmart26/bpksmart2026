@@ -263,7 +263,12 @@ function _reconcileAfterDelete(deletedIds) {
       } else if (deletedCount === 1) {
         Logger.log('통합정보 row 삭제 (bizno=' + bizno + ')');
       }
-      // 노션 archive는 Task 15의 archiveNotionPage가 처리
+      // 노션 페이지도 archive (휴지통 30일 보관)
+      try {
+        archiveNotionPage(bizno);
+      } catch (e) {
+        Logger.log('archiveNotionPage 실패 bizno=' + bizno + ': ' + e);
+      }
     } else {
       // 가장 최근 신청 + 그 신청의 isLatest=1 견적으로 갱신
       const latestApp = remaining[0];
@@ -674,13 +679,15 @@ function _safeParseArr(s) {
 }
 
 // 'YYYY-MM-DD' 또는 'YYYY-MM-DD HH:MM' → Notion ISO 8601 date
+// 시간 컴포넌트가 있으면 KST(+09:00) offset 명시 — 시트 시각이 KST 기준
+// (offset 없으면 Notion이 UTC로 가정해 9시간 drift 발생)
 function _normalizeDate(v) {
   if (!v) return null;
   const s = String(v).trim();
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
   if (!m) return null;
   return m[4]
-    ? m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':00'
+    ? m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':00+09:00'
     : m[1] + '-' + m[2] + '-' + m[3];
 }
 
@@ -725,6 +732,14 @@ function _test_toNotionProperties() {
     pdfUrl: 'https://example.com/q.pdf'
   };
   Logger.log(JSON.stringify(toNotionProperties(row), null, 2));
+
+  // 시간대 검증 — KST 시각이 노션에서도 KST로 보여야 함
+  Logger.log('--- 시간대 검증 ---');
+  const dateRow = { date: '2026-05-08 19:17', quoteDate: '2026-05-08 14:30' };
+  const dateProps = toNotionProperties(dateRow);
+  Logger.log('신청일 (KST 19:17 기대): ' + JSON.stringify(dateProps['신청일']));
+  Logger.log('견적생성일 (KST 14:30 기대): ' + JSON.stringify(dateProps['견적생성일']));
+  // 기대: { date: { start: '2026-05-08T19:17:00+09:00' } }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -964,5 +979,407 @@ function _diagnoseLastQuoteSync_force() {
       const pushR = pushToNotion(unified);
       Logger.log('pushToNotion 결과: ' + JSON.stringify(pushR));
     }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 노션 property → 시트값 역변환 (syncFromNotion이 사용)
+// 양방향 4 필드만 시트로 가져올 때 사용 (onlyBidirectional=true)
+// ─────────────────────────────────────────────────────────────
+
+// 단일 property 값 추출
+function _fromNotionValue(prop) {
+  if (!prop) return '';
+  switch (prop.type) {
+    case 'title':
+      return (prop.title || []).map(function(t) { return t.plain_text || ''; }).join('');
+    case 'rich_text':
+      return (prop.rich_text || []).map(function(t) { return t.plain_text || ''; }).join('');
+    case 'number':
+      return prop.number == null ? '' : prop.number;
+    case 'select':
+      return prop.select ? prop.select.name : '';
+    case 'multi_select':
+      return (prop.multi_select || []).map(function(o) { return o.name; });
+    case 'date':
+      return prop.date ? prop.date.start : '';
+    case 'phone_number':
+      return prop.phone_number || '';
+    case 'email':
+      return prop.email || '';
+    case 'url':
+      return prop.url || '';
+    case 'files':
+      return (prop.files || []).map(function(f) {
+        return (f.external && f.external.url) || (f.file && f.file.url) || '';
+      });
+    case 'checkbox':
+      return !!prop.checkbox;
+    default:
+      return '';
+  }
+}
+
+// 노션 페이지 → 시트값 객체 (영문 키)
+// onlyBidirectional=true 이면 양방향 4필드 + bizno만 추출 (syncFromNotion용)
+// onlyBidirectional=false 면 알려진 모든 NOTION_PROP_MAP 키 추출 (디버깅·확장용)
+function fromNotionPage(page, onlyBidirectional) {
+  const out = {
+    __pageId: page.id,
+    __lastEdited: page.last_edited_time
+  };
+  Object.keys(page.properties || {}).forEach(function(notionName) {
+    const sheetKey = NOTION_NAME_TO_SHEET[notionName];
+    if (!sheetKey) return;  // 운영자 자유 컬럼 — sync 무관
+    if (sheetKey === '__summary') return;  // 가상 키, 역변환 안 함
+    if (onlyBidirectional && BIDIRECTIONAL_FIELDS.indexOf(sheetKey) < 0) {
+      // 양방향만 모드 — bizno는 매칭 키이므로 항상 포함
+      if (sheetKey !== 'bizno') return;
+    }
+    out[sheetKey] = _fromNotionValue(page.properties[notionName]);
+  });
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────
+// 테스트 — 가상 노션 페이지 객체로 역변환 확인
+// (실제 노션 호출 안 함 — 노션 API 응답 형태 모킹)
+// ─────────────────────────────────────────────────────────────
+function _test_fromNotionPage() {
+  const mockPage = {
+    id: 'test-page-id-abc',
+    last_edited_time: '2026-05-08T12:00:00.000Z',
+    properties: {
+      '회사명': { type: 'title', title: [{ plain_text: '테스트회사', type: 'text' }] },
+      '신청ID': { type: 'rich_text', rich_text: [{ plain_text: 'NO-260508-9999', type: 'text' }] },
+      '사업자번호': { type: 'rich_text', rich_text: [{ plain_text: '999-99-99999', type: 'text' }] },
+      '신청상태': { type: 'select', select: { name: '검토중' } },
+      '담당자': { type: 'rich_text', rich_text: [{ plain_text: '홍길동', type: 'text' }] },
+      '신청메모': { type: 'rich_text', rich_text: [{ plain_text: '전화 예정', type: 'text' }] },
+      '견적메모': { type: 'rich_text', rich_text: [{ plain_text: '협의 중', type: 'text' }] },
+      '연락처': { type: 'phone_number', phone_number: '010-1234-5678' },
+      '공정': { type: 'multi_select', multi_select: [{ name: '인쇄' }, { name: '후가공' }] },
+      '신청일': { type: 'date', date: { start: '2026-05-08' } },
+      '견적총액': { type: 'number', number: 15000000 },
+      '운영자_자유컬럼': { type: 'rich_text', rich_text: [{ plain_text: '메모', type: 'text' }] }  // sync 무관
+    }
+  };
+
+  Logger.log('--- 양방향만 추출 (onlyBidirectional=true) ---');
+  Logger.log(JSON.stringify(fromNotionPage(mockPage, true), null, 2));
+
+  Logger.log('--- 전체 추출 (onlyBidirectional=false) ---');
+  Logger.log(JSON.stringify(fromNotionPage(mockPage, false), null, 2));
+
+  // 운영자_자유컬럼은 NOTION_PROP_MAP에 없으므로 두 모드 모두에서 제외되어야 함 ✓
+}
+
+// ─────────────────────────────────────────────────────────────
+// syncFromNotion: 노션 → 시트 양방향 동기화 (5분 Time Trigger + 즉시 버튼)
+// last_edited_time > LAST_SYNC_AT 인 페이지만 처리
+// 양방향 4 필드만 시트로 반영, 단방향은 매번 시트값으로 push (되돌리기 정책 B)
+// ─────────────────────────────────────────────────────────────
+function syncFromNotion() {
+  const props = PropertiesService.getScriptProperties();
+  const lastSyncAt = props.getProperty('LAST_SYNC_AT') || '2000-01-01T00:00:00.000Z';
+  const nowIso = new Date().toISOString();
+
+  let changed = 0;
+  let scanned = 0;
+  let hasMore = true;
+  let cursor = null;
+  const config = getNotionConfig();
+
+  while (hasMore) {
+    const payload = {
+      filter: {
+        timestamp: 'last_edited_time',
+        last_edited_time: { after: lastSyncAt }
+      },
+      sorts: [{ timestamp: 'last_edited_time', direction: 'ascending' }],
+      page_size: 50
+    };
+    if (cursor) payload.start_cursor = cursor;
+
+    const r = notionFetch('POST', '/databases/' + config.dbId + '/query', payload);
+    if (!r.ok) {
+      Logger.log('syncFromNotion query 실패: ' + r.error);
+      return { ok: false, error: r.error };
+    }
+
+    (r.data.results || []).forEach(function(page) {
+      scanned++;
+      if (page.archived) return;  // 휴지통 페이지 무시
+      try {
+        if (_applyNotionPageToSheet(page)) changed++;
+      } catch (e) {
+        Logger.log('페이지 sync 실패 ' + page.id + ': ' + e);
+      }
+    });
+
+    hasMore = r.data.has_more;
+    cursor = r.data.next_cursor;
+  }
+
+  props.setProperty('LAST_SYNC_AT', nowIso);
+
+  // 큐 재처리 (Task 16에서 정의될 예정 — typeof 가드)
+  try {
+    if (typeof _processSyncQueue === 'function') _processSyncQueue();
+  } catch (e) {
+    Logger.log('_processSyncQueue 실패: ' + e);
+  }
+
+  Logger.log('syncFromNotion 완료: scanned=' + scanned + ', changed=' + changed);
+  return { ok: true, scanned: scanned, changed: changed };
+}
+
+// ─────────────────────────────────────────────────────────────
+// _applyNotionPageToSheet: 1개 페이지의 양방향 변경을 시트에 반영
+// 무한루프 방지: hash_<bizno> Properties와 비교
+// 단방향 컬럼이 노션에서 변조됐을 가능성 → pushToNotion으로 강제 되돌리기
+// 반환: true면 시트에 변경 반영함, false면 skip 또는 변경 없음
+// ─────────────────────────────────────────────────────────────
+function _applyNotionPageToSheet(page) {
+  const fromNotion = fromNotionPage(page, true);
+  const bizno = String(fromNotion.bizno || '').trim();
+  if (!bizno) return false;
+
+  const unified = _loadUnifiedByBizno(bizno);
+  if (!unified) return false;
+
+  const props = PropertiesService.getScriptProperties();
+  const lastHash = props.getProperty('hash_' + bizno);
+  const currentSheetHash = _bidirectionalHash(unified);
+  if (currentSheetHash !== lastHash) {
+    Logger.log('skip ' + bizno + ' — 시트가 더 최근에 변경됨 (last-write-wins, sheet wins)');
+    try { pushToNotion(unified); } catch (e) { Logger.log('skip 후 push 실패 ' + bizno + ': ' + e); }
+    return false;
+  }
+
+  const changes = {};
+  BIDIRECTIONAL_FIELDS.forEach(function(f) {
+    const newVal = fromNotion[f];
+    const oldVal = unified[f] == null ? '' : String(unified[f]);
+    const newStr = newVal == null ? '' : String(newVal);
+    if (newStr !== oldVal) changes[f] = newVal;
+  });
+
+  if (Object.keys(changes).length === 0) {
+    try { pushToNotion(unified); } catch (e) { Logger.log('단방향 되돌리기 push 실패 ' + bizno + ': ' + e); }
+    return false;
+  }
+
+  // 통합정보 시트의 양방향 4필드만 직접 업데이트 (견적 정보 보존)
+  const unifiedSheet = getSheet(SN.UNIFIED);
+  const data = unifiedSheet.getDataRange().getValues();
+  const biznoIdx = UNIFIED_COLS.indexOf('bizno');
+  let targetRow = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][biznoIdx]) === bizno) { targetRow = i + 1; break; }
+  }
+  if (targetRow < 0) {
+    Logger.log('통합정보 row 사라짐 — sync skip ' + bizno);
+    return false;
+  }
+  Object.keys(changes).forEach(function(f) {
+    const colIdx = UNIFIED_COLS.indexOf(f);
+    if (colIdx >= 0) {
+      let val = changes[f];
+      if (Array.isArray(val)) val = JSON.stringify(val);
+      unifiedSheet.getRange(targetRow, colIdx + 1).setValue(val == null ? '' : String(val));
+    }
+  });
+
+  // 신청 시트의 status/manager/memo 갱신
+  const apps = getRows(SN.APP, APP_COLS, APP_ARR);
+  const targetApp = apps.find(function(a) { return String(a.id) === String(unified.id); });
+  if (targetApp) {
+    let needUpdate = false;
+    ['status','manager','memo'].forEach(function(f) {
+      if (changes[f] !== undefined) { targetApp[f] = changes[f]; needUpdate = true; }
+    });
+    if (needUpdate) updateRow(SN.APP, APP_COLS, APP_ARR, targetApp, 'id');
+  }
+
+  // 견적 시트의 memo (= 통합정보의 quoteMemo) 갱신
+  if (changes.quoteMemo !== undefined && unified.quoteId) {
+    const quotes = getRows(SN.QT, QT_COLS, QT_ARR, {total:'number',eqCount:'number'});
+    const targetQuote = quotes.find(function(q) { return String(q.id) === String(unified.quoteId); });
+    if (targetQuote) {
+      targetQuote.memo = changes.quoteMemo;
+      updateRow(SN.QT, QT_COLS, QT_ARR, targetQuote, 'id');
+    }
+  }
+
+  // push 해시 갱신 + 단방향 되돌리기 push
+  Object.assign(unified, changes);
+  props.setProperty('hash_' + bizno, _bidirectionalHash(unified));
+  try { pushToNotion(unified); } catch (e) { Logger.log('되돌리기 push 실패 ' + bizno + ': ' + e); }
+
+  Logger.log('synced ' + bizno + ' fields=' + Object.keys(changes).join(','));
+  return true;
+}
+
+// ─────────────────────────────────────────────────────────────
+// archiveNotionPage: 사업자번호로 노션 페이지 찾아 archive (휴지통 30일 보관)
+// _reconcileAfterDelete에서 사업자의 잔여 신청이 0건일 때 호출
+// 운영자가 노션 휴지통에서 30일 안에 복원 가능
+// ─────────────────────────────────────────────────────────────
+function archiveNotionPage(bizno) {
+  if (!bizno) return { ok: false, reason: 'no_bizno' };
+  const page = _findNotionPageByBizno(bizno);
+  if (!page) {
+    Logger.log('archiveNotionPage: 노션 페이지 없음 (이미 archive 됐거나 push 실패) bizno=' + bizno);
+    return { ok: true, action: 'no_page' };
+  }
+  const r = notionFetch('PATCH', '/pages/' + page.id, { archived: true });
+  if (!r.ok) {
+    // 큐 적재 (Task 16에서 _enqueueSync 정의)
+    if (typeof _enqueueSync === 'function') {
+      _enqueueSync('archiveNotionPage', { bizno: bizno }, r.error);
+    }
+    Logger.log('archiveNotionPage 실패 bizno=' + bizno + ' code=' + r.code);
+    return r;
+  }
+  // 해시도 정리 (다음 신청 시 새 페이지 만들 수 있도록)
+  PropertiesService.getScriptProperties().deleteProperty('hash_' + bizno);
+  Logger.log('archiveNotionPage 성공 bizno=' + bizno + ' page=' + page.id);
+  return { ok: true, action: 'archived', pageId: page.id };
+}
+
+// 테스트 — 999-99-99991 사업자번호의 노션 페이지를 archive
+function _test_archiveNotionPage() {
+  const r = archiveNotionPage('999-99-99991');
+  Logger.log(JSON.stringify(r));
+}
+
+// ─────────────────────────────────────────────────────────────
+// _sync_queue: Notion API 실패 시 적재 → 다음 syncFromNotion 폴링에서 재처리
+// 3회 실패 시 큐에서 제거 + 운영자 로그 (무한 retry 방지)
+// QUEUE_COLS = ['id','action','payload_json','retry_count','last_error','created_at']
+// ─────────────────────────────────────────────────────────────
+
+// 큐 적재 — pushToNotion / archiveNotionPage 실패 시 호출됨
+function _enqueueSync(action, payload, error) {
+  try {
+    const sheet = getSheet(SN.QUEUE);
+    ensureHeader(sheet, QUEUE_COLS);
+
+    const id = 'q' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const row = [
+      id,
+      action,
+      JSON.stringify(payload || {}),
+      0,
+      String(error == null ? '' : error).slice(0, 500),
+      new Date().toISOString()
+    ];
+    sheet.appendRow(row);
+    Logger.log('큐 적재: ' + id + ' (' + action + ')');
+  } catch (e) {
+    Logger.log('_enqueueSync 자체 실패: ' + e);
+  }
+}
+
+// 큐 재처리 — syncFromNotion 끝에 호출됨
+// 성공/3회 실패 시 row 삭제, 그 외엔 retry_count + 1 + last_error 갱신
+function _processSyncQueue() {
+  const sheet = getSheet(SN.QUEUE);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return { ok: true, processed: 0, failed: 0 };
+
+  let processed = 0;
+  let failed = 0;
+  // 위에서 아래로 읽되 row 삭제는 거꾸로 진행 (인덱스 안 깨지게)
+  for (let i = data.length - 1; i >= 1; i--) {
+    const row = data[i];
+    const id = row[0];
+    const action = row[1];
+    const payloadStr = row[2];
+    const retryCount = Number(row[3]) || 0;
+
+    let payload;
+    try {
+      payload = JSON.parse(payloadStr || '{}');
+    } catch (e) {
+      Logger.log('큐 항목 payload 파싱 실패 → 삭제: ' + id);
+      sheet.deleteRow(i + 1);
+      continue;
+    }
+
+    let r;
+    try {
+      switch (action) {
+        case 'pushToNotion':
+          // payload: { bizno, unifiedRow }
+          // unifiedRow는 stale 가능성 있으므로 시트에서 다시 로드 (있으면)
+          var fresh = payload.bizno ? _loadUnifiedByBizno(payload.bizno) : null;
+          r = pushToNotion(fresh || payload.unifiedRow);
+          break;
+        case 'archiveNotionPage':
+          // payload: { bizno }
+          r = archiveNotionPage(payload.bizno);
+          break;
+        default:
+          Logger.log('알 수 없는 큐 action → 삭제: ' + action);
+          sheet.deleteRow(i + 1);
+          continue;
+      }
+    } catch (e) {
+      r = { ok: false, error: e.toString() };
+    }
+
+    if (r && r.ok) {
+      sheet.deleteRow(i + 1);
+      processed++;
+      Logger.log('큐 처리 성공: ' + id + ' (' + action + ')');
+    } else {
+      const newCount = retryCount + 1;
+      if (newCount >= 3) {
+        // 3회 실패 — 포기. 큐에서 삭제 + 운영자 알림용 로그
+        Logger.log('⚠️ 큐 항목 3회 실패 → 포기: ' + id + ' (' + action + ', bizno=' + (payload.bizno || '') + '): ' + ((r && r.error) || ''));
+        sheet.deleteRow(i + 1);
+        failed++;
+      } else {
+        // 재시도 카운트 + 마지막 에러 갱신
+        sheet.getRange(i + 1, 4).setValue(newCount);
+        sheet.getRange(i + 1, 5).setValue(String((r && r.error) || '').slice(0, 500));
+      }
+    }
+  }
+  if (processed || failed) {
+    Logger.log('큐 처리 완료: 성공 ' + processed + ', 포기 ' + failed);
+  }
+  return { ok: true, processed: processed, failed: failed };
+}
+
+// 테스트 — 의도적으로 큐에 항목 적재 후 처리
+function _test_syncQueue() {
+  // 1) 가상 실패 항목 적재
+  _enqueueSync('pushToNotion', { bizno: '999-99-99991', unifiedRow: { bizno: '999-99-99991', company: 'Q테스트' } }, '테스트용 가상 실패');
+  Logger.log('큐 적재 후');
+
+  // 2) 큐 처리 (실제로는 pushToNotion 호출되지만 테스트라 결과 따름)
+  const r = _processSyncQueue();
+  Logger.log(JSON.stringify(r));
+}
+
+// 큐 전체 보기 (디버깅)
+function _peek_syncQueue() {
+  const sheet = getSheet(SN.QUEUE);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    Logger.log('큐 비어있음');
+    return;
+  }
+  for (let i = 1; i < data.length; i++) {
+    Logger.log(JSON.stringify({
+      id: data[i][0],
+      action: data[i][1],
+      retry: data[i][3],
+      err: String(data[i][4]).slice(0, 100),
+      created: data[i][5]
+    }));
   }
 }
