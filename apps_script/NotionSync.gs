@@ -192,6 +192,31 @@ function _findApp(appId) {
   return apps.find(a => String(a.id) === String(appId)) || null;
 }
 
+// 통합정보 시트에서 bizno로 row 객체 1개 로드 (영문 키, 배열은 파싱)
+function _loadUnifiedByBizno(bizno) {
+  if (!bizno) return null;
+  const sheet = getSheet(SN.UNIFIED);
+  const data = sheet.getDataRange().getValues();
+  const biznoIdx = UNIFIED_COLS.indexOf('bizno');
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][biznoIdx]) === String(bizno)) {
+      const obj = {};
+      UNIFIED_COLS.forEach(function(col, j) {
+        const v = data[i][j];
+        if (UNIFIED_ARR.indexOf(col) >= 0) {
+          try { obj[col] = JSON.parse(v || '[]'); } catch(e) { obj[col] = []; }
+        } else if (UNIFIED_NUM[col] === 'number') {
+          obj[col] = Number(v) || 0;
+        } else {
+          obj[col] = v == null ? '' : String(v);
+        }
+      });
+      return obj;
+    }
+  }
+  return null;
+}
+
 // ─────────────────────────────────────────────────────────────
 // 신청 삭제 후 통합정보 reconcile
 // 잔여 신청 있으면 가장 최근으로 통합정보 갱신, 없으면 통합정보 row 삭제

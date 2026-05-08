@@ -108,10 +108,18 @@ function doPost(e) {
       case 'saveApp':
         result = appendRow(SN.APP,  APP_COLS, APP_ARR, data);
         _safeSync('upsertUnified after saveApp', function() { upsertUnified(data); });
+        _safeSync('pushToNotion after saveApp', function() {
+          var row = _loadUnifiedByBizno(data.bizno);
+          if (row) pushToNotion(row);
+        });
         break;
       case 'updateApp':
         result = updateRow(SN.APP,  APP_COLS, APP_ARR, data, 'id');
         _safeSync('upsertUnified after updateApp', function() { upsertUnified(data); });
+        _safeSync('pushToNotion after updateApp', function() {
+          var row = _loadUnifiedByBizno(data.bizno);
+          if (row) pushToNotion(row);
+        });
         break;
 
       case 'getQts':      result = { ok:true, data: getRows(SN.QT,  QT_COLS,  QT_ARR,  {total:'number',eqCount:'number'}) }; break;
@@ -121,6 +129,13 @@ function doPost(e) {
           var app = _findApp(data.appId);
           if (app) upsertUnified(app, data);
         });
+        _safeSync('pushToNotion after saveQt', function() {
+          var app = _findApp(data.appId);
+          if (app) {
+            var row = _loadUnifiedByBizno(app.bizno);
+            if (row) pushToNotion(row);
+          }
+        });
         break;
       case 'updateQt':
         result = updateRow(SN.QT,   QT_COLS,  QT_ARR,  data, 'id');
@@ -128,10 +143,18 @@ function doPost(e) {
           var app = _findApp(data.appId);
           if (app) upsertUnified(app, data);
         });
+        _safeSync('pushToNotion after updateQt', function() {
+          var app = _findApp(data.appId);
+          if (app) {
+            var row = _loadUnifiedByBizno(app.bizno);
+            if (row) pushToNotion(row);
+          }
+        });
         break;
       case 'deleteApps':
         result = deleteApps(data);
         _safeSync('reconcile after deleteApps', function() { _reconcileAfterDelete(data.ids || []); });
+        // 노션 archive는 Task 15에서 추가됨 (현재는 reconcile 내부에서 처리할 예정)
         break;
 
       case 'getCfg':      result = { ok:true, data: getCfg() }; break;
