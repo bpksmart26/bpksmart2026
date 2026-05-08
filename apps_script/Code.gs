@@ -35,7 +35,7 @@ const EQ_ARR   = ['photos','photos_pkg','videos'];
 const APP_ARR  = ['processes','pkgtypes','problem_points','equipment','electric','space_photos','product_photos'];
 const QT_ARR   = ['items','options'];
 
-// 통합정보 시트 — 신청 28컬럼 + 견적에서 16컬럼 (충돌은 quote* prefix)
+// 통합정보 시트 — 신청 28 + 견적 16 (company/appId 제외, 충돌 컬럼은 quote* prefix)
 const UNIFIED_COLS = [
   // 신청 (28)
   'id','company','ceo','bizno','phone','email','address',
@@ -157,11 +157,15 @@ function checkAuth(data) {
 // ============================================================
 function autoInitSheets() {
   // 기존 시트 (장비/신청/견적) + 신규 (통합정보/_sync_queue)
-  [[SN.EQ, EQ_COLS], [SN.APP, APP_COLS], [SN.QT, QT_COLS], [SN.UNIFIED, UNIFIED_COLS], [SN.QUEUE, QUEUE_COLS]].forEach(([name, cols]) => {
+  [
+    [SN.EQ, EQ_COLS], [SN.APP, APP_COLS], [SN.QT, QT_COLS],
+    [SN.UNIFIED, UNIFIED_COLS], [SN.QUEUE, QUEUE_COLS]
+  ].forEach(([name, cols]) => {
     const sheet = getSheet(name);
     if (sheet.getLastRow() === 0) {
       sheet.appendRow(cols);
     } else {
+      // 컬럼이 추가된 경우 시트 열 수 확보 후 헤더 최신화
       if (sheet.getMaxColumns() < cols.length) {
         sheet.insertColumnsAfter(sheet.getMaxColumns(), cols.length - sheet.getMaxColumns());
       }
