@@ -13,7 +13,7 @@ const ADMIN_ID       = 'bpkadmin';
 const ADMIN_PW       = 'BPK2026!';   // 반드시 변경하세요
 const PHOTO_FOLDER   = 'BPK_Smart_Photos';
 
-const SN = { EQ:'장비', APP:'신청', QT:'견적', CFG:'설정' };
+const SN = { EQ:'장비', APP:'신청', QT:'견적', CFG:'설정', UNIFIED:'통합정보', QUEUE:'_sync_queue' };
 
 const EQ_COLS  = ['id','name','model','price','category','desc','status',
                   'photos','photos_pkg','videos','tags','tag_texture','tag_pkg',
@@ -34,6 +34,31 @@ const QT_COLS  = ['id','company','appId','process','memo','validUntil',
 const EQ_ARR   = ['photos','photos_pkg','videos'];
 const APP_ARR  = ['processes','pkgtypes','problem_points','equipment','electric','space_photos','product_photos'];
 const QT_ARR   = ['items','options'];
+
+// 통합정보 시트 — 신청 28컬럼 + 견적에서 16컬럼 (충돌은 quote* prefix)
+const UNIFIED_COLS = [
+  // 신청 (28)
+  'id','company','ceo','bizno','phone','email','address',
+  'pname','texture','processes','pkgtypes','qty','speed','memo',
+  'problem_type','problem_points','equipment','electric','air_yn','air_flow',
+  'space_w','space_h','space_photos','product_photos',
+  'status','date','manager','contentHash',
+  // 견적 (16)
+  'quoteId','quoteProcess','quoteMemo','validUntil',
+  'items','options','total','eqCount',
+  'quoteStatus','quoteDate','pdfUrl','equipPdfUrl',
+  'pdfHash','equipPdfHash','version','isLatest'
+];
+
+const UNIFIED_ARR = [
+  'processes','pkgtypes','problem_points','equipment','electric',
+  'space_photos','product_photos','items','options'
+];
+
+const UNIFIED_NUM = { total:'number', eqCount:'number', version:'number' };
+
+// _sync_queue 시트 — Notion API 실패 재시도용
+const QUEUE_COLS = ['id','action','payload_json','retry_count','last_error','created_at'];
 
 // ============================================================
 // 스프레드시트 접근
@@ -131,18 +156,19 @@ function checkAuth(data) {
 // 시트 자동 초기화
 // ============================================================
 function autoInitSheets() {
-  [[SN.EQ, EQ_COLS], [SN.APP, APP_COLS], [SN.QT, QT_COLS]].forEach(([name, cols]) => {
+  // 기존 시트 (장비/신청/견적) + 신규 (통합정보/_sync_queue)
+  [[SN.EQ, EQ_COLS], [SN.APP, APP_COLS], [SN.QT, QT_COLS], [SN.UNIFIED, UNIFIED_COLS], [SN.QUEUE, QUEUE_COLS]].forEach(([name, cols]) => {
     const sheet = getSheet(name);
     if (sheet.getLastRow() === 0) {
       sheet.appendRow(cols);
     } else {
-      // 컬럼이 추가된 경우 시트 열 수 확보 후 헤더 최신화
       if (sheet.getMaxColumns() < cols.length) {
         sheet.insertColumnsAfter(sheet.getMaxColumns(), cols.length - sheet.getMaxColumns());
       }
       sheet.getRange(1, 1, 1, cols.length).setValues([cols]);
     }
   });
+  // 설정 시트 (기존 동작)
   const cfgSheet = getSheet(SN.CFG);
   if (cfgSheet.getLastRow() === 0) { cfgSheet.appendRow(['cfg']); cfgSheet.appendRow(['{}']); }
 }
