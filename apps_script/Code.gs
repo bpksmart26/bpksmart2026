@@ -182,6 +182,12 @@ function doPost(e) {
       case 'getPhotosBase64Bulk': result = getPhotosBase64Bulk(data); break;
       case 'getLatestQuotePdf':   result = getLatestQuotePdf(data); break;
 
+      case 'syncNotionNow':
+        Logger.log('[syncNotionNow] entered');
+        result = syncFromNotion();
+        Logger.log('[syncNotionNow] result: ' + JSON.stringify(result));
+        break;
+
       default: result = { ok:false, error:'Unknown action: ' + action };
     }
     return out(result);
