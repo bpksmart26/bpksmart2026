@@ -186,3 +186,41 @@ function _reconcileAfterDelete(deletedIds) {
     }
   });
 }
+
+// ─────────────────────────────────────────────────────────────
+// rebuildUnified: 신청+견적 시트로부터 통합정보 일괄 재구축
+// 통합정보 시트 손상 / 룰 변경 / 운영자 요청 시 수동 실행
+// Apps Script 에디터에서 함수 드롭다운으로 실행
+// ─────────────────────────────────────────────────────────────
+function rebuildUnified() {
+  const apps = getRows(SN.APP, APP_COLS, APP_ARR);
+  const quotes = getRows(SN.QT, QT_COLS, QT_ARR, {total:'number',eqCount:'number'});
+
+  // 사업자번호별 가장 최근 신청 1건만 선별 (date 기준 내림차순)
+  const byBizno = {};
+  apps.forEach(a => {
+    const bizno = String(a.bizno || '').trim();
+    if (!bizno) return;
+    if (!byBizno[bizno] || String(a.date) > String(byBizno[bizno].date)) {
+      byBizno[bizno] = a;
+    }
+  });
+
+  // 통합정보 시트 데이터 영역 초기화 (헤더는 보존)
+  const sheet = getSheet(SN.UNIFIED);
+  ensureHeader(sheet, UNIFIED_COLS);
+  const last = sheet.getLastRow();
+  if (last > 1) sheet.getRange(2, 1, last - 1, UNIFIED_COLS.length).clearContent();
+
+  // 각 사업자에 대해 upsertUnified — 가장 최근 신청 + 그 신청의 isLatest=1 견적
+  let count = 0;
+  Object.keys(byBizno).forEach(bizno => {
+    const app = byBizno[bizno];
+    const latestQuote = quotes.filter(q => String(q.appId) === String(app.id) && String(q.isLatest) === '1')[0];
+    upsertUnified(app, latestQuote || null);
+    count++;
+  });
+
+  Logger.log('rebuildUnified 완료: ' + count + ' 건');
+  return { ok:true, count:count };
+}
