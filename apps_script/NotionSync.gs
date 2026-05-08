@@ -831,3 +831,112 @@ function _cleanup_test_notion() {
   // 해시도 정리
   PropertiesService.getScriptProperties().deleteProperty('hash_999-99-99991');
 }
+
+// ─────────────────────────────────────────────────────────────
+// 진단: 마지막 견적의 sync 상태를 확인
+// 견적은 시트에 정상 들어갔는데 통합정보에는 안 들어갈 때 원인 분석
+// Apps Script 에디터 함수 드롭다운에서 실행
+// ─────────────────────────────────────────────────────────────
+function _diagnoseLastQuoteSync() {
+  const quotes = getRows(SN.QT, QT_COLS, QT_ARR, {total:'number',eqCount:'number'});
+  if (!quotes.length) {
+    Logger.log('❌ 견적 시트가 비어있음');
+    return;
+  }
+  const last = quotes[quotes.length - 1];
+  Logger.log('=== 마지막 견적 ===');
+  Logger.log('id: "' + last.id + '"');
+  Logger.log('appId: "' + last.appId + '" (길이=' + (last.appId || '').length + ')');
+  Logger.log('company: "' + last.company + '"');
+  Logger.log('isLatest: "' + last.isLatest + '"');
+  Logger.log('version: ' + last.version);
+
+  if (!last.appId || !String(last.appId).trim()) {
+    Logger.log('');
+    Logger.log('❌ 진단 결과: 견적의 appId가 비어있음.');
+    Logger.log('   원인: 견적 폼에서 신청 없이 임의 발급되었거나 appId 입력이 누락됨.');
+    Logger.log('   조치: 운영자가 견적서 작성 시 신청을 선택해서 발급하도록 안내, 또는 견적의 appId 컬럼 수동 채움.');
+    return;
+  }
+
+  Logger.log('');
+  Logger.log('=== 신청 시트에서 _findApp 시도 ===');
+  const app = _findApp(last.appId);
+  if (!app) {
+    Logger.log('❌ _findApp("' + last.appId + '") → null');
+    Logger.log('   신청 시트에 해당 id의 row가 없음.');
+    Logger.log('');
+    Logger.log('--- 신청 시트의 모든 id (참고) ---');
+    const apps = getRows(SN.APP, APP_COLS, APP_ARR);
+    if (!apps.length) {
+      Logger.log('   (신청 시트가 비어있음)');
+    } else {
+      apps.forEach(function(a) {
+        Logger.log('   id="' + a.id + '" | bizno="' + a.bizno + '" | company="' + a.company + '"');
+      });
+    }
+    Logger.log('');
+    Logger.log('   → 견적의 appId와 일치하는 id가 신청 시트에 없으면 통합정보 sync는 정상적으로 skip됨.');
+    Logger.log('   조치: 견적의 appId 컬럼을 신청 시트의 정확한 id 값으로 수정 후 saveQt 다시 호출 또는 _diagnoseLastQuoteSync_force() 실행.');
+    return;
+  }
+  Logger.log('✓ _findApp 성공');
+  Logger.log('  app.id: "' + app.id + '"');
+  Logger.log('  app.bizno: "' + app.bizno + '"');
+  Logger.log('  app.company: "' + app.company + '"');
+
+  Logger.log('');
+  Logger.log('=== 통합정보 row 조회 ===');
+  const unified = _loadUnifiedByBizno(app.bizno);
+  if (!unified) {
+    Logger.log('❌ _loadUnifiedByBizno("' + app.bizno + '") → null');
+    Logger.log('   통합정보 시트에 해당 bizno row가 없음.');
+    Logger.log('   원인: upsertUnified가 신청 시점에 호출되지 않았거나 bizno가 비어있음.');
+    Logger.log('   조치: 신청을 다시 제출하거나 rebuildUnified() 실행.');
+    return;
+  }
+  Logger.log('✓ 통합정보 row 발견');
+  Logger.log('  현재 견적 컬럼 상태:');
+  ['quoteId','quoteProcess','quoteStatus','quoteDate','total','eqCount','version','isLatest','items','options','pdfUrl'].forEach(function(k) {
+    const v = unified[k];
+    const display = (v == null || v === '') ? '(빈 값)' : JSON.stringify(v);
+    Logger.log('    ' + k + ': ' + display);
+  });
+
+  Logger.log('');
+  Logger.log('=== 진단 결론 ===');
+  if (!unified.quoteId || unified.quoteId === '') {
+    Logger.log('통합정보의 견적 컬럼이 비어있음 — 견적 발급 시 upsertUnified 호출이 실패했거나 silent skip됨.');
+    Logger.log('수동 복구: _diagnoseLastQuoteSync_force() 실행하면 마지막 견적을 통합정보에 강제 반영.');
+  } else if (String(unified.quoteId) === String(last.id)) {
+    Logger.log('✓ 통합정보가 마지막 견적과 일치 — 정상.');
+  } else {
+    Logger.log('통합정보의 견적이 다른 견적임 (' + unified.quoteId + ' vs 마지막 ' + last.id + ').');
+    Logger.log('isLatest 견적이 별도로 있을 수 있음 — 정상일 수 있음.');
+  }
+}
+
+// 강제 복구 — 마지막 견적을 통합정보에 강제 반영 (디버깅 후 사용)
+function _diagnoseLastQuoteSync_force() {
+  const quotes = getRows(SN.QT, QT_COLS, QT_ARR, {total:'number',eqCount:'number'});
+  if (!quotes.length) { Logger.log('견적 없음'); return; }
+  const last = quotes[quotes.length - 1];
+  if (!last.appId) {
+    Logger.log('❌ appId 없음 — 강제 복구 불가. 견적 시트에서 appId 컬럼을 채운 후 다시 실행.');
+    return;
+  }
+  const app = _findApp(last.appId);
+  if (!app) {
+    Logger.log('❌ 신청 못 찾음 — 강제 복구 불가.');
+    return;
+  }
+  const r = upsertUnified(app, last);
+  Logger.log('upsertUnified 결과: ' + JSON.stringify(r));
+  if (r.ok) {
+    const unified = _loadUnifiedByBizno(app.bizno);
+    if (unified) {
+      const pushR = pushToNotion(unified);
+      Logger.log('pushToNotion 결과: ' + JSON.stringify(pushR));
+    }
+  }
+}
