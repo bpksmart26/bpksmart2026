@@ -1058,3 +1058,150 @@ function _test_fromNotionPage() {
 
   // 운영자_자유컬럼은 NOTION_PROP_MAP에 없으므로 두 모드 모두에서 제외되어야 함 ✓
 }
+
+// ─────────────────────────────────────────────────────────────
+// syncFromNotion: 노션 → 시트 양방향 동기화 (5분 Time Trigger + 즉시 버튼)
+// last_edited_time > LAST_SYNC_AT 인 페이지만 처리
+// 양방향 4 필드만 시트로 반영, 단방향은 매번 시트값으로 push (되돌리기 정책 B)
+// ─────────────────────────────────────────────────────────────
+function syncFromNotion() {
+  const props = PropertiesService.getScriptProperties();
+  const lastSyncAt = props.getProperty('LAST_SYNC_AT') || '2000-01-01T00:00:00.000Z';
+  const nowIso = new Date().toISOString();
+
+  let changed = 0;
+  let scanned = 0;
+  let hasMore = true;
+  let cursor = null;
+  const config = getNotionConfig();
+
+  while (hasMore) {
+    const payload = {
+      filter: {
+        timestamp: 'last_edited_time',
+        last_edited_time: { after: lastSyncAt }
+      },
+      sorts: [{ timestamp: 'last_edited_time', direction: 'ascending' }],
+      page_size: 50
+    };
+    if (cursor) payload.start_cursor = cursor;
+
+    const r = notionFetch('POST', '/databases/' + config.dbId + '/query', payload);
+    if (!r.ok) {
+      Logger.log('syncFromNotion query 실패: ' + r.error);
+      return { ok: false, error: r.error };
+    }
+
+    (r.data.results || []).forEach(function(page) {
+      scanned++;
+      if (page.archived) return;  // 휴지통 페이지 무시
+      try {
+        if (_applyNotionPageToSheet(page)) changed++;
+      } catch (e) {
+        Logger.log('페이지 sync 실패 ' + page.id + ': ' + e);
+      }
+    });
+
+    hasMore = r.data.has_more;
+    cursor = r.data.next_cursor;
+  }
+
+  props.setProperty('LAST_SYNC_AT', nowIso);
+
+  // 큐 재처리 (Task 16에서 정의될 예정 — typeof 가드)
+  try {
+    if (typeof _processSyncQueue === 'function') _processSyncQueue();
+  } catch (e) {
+    Logger.log('_processSyncQueue 실패: ' + e);
+  }
+
+  Logger.log('syncFromNotion 완료: scanned=' + scanned + ', changed=' + changed);
+  return { ok: true, scanned: scanned, changed: changed };
+}
+
+// ─────────────────────────────────────────────────────────────
+// _applyNotionPageToSheet: 1개 페이지의 양방향 변경을 시트에 반영
+// 무한루프 방지: hash_<bizno> Properties와 비교
+// 단방향 컬럼이 노션에서 변조됐을 가능성 → pushToNotion으로 강제 되돌리기
+// 반환: true면 시트에 변경 반영함, false면 skip 또는 변경 없음
+// ─────────────────────────────────────────────────────────────
+function _applyNotionPageToSheet(page) {
+  const fromNotion = fromNotionPage(page, true);
+  const bizno = String(fromNotion.bizno || '').trim();
+  if (!bizno) return false;
+
+  const unified = _loadUnifiedByBizno(bizno);
+  if (!unified) return false;
+
+  const props = PropertiesService.getScriptProperties();
+  const lastHash = props.getProperty('hash_' + bizno);
+  const currentSheetHash = _bidirectionalHash(unified);
+  if (currentSheetHash !== lastHash) {
+    Logger.log('skip ' + bizno + ' — 시트가 더 최근에 변경됨 (last-write-wins, sheet wins)');
+    try { pushToNotion(unified); } catch (e) { Logger.log('skip 후 push 실패 ' + bizno + ': ' + e); }
+    return false;
+  }
+
+  const changes = {};
+  BIDIRECTIONAL_FIELDS.forEach(function(f) {
+    const newVal = fromNotion[f];
+    const oldVal = unified[f] == null ? '' : String(unified[f]);
+    const newStr = newVal == null ? '' : String(newVal);
+    if (newStr !== oldVal) changes[f] = newVal;
+  });
+
+  if (Object.keys(changes).length === 0) {
+    try { pushToNotion(unified); } catch (e) { Logger.log('단방향 되돌리기 push 실패 ' + bizno + ': ' + e); }
+    return false;
+  }
+
+  // 통합정보 시트의 양방향 4필드만 직접 업데이트 (견적 정보 보존)
+  const unifiedSheet = getSheet(SN.UNIFIED);
+  const data = unifiedSheet.getDataRange().getValues();
+  const biznoIdx = UNIFIED_COLS.indexOf('bizno');
+  let targetRow = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][biznoIdx]) === bizno) { targetRow = i + 1; break; }
+  }
+  if (targetRow < 0) {
+    Logger.log('통합정보 row 사라짐 — sync skip ' + bizno);
+    return false;
+  }
+  Object.keys(changes).forEach(function(f) {
+    const colIdx = UNIFIED_COLS.indexOf(f);
+    if (colIdx >= 0) {
+      let val = changes[f];
+      if (Array.isArray(val)) val = JSON.stringify(val);
+      unifiedSheet.getRange(targetRow, colIdx + 1).setValue(val == null ? '' : String(val));
+    }
+  });
+
+  // 신청 시트의 status/manager/memo 갱신
+  const apps = getRows(SN.APP, APP_COLS, APP_ARR);
+  const targetApp = apps.find(function(a) { return String(a.id) === String(unified.id); });
+  if (targetApp) {
+    let needUpdate = false;
+    ['status','manager','memo'].forEach(function(f) {
+      if (changes[f] !== undefined) { targetApp[f] = changes[f]; needUpdate = true; }
+    });
+    if (needUpdate) updateRow(SN.APP, APP_COLS, APP_ARR, targetApp, 'id');
+  }
+
+  // 견적 시트의 memo (= 통합정보의 quoteMemo) 갱신
+  if (changes.quoteMemo !== undefined && unified.quoteId) {
+    const quotes = getRows(SN.QT, QT_COLS, QT_ARR, {total:'number',eqCount:'number'});
+    const targetQuote = quotes.find(function(q) { return String(q.id) === String(unified.quoteId); });
+    if (targetQuote) {
+      targetQuote.memo = changes.quoteMemo;
+      updateRow(SN.QT, QT_COLS, QT_ARR, targetQuote, 'id');
+    }
+  }
+
+  // push 해시 갱신 + 단방향 되돌리기 push
+  Object.assign(unified, changes);
+  props.setProperty('hash_' + bizno, _bidirectionalHash(unified));
+  try { pushToNotion(unified); } catch (e) { Logger.log('되돌리기 push 실패 ' + bizno + ': ' + e); }
+
+  Logger.log('synced ' + bizno + ' fields=' + Object.keys(changes).join(','));
+  return true;
+}
