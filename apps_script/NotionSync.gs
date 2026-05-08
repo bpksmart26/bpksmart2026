@@ -119,6 +119,12 @@ function _cleanup_test_unified() {
 // 시트 조회 헬퍼 — doPost 라우터의 sync hook에서 사용
 // ─────────────────────────────────────────────────────────────
 
+// try-catch + Logger.log 묶음 — sync hook 표준 패턴
+// Task 11에서 pushToNotion 호출도 이 헬퍼로 추가됨
+function _safeSync(label, fn) {
+  try { fn(); } catch (e) { Logger.log(label + ' 실패: ' + e); }
+}
+
 // 신청 시트에서 id로 신청 객체 1건 찾기
 function _findApp(appId) {
   if (!appId) return null;
@@ -146,8 +152,8 @@ function _reconcileAfterDelete(deletedIds) {
   const affectedBiznos = new Set();
   for (let i = 1; i < data.length; i++) {
     if (deletedIdSet.has(String(data[i][idIdx]))) {
-      const bz = String(data[i][biznoIdx]);
-      if (bz) affectedBiznos.add(bz);
+      const rowBizno = String(data[i][biznoIdx]);
+      if (rowBizno) affectedBiznos.add(rowBizno);
     }
   }
 
@@ -159,11 +165,17 @@ function _reconcileAfterDelete(deletedIds) {
     if (remaining.length === 0) {
       // 통합정보 row 삭제 (아래에서 위로 순회해서 인덱스 안 깨지게)
       const freshData = unified.getDataRange().getValues();
+      let deletedCount = 0;
       for (let i = freshData.length - 1; i >= 1; i--) {
         if (String(freshData[i][biznoIdx]) === bizno) {
           unified.deleteRow(i + 1);
-          Logger.log('통합정보 row 삭제 (bizno=' + bizno + ')');
+          deletedCount++;
         }
+      }
+      if (deletedCount > 1) {
+        Logger.log('⚠️ 통합정보에 같은 bizno 중복 row ' + deletedCount + '건 발견 후 삭제 — 데이터 정합성 점검 필요 (bizno=' + bizno + ')');
+      } else if (deletedCount === 1) {
+        Logger.log('통합정보 row 삭제 (bizno=' + bizno + ')');
       }
       // 노션 archive는 Task 15의 archiveNotionPage가 처리
     } else {

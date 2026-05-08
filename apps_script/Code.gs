@@ -107,31 +107,31 @@ function doPost(e) {
       case 'getApps':     result = { ok:true, data: getRows(SN.APP, APP_COLS, APP_ARR) }; break;
       case 'saveApp':
         result = appendRow(SN.APP,  APP_COLS, APP_ARR, data);
-        try { upsertUnified(data); } catch(e) { Logger.log('upsertUnified after saveApp 실패: ' + e); }
+        _safeSync('upsertUnified after saveApp', function() { upsertUnified(data); });
         break;
       case 'updateApp':
         result = updateRow(SN.APP,  APP_COLS, APP_ARR, data, 'id');
-        try { upsertUnified(data); } catch(e) { Logger.log('upsertUnified after updateApp 실패: ' + e); }
+        _safeSync('upsertUnified after updateApp', function() { upsertUnified(data); });
         break;
 
       case 'getQts':      result = { ok:true, data: getRows(SN.QT,  QT_COLS,  QT_ARR,  {total:'number',eqCount:'number'}) }; break;
       case 'saveQt':
         result = saveQuoteWithVersion(data);
-        try {
-          const app = _findApp(data.appId);
+        _safeSync('upsertUnified after saveQt', function() {
+          var app = _findApp(data.appId);
           if (app) upsertUnified(app, data);
-        } catch(e) { Logger.log('upsertUnified after saveQt 실패: ' + e); }
+        });
         break;
       case 'updateQt':
         result = updateRow(SN.QT,   QT_COLS,  QT_ARR,  data, 'id');
-        try {
-          const app = _findApp(data.appId);
+        _safeSync('upsertUnified after updateQt', function() {
+          var app = _findApp(data.appId);
           if (app) upsertUnified(app, data);
-        } catch(e) { Logger.log('upsertUnified after updateQt 실패: ' + e); }
+        });
         break;
       case 'deleteApps':
         result = deleteApps(data);
-        try { _reconcileAfterDelete(data.ids || []); } catch(e) { Logger.log('reconcile after delete 실패: ' + e); }
+        _safeSync('reconcile after deleteApps', function() { _reconcileAfterDelete(data.ids || []); });
         break;
 
       case 'getCfg':      result = { ok:true, data: getCfg() }; break;
