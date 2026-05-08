@@ -302,3 +302,91 @@ function _test_notionMap() {
   });
   Logger.log('NOTION_PROP_MAP 정합성 OK — 매핑 ' + Object.keys(NOTION_PROP_MAP).length + '개, 양방향 ' + BIDIRECTIONAL_FIELDS.length + '개');
 }
+
+// ============================================================
+// Notion API HTTP 레이어
+// ============================================================
+
+const NOTION_API_BASE = 'https://api.notion.com/v1';
+const NOTION_VERSION = '2022-06-28';
+
+// Script Properties에서 토큰·DB ID 읽기
+function getNotionConfig() {
+  const p = PropertiesService.getScriptProperties();
+  const token = p.getProperty('NOTION_TOKEN');
+  const dbId = p.getProperty('NOTION_DB_ID');
+  if (!token) throw new Error('Script Properties에 NOTION_TOKEN 없음');
+  if (!dbId) throw new Error('Script Properties에 NOTION_DB_ID 없음');
+  return { token: token, dbId: dbId };
+}
+
+// 모든 Notion API 호출의 단일 진입점 — 인증·retry·rate limit 처리
+// _retry 인자는 내부 재귀용 (외부에서 호출하지 말 것)
+function notionFetch(method, path, payload, _retry) {
+  const config = getNotionConfig();
+  const url = NOTION_API_BASE + path;
+  const opts = {
+    method: String(method).toLowerCase(),
+    contentType: 'application/json',
+    headers: {
+      'Authorization': 'Bearer ' + config.token,
+      'Notion-Version': NOTION_VERSION
+    },
+    muteHttpExceptions: true
+  };
+  if (payload) opts.payload = JSON.stringify(payload);
+
+  const res = UrlFetchApp.fetch(url, opts);
+  const code = res.getResponseCode();
+  const body = res.getContentText();
+
+  // 성공
+  if (code >= 200 && code < 300) {
+    try {
+      return { ok: true, code: code, data: JSON.parse(body) };
+    } catch (e) {
+      return { ok: true, code: code, data: body };
+    }
+  }
+
+  // Rate limit (429) — retry-after 헤더 따라 대기 후 1회 재시도
+  if (code === 429 && !_retry) {
+    const headers = res.getHeaders();
+    const ra = headers['Retry-After'] || headers['retry-after'] || '1';
+    Utilities.sleep((Number(ra) || 1) * 1000);
+    return notionFetch(method, path, payload, true);
+  }
+
+  // 일시 장애 (502/503/504) — 1.5초 대기 후 1회 재시도
+  if ((code === 502 || code === 503 || code === 504) && !_retry) {
+    Utilities.sleep(1500);
+    return notionFetch(method, path, payload, true);
+  }
+
+  Logger.log('Notion API 실패 ' + code + ' ' + path + ' — ' + body.slice(0, 500));
+  return { ok: false, code: code, error: body };
+}
+
+// 연결 테스트 — Apps Script 에디터에서 실행
+// Expected: ok, DB title, 속성 개수, Title 속성명
+function _test_notionFetch() {
+  const config = getNotionConfig();
+  const r = notionFetch('GET', '/databases/' + config.dbId);
+  if (!r.ok) {
+    Logger.log('실패: ' + r.code + ' — ' + (r.error || '').slice(0, 300));
+    throw new Error('Notion 연결 실패. Token / DB_ID / Integration 연결 확인');
+  }
+  const titleProp = Object.keys(r.data.properties || {}).filter(function(k) {
+    return r.data.properties[k].type === 'title';
+  })[0];
+  Logger.log('OK — DB title: ' + ((r.data.title || [])[0] && r.data.title[0].plain_text || '(no title)'));
+  Logger.log('속성 개수: ' + Object.keys(r.data.properties || {}).length);
+  Logger.log('Title 속성: ' + (titleProp || '(없음 — 회사명으로 rename 필요)'));
+}
+
+// Script Properties 사전 점검 — Apps Script 에디터에서 실행
+function _checkPrereqs() {
+  const p = PropertiesService.getScriptProperties();
+  Logger.log('TOKEN: ' + (p.getProperty('NOTION_TOKEN') ? '✓ exists' : '✗ MISSING'));
+  Logger.log('DB_ID: ' + (p.getProperty('NOTION_DB_ID') ? '✓ exists' : '✗ MISSING'));
+}
