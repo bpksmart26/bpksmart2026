@@ -521,3 +521,137 @@ function _test_formatItems() {
   Logger.log('--- 옵션 없음 ---');
   Logger.log(formatItemsForNotion(items, []));
 }
+
+// ─────────────────────────────────────────────────────────────
+// 시트값 → 노션 property 변환
+// 각 type별로 노션 API가 요구하는 정확한 형식으로 packaging
+// ─────────────────────────────────────────────────────────────
+
+// 단일 값 변환
+function _toNotionValue(type, val) {
+  if (val === null || val === undefined || val === '') return _emptyValueFor(type);
+
+  switch (type) {
+    case 'title':
+      return { title: [{ text: { content: String(val).slice(0, 2000) } }] };
+    case 'rich_text':
+      return { rich_text: [{ text: { content: String(val).slice(0, 2000) } }] };
+    case 'number':
+      return { number: Number(val) || 0 };
+    case 'select':
+      return { select: { name: String(val).slice(0, 100) } };
+    case 'multi_select':
+      const arr = Array.isArray(val) ? val
+                 : (typeof val === 'string' ? _safeParseArr(val) : [val]);
+      return {
+        multi_select: arr.filter(function(x) { return x !== null && x !== undefined && x !== ''; })
+                         .map(function(x) { return { name: String(x).slice(0, 100) }; })
+      };
+    case 'date':
+      const d = _normalizeDate(val);
+      return d ? { date: { start: d } } : _emptyValueFor(type);
+    case 'phone_number':
+      return { phone_number: String(val) };
+    case 'email':
+      return { email: String(val) };
+    case 'url':
+      const u = String(val);
+      return /^https?:\/\//.test(u) ? { url: u } : _emptyValueFor(type);
+    case 'files':
+      const urls = Array.isArray(val) ? val
+                  : (typeof val === 'string' ? _safeParseArr(val) : []);
+      return {
+        files: urls.filter(function(x) { return x; }).slice(0, 5).map(function(u, i) {
+          return {
+            name: 'photo' + (i + 1) + '.jpg',
+            type: 'external',
+            external: { url: String(u) }
+          };
+        })
+      };
+    case 'checkbox':
+      return { checkbox: !!val };
+    default:
+      return _emptyValueFor(type);
+  }
+}
+
+// 빈 값 (각 타입별 노션이 요구하는 "비어있음" 표현)
+function _emptyValueFor(type) {
+  switch (type) {
+    case 'title':         return { title: [] };
+    case 'rich_text':     return { rich_text: [] };
+    case 'number':        return { number: null };
+    case 'select':        return { select: null };
+    case 'multi_select':  return { multi_select: [] };
+    case 'date':          return { date: null };
+    case 'phone_number':  return { phone_number: null };
+    case 'email':         return { email: null };
+    case 'url':           return { url: null };
+    case 'files':         return { files: [] };
+    case 'checkbox':      return { checkbox: false };
+    default: return null;
+  }
+}
+
+// 시트의 JSON 문자열 → 배열 (안전 파싱)
+function _safeParseArr(s) {
+  try {
+    const v = JSON.parse(s);
+    return Array.isArray(v) ? v : [];
+  } catch (e) { return []; }
+}
+
+// 'YYYY-MM-DD' 또는 'YYYY-MM-DD HH:MM' → Notion ISO 8601 date
+function _normalizeDate(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+  if (!m) return null;
+  return m[4]
+    ? m[1] + '-' + m[2] + '-' + m[3] + 'T' + m[4] + ':' + m[5] + ':00'
+    : m[1] + '-' + m[2] + '-' + m[3];
+}
+
+// ─────────────────────────────────────────────────────────────
+// toNotionProperties: 통합정보 row 객체 → Notion API properties 객체
+// 39 매핑 모두 변환. items+options는 견적요약 텍스트로 합성.
+// ─────────────────────────────────────────────────────────────
+function toNotionProperties(unifiedRow) {
+  const props = {};
+  Object.keys(NOTION_PROP_MAP).forEach(function(sheetKey) {
+    const def = NOTION_PROP_MAP[sheetKey];
+
+    // 견적요약은 items + options에서 합성
+    if (sheetKey === '__summary') {
+      props[def.name] = _toNotionValue('rich_text',
+        formatItemsForNotion(unifiedRow.items, unifiedRow.options));
+      return;
+    }
+
+    // 일반 키 — sheet 값 → Notion 형식으로 변환 (undefined도 빈 값으로 보내서 sync 일관성 유지)
+    props[def.name] = _toNotionValue(def.type, unifiedRow[sheetKey]);
+  });
+  return props;
+}
+
+// 테스트 — Apps Script 에디터에서 실행, Logs로 결과 확인
+function _test_toNotionProperties() {
+  const row = {
+    id: 'TEST-A1',
+    company: '테스트회사',
+    bizno: '999-99-99991',
+    phone: '010-1234-5678',
+    email: 'a@test.com',
+    date: '2026-05-08',
+    processes: ['인쇄', '후가공'],
+    status: '접수',
+    items: [{ name: '자동포장기', qty: 1, price: 15000000 }],
+    options: [],
+    total: 15000000,
+    eqCount: 1,
+    space_photos: ['https://drive.google.com/thumbnail?id=ABC&sz=w600'],
+    pdfUrl: 'https://example.com/q.pdf'
+  };
+  Logger.log(JSON.stringify(toNotionProperties(row), null, 2));
+}
