@@ -669,3 +669,134 @@ function _test_toNotionProperties() {
   };
   Logger.log(JSON.stringify(toNotionProperties(row), null, 2));
 }
+
+// ─────────────────────────────────────────────────────────────
+// pushToNotion: 통합정보 row → 노션 페이지 upsert
+// 매칭 키: 사업자번호 (재신청 시 신청ID는 변경되므로 안정 키 X)
+// 운영자 메모 보존을 위해 page ID 유지하며 PATCH
+// ─────────────────────────────────────────────────────────────
+
+// 사업자번호로 노션 페이지 query (1건만 가져옴)
+function _findNotionPageByBizno(bizno) {
+  const config = getNotionConfig();
+  const payload = {
+    filter: {
+      property: SHEET_TO_NOTION_NAME.bizno,  // '사업자번호'
+      rich_text: { equals: String(bizno) }
+    },
+    page_size: 1
+  };
+  const r = notionFetch('POST', '/databases/' + config.dbId + '/query', payload);
+  if (!r.ok) return null;
+  const results = (r.data && r.data.results) || [];
+  return results.length ? results[0] : null;
+}
+
+// 양방향 4필드의 현재 값 hash — _lastPushedHash 비교로 무한루프 방지
+// (syncFromNotion이 노션→시트 갱신 직후 다시 push 트리거하지 않도록)
+function _bidirectionalHash(unifiedRow) {
+  const parts = BIDIRECTIONAL_FIELDS.map(function(f) {
+    return f + '=' + (unifiedRow[f] == null ? '' : String(unifiedRow[f]));
+  });
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, parts.join('|'))
+    .map(function(b) { return ((b < 0 ? b + 256 : b)).toString(16); })
+    .map(function(h) { return h.length === 1 ? '0' + h : h; })
+    .join('').slice(0, 16);
+}
+
+function pushToNotion(unifiedRow) {
+  if (!unifiedRow || !unifiedRow.bizno) return { ok: false, reason: 'no_bizno' };
+
+  // 스키마 보장 — ensureNotionSchema는 실행 단위 캐시되어 있음
+  try { ensureNotionSchema(); } catch (e) {
+    Logger.log('ensureNotionSchema 실패 (무시하고 진행): ' + e);
+  }
+
+  const config = getNotionConfig();
+  const bizno = String(unifiedRow.bizno);
+  const props = toNotionProperties(unifiedRow);
+
+  const existing = _findNotionPageByBizno(bizno);
+  let r;
+  if (existing) {
+    // PATCH로 갱신 — page ID 유지 (운영자 메모/하위페이지/태그 보존)
+    r = notionFetch('PATCH', '/pages/' + existing.id, { properties: props });
+  } else {
+    // POST로 새 페이지
+    r = notionFetch('POST', '/pages', {
+      parent: { database_id: config.dbId },
+      properties: props
+    });
+  }
+
+  if (!r.ok) {
+    Logger.log('pushToNotion 실패 bizno=' + bizno + ' code=' + r.code);
+    // 큐 적재 — Task 16에서 _enqueueSync 정의됨, 그 전엔 typeof 체크로 noop
+    if (typeof _enqueueSync === 'function') {
+      _enqueueSync('pushToNotion', { bizno: bizno, unifiedRow: unifiedRow }, r.error);
+    }
+    return r;
+  }
+
+  // 성공 — _lastPushedHash 갱신 (무한루프 방지 hash)
+  PropertiesService.getScriptProperties()
+    .setProperty('hash_' + bizno, _bidirectionalHash(unifiedRow));
+
+  return {
+    ok: true,
+    pageId: r.data.id,
+    action: existing ? 'updated' : 'created'
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// 테스트 — 실제 노션 DB에 페이지 1건 만들고 / 갱신하기 / 정리
+// 순서대로 실행: _test_pushToNotion_create → _test_pushToNotion_update → _cleanup_test_notion
+// ─────────────────────────────────────────────────────────────
+function _test_pushToNotion_create() {
+  const row = {
+    id: 'TEST-A1',
+    company: '테스트회사A',
+    ceo: '홍길동',
+    bizno: '999-99-99991',
+    phone: '010-1234-5678',
+    email: 'a@test.com',
+    address: '서울시 강남구',
+    pname: '테스트제품',
+    qty: '1000',
+    status: '접수',
+    date: '2026-05-08',
+    processes: ['인쇄', '후가공'],
+    pkgtypes: ['파우치']
+  };
+  Logger.log(JSON.stringify(pushToNotion(row)));
+}
+
+function _test_pushToNotion_update() {
+  // 같은 bizno로 다시 push → PATCH 동작 (같은 page ID 유지)
+  const row = {
+    id: 'TEST-A2',
+    company: '테스트회사A 수정',
+    ceo: '홍길동',
+    bizno: '999-99-99991',
+    phone: '010-9999-8888',
+    status: '견적발송',
+    date: '2026-05-09',
+    pname: '재신청제품',
+    qty: '2000'
+  };
+  Logger.log(JSON.stringify(pushToNotion(row)));
+}
+
+function _cleanup_test_notion() {
+  // 테스트 페이지 archive (노션 휴지통으로)
+  const page = _findNotionPageByBizno('999-99-99991');
+  if (page) {
+    notionFetch('PATCH', '/pages/' + page.id, { archived: true });
+    Logger.log('테스트 페이지 archive 완료 (page ID: ' + page.id + ')');
+  } else {
+    Logger.log('테스트 페이지 찾을 수 없음 (이미 정리됨?)');
+  }
+  // 해시도 정리
+  PropertiesService.getScriptProperties().deleteProperty('hash_999-99-99991');
+}
