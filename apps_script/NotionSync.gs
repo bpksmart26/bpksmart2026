@@ -206,7 +206,8 @@ function _loadUnifiedByBizno(bizno) {
         if (UNIFIED_ARR.indexOf(col) >= 0) {
           try { obj[col] = JSON.parse(v || '[]'); } catch(e) { obj[col] = []; }
         } else if (UNIFIED_NUM[col] === 'number') {
-          obj[col] = Number(v) || 0;
+          // 빈 셀은 빈 문자열로 보존 (0과 구분 — 노션에 null로 가도록)
+          obj[col] = (v === '' || v == null) ? '' : (Number(v) || 0);
         } else {
           obj[col] = v == null ? '' : String(v);
         }
@@ -493,10 +494,16 @@ function _test_ensureSchema() {
 // 노션의 '견적요약' 속성에 들어갈 텍스트 (rich_text 2000자 제한 고려해 잘림)
 // ─────────────────────────────────────────────────────────────
 function formatItemsForNotion(items, options) {
+  // 견적 없음 (items + options 모두 비어있음) → 빈 문자열
+  // 노션 견적요약 컬럼이 빈 칸으로 표시되도록
+  const hasItems = items && items.length;
+  const hasOptions = options && options.length;
+  if (!hasItems && !hasOptions) return '';
+
   const parts = [];
   function won(n) { return Number(n || 0).toLocaleString('ko-KR') + '원'; }
 
-  if (items && items.length) {
+  if (hasItems) {
     items.forEach(function(it, i) {
       const name = it.name || it.eqName || ('장비' + (i + 1));
       const model = it.model ? ' (' + it.model + ')' : '';
@@ -504,11 +511,10 @@ function formatItemsForNotion(items, options) {
       const lineTotal = (it.price || 0) * qty;
       parts.push('[' + (i + 1) + '] ' + name + model + ' × ' + qty + ' = ' + won(lineTotal));
     });
-  } else {
-    parts.push('(견적 항목 없음)');
   }
+  // hasItems가 false인 경우는 옵션만 있음 — 그냥 옵션 줄로 시작
 
-  if (options && options.length) {
+  if (hasOptions) {
     const optStr = options.map(function(o) {
       return (o.name || '옵션') + ' ' + won(o.amount);
     }).join(', ');

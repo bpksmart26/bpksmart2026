@@ -263,7 +263,12 @@ function ensureHeader(sheet, cols) {
 
 function serializeRow(cols, arrCols, obj) {
   return cols.map(col => {
-    if (arrCols && arrCols.includes(col)) return JSON.stringify(obj[col] || []);
+    if (arrCols && arrCols.includes(col)) {
+      const v = obj[col];
+      // 빈 배열/null/undefined는 빈 셀로 (시트 가독성)
+      if (!v || (Array.isArray(v) && v.length === 0)) return '';
+      return JSON.stringify(v);
+    }
     return (obj[col] !== undefined && obj[col] !== null) ? obj[col] : '';
   });
 }
