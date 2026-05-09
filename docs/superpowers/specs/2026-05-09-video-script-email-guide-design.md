@@ -213,9 +213,18 @@
 - 통합정보 시트 헤더 행을 읽어 누락된 8개 컬럼만 끝에 append
 - `UNIFIED_COLS` 상수도 동기 수정
 
-#### `saveQt` 후크 (기존 함수 수정)
-- 함수 마지막에 `pdfUrl`이 채워진 시점에서 `generateGuide(unifiedRow)` 호출
+#### `updateQt` 후크 (기존 함수 수정)
+- 기존 `updateQt` 케이스의 `pushToNotion` 다음에 후크 추가
+- **조건부 트리거**: `data.pdfUrl`이 존재할 때만 `generateGuide(unifiedRow)` 호출
+- 이유: PDF가 Drive에 업로드된 직후 클라이언트가 `updateQt`를 `pdfUrl` 포함해서 호출함. 이 시점이 "PDF가 Drive에 저장된 직후" — 가이드 생성의 정확한 트리거 시점
+- 임시저장(`saveQDraft`)에서도 `updateQt`가 호출되지만 `pdfUrl` 없으므로 가이드 생성 안 함
 - 실패해도 견적 저장 자체는 성공으로 응답 (가이드 생성은 보조 작업)
+
+**왜 `saveQt`가 아닌가:**
+- `saveQt`는 견적 ROW가 시트에 저장되는 시점 — PDF는 아직 없음
+- PDF는 브라우저(genPDF)에서 생성되어 Drive에 업로드된 후 `updateQt(pdfUrl=...)` 호출됨
+- 이 흐름을 따라야 사용자 시나리오("Drive 저장 시점에 스크립트 작성 시작")와 일치
+- 또한 `saveQt`에 동기 후크를 걸면 응답이 15-30초 지연되어 클라이언트 race condition 발생 가능
 
 ### 3-2. 메일 전용 Apps Script (bpksmart26) — 신규 프로젝트
 
@@ -274,6 +283,38 @@ function out(data) {
 3. `guide_send_request`는 체크박스 타입
 4. (선택) 페이지 템플릿에 "즉시발송" URL 속성 추가 — Make Webhook URL을 `?id={페이지ID}` 형태로 (수동 셋업)
 5. `NotionSync.gs`의 매핑 코드에 8개 컬럼 추가 (양방향 sync 지원)
+
+### 3-5. 클라이언트 PDF 진행 모달 (`공급기업_관리.html`)
+
+견적서 발급/재발급 클릭 시 PDF 생성·다운로드·Drive 업로드 진행을 사용자에게 시각적으로 알리고 UI를 차단하는 진행 모달을 추가한다.
+
+**위치:** `genPDF()` 함수 흐름 전체 감싸기
+
+**모달 구조:**
+- 화면 중앙 카드
+- 백드롭으로 전체 UI 차단 (`pointer-events: auto`, `z-index: 99999`)
+- 제목: "견적서 생성 중"
+- 단계별 체크리스트 + 프로그래스바 (% 표시)
+- 단계 정의:
+  1. 폰트 준비 (~5-10s 첫 호출, 이후 0s)
+  2. 사진 로딩 (~2-5s)
+  3. PDF 생성 (~3-5s)
+  4. 파일 다운로드 (즉시)
+  5. Drive 백업 (~2-5s)
+- 단계 완료 시 ✓ 표시
+- 모든 단계 완료 후: "✓ Drive에 저장 완료" 메시지 + 1.5초 후 자동 닫기
+- 실패 시: 빨간색 에러 메시지 + 「닫기」 버튼
+
+**구현:**
+- 새 함수 `showPdfProgress(stage, totalStages, label)` 추가 (common.js 또는 인라인)
+- 새 함수 `hidePdfProgress(success, message)` 추가
+- 기존 `showApiLoading` / `hideApiLoading`은 그대로 유지 (다른 곳에서 사용 중)
+- `genPDF` 흐름에서 `showApiLoading` 호출들을 `showPdfProgress`로 교체
+
+**가이드 생성은 백그라운드:**
+- `updateQt` 호출 후 서버 측 후크에서 generateGuide 실행
+- 클라이언트는 응답 안 기다리고 종료 (fire-and-forget IIFE)
+- 가이드 생성 진행은 사용자에게 알리지 않음 (5-15초 후 노션에서 자동으로 컬럼 보임)
 
 ---
 
@@ -349,7 +390,7 @@ function out(data) {
 | 3 | bpksmart26 Web App URL + `MAILER_TOKEN` 양쪽 PropertiesService에 입력 | 10분 | 사용자 |
 | 4 | `OPENAI_API_KEY`, `GUIDE_DRIVE_FOLDER_ID` 메인 PropertiesService에 입력 | 5분 | 사용자 |
 | 5 | 노션 DB에 8개 속성 추가 + Select 옵션 3개 등록 | 15분 | 사용자(가이드 제공) |
-| 6 | `Code.gs` 코드 작업 (UNIFIED_COLS 확장, generateGuide, pollAndSend, sendGuideNow, saveQt 후크) | 90분 | Claude |
+| 6 | `Code.gs` 코드 작업 (UNIFIED_COLS 확장, generateGuide, pollAndSend, sendGuideNow, updateQt 후크) | 90분 | Claude |
 | 7 | `NotionSync.gs` 매핑 8개 컬럼 추가 | 20분 | Claude |
 | 8 | 시간 트리거 추가 (`pollAndSend`, 5분 단위) | 5분 | 사용자 |
 | 9 | T1~T7 E2E 테스트 | 30분 | 함께 |
