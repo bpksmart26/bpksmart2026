@@ -1,6 +1,6 @@
 # BPK Smart 2026 — 프로젝트 작업 현황
 
-> 마지막 업데이트: 2026-05-05 (9차 세션)  
+> 마지막 업데이트: 2026-05-09 (10차 세션)  
 > 작업 디렉토리: `C:\bpksmart2026\`  
 > GitHub: `https://github.com/bpksmart26/bpksmart2026.git`  
 > Apps Script URL: `https://script.google.com/macros/s/AKfycbx8nPCdXAquqKdtohklR29_OOKPuBQE4P9cAGqGxJnONY42OpaCeFQorUPN8O91qqGb/exec`
@@ -46,6 +46,23 @@ function getPhotoBase64(data) {
 추가 후 **배포 → 배포 관리 → 새 버전 업데이트** → 새 URL을 `config.js`에 반영.
 
 ---
+
+## ✅ 10차 세션 완료 작업
+
+### 동영상 가이드 메일 자동 생성·발송
+- bpksmart26@gmail.com에 메일 전용 Apps Script 분리 (단일 책임: GmailApp 발송)
+- smart@paxc.co.kr 메인에 `apps_script/GuideMail.gs` 신규
+  - `generateGuide`: 견적 발급 시 자동 트리거, GPT-4o-mini로 5 PART 스크립트 생성 → HTML 합성 → Drive 저장 → 시트 8개 컬럼 업데이트
+  - `pollAndSend`: 5분 시간 트리거로 노션 발송요청 체크박스 폴링·발송. LockService + MAX_PER_TICK 30 cap으로 안전성 확보
+  - `sendGuideForRow`: 단일 행 발송 + 5분 멱등성 윈도우 (Make 재시도 안전망) + PDF 20MB 초과 시 첨부 생략
+  - `sendGuideNow`: Make.com 백업 진입점 (token 검증)
+- `apps_script/mailer/Code.gs` 신규 (bpksmart26 Apps Script 소스 추적용)
+- `Code.gs`: UNIFIED_COLS에 가이드 8개 컬럼 추가, saveQt 후크에 generateGuide 호출 추가, doPost에 sendGuideNow 케이스
+- `NotionSync.gs`: NOTION_PROP_MAP에 가이드 7개 필드 매핑, BIDIRECTIONAL_FIELDS에 guide_send_request 양방향 추가
+- Drive에 `회사명_가이드메일_YYYYMMDD-HHmm_v{N}.html` 버전 보관 (재발급 시 v2/v3...)
+- 한글 상태값: 대기중 / 발송완료 / 발송실패 (노션 Select)
+- 스펙: `docs/superpowers/specs/2026-05-09-video-script-email-guide-design.md`
+- 계획: `docs/superpowers/plans/2026-05-09-video-script-email-guide.md`
 
 ## ✅ 9차 세션 완료 작업
 
