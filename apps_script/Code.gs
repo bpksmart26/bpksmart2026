@@ -158,22 +158,6 @@ function doPost(e) {
             }
           }
         });
-        _safeSync('generateGuide after saveQt', function() {
-          var app = _findApp(data.appId);
-          if (app) {
-            var row = _loadUnifiedByBizno(app.bizno);
-            Logger.log('[saveQt] generateGuide row id=' + (row ? row.id : 'NULL'));
-            if (row) {
-              var r = generateGuide(row);
-              Logger.log('[saveQt] generateGuide result: ' + JSON.stringify(r));
-              // 가이드 변경된 시트 row를 노션에 다시 push (가이드 컬럼 sync)
-              if (r.ok) {
-                var freshRow = _loadUnifiedByBizno(app.bizno);
-                if (freshRow) pushToNotion(freshRow);
-              }
-            }
-          }
-        });
         break;
       case 'updateQt':
         result = updateRow(SN.QT,   QT_COLS,  QT_ARR,  data, 'id');
@@ -186,6 +170,22 @@ function doPost(e) {
           if (app) {
             var row = _loadUnifiedByBizno(app.bizno);
             if (row) pushToNotion(row);
+          }
+        });
+        _safeSync('generateGuide after updateQt', function() {
+          // PDF가 Drive에 저장된 직후에만 가이드 생성 트리거
+          // (임시저장 saveQDraft 등 pdfUrl 없는 updateQt는 skip)
+          if (!data.pdfUrl) return;
+          var app = _findApp(data.appId);
+          if (!app) return;
+          var row = _loadUnifiedByBizno(app.bizno);
+          Logger.log('[updateQt] generateGuide row id=' + (row ? row.id : 'NULL') + ', pdfUrl=' + data.pdfUrl);
+          if (!row) return;
+          var r = generateGuide(row);
+          Logger.log('[updateQt] generateGuide result: ' + JSON.stringify(r));
+          if (r.ok) {
+            var freshRow = _loadUnifiedByBizno(app.bizno);
+            if (freshRow) pushToNotion(freshRow);
           }
         });
         break;
