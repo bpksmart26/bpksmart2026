@@ -203,6 +203,12 @@ function doPost(e) {
       case 'getPhotosBase64Bulk': result = getPhotosBase64Bulk(data); break;
       case 'getLatestQuotePdf':   result = getLatestQuotePdf(data); break;
 
+      case 'sendGuideNow':
+        Logger.log('[sendGuideNow] entered. id=' + (data && data.id));
+        result = sendGuideNow(data);
+        Logger.log('[sendGuideNow] result: ' + JSON.stringify(result));
+        break;
+
       case 'syncNotionNow':
         Logger.log('[syncNotionNow] entered');
         result = syncFromNotion();

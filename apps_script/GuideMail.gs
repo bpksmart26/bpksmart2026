@@ -578,3 +578,50 @@ function pollAndSend() {
 function _test_pollAndSend() {
   Logger.log(JSON.stringify(pollAndSend()));
 }
+
+// ─────────────────────────────────────────────────────────────
+// Make.com 백업 경로 — 단일 회사 즉시 발송
+// data: { id, token } — token은 MAKE_TOKEN과 일치해야 함
+// ─────────────────────────────────────────────────────────────
+function sendGuideNow(data) {
+  const expected = _guideProp(GUIDE_PROP_KEYS.MAKE_TOKEN);
+  if (!expected) return { ok:false, error:'MAKE_TOKEN not configured' };
+  if (!data || data.token !== expected) return { ok:false, error:'unauthorized' };
+  if (!data.id) return { ok:false, error:'missing id' };
+
+  const sheet = getSheet(SN.UNIFIED);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const idCol = headers.indexOf('id');
+  if (idCol === -1) return { ok:false, error:'id column missing' };
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return { ok:false, error:'sheet empty' };
+
+  const all = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  let target = null;
+  for (let i = 0; i < all.length; i++) {
+    if (String(all[i][idCol]) === String(data.id)) {
+      target = {};
+      headers.forEach(function(h, j) { target[h] = all[i][j]; });
+      break;
+    }
+  }
+  if (!target) return { ok:false, error:'row not found id=' + data.id };
+
+  // 배열 파싱
+  UNIFIED_ARR.forEach(function(k){
+    if (typeof target[k] === 'string' && target[k]) {
+      try { target[k] = JSON.parse(target[k]); } catch(e) {}
+    }
+  });
+
+  const r = sendGuideForRow(target);
+
+  // 발송 후 노션 push
+  try {
+    var fresh = _loadUnifiedByBizno(target.bizno);
+    if (fresh) pushToNotion(fresh);
+  } catch(e) { Logger.log('[sendGuideNow] pushToNotion 실패: ' + e); }
+
+  return r;
+}
