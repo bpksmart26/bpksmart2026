@@ -235,3 +235,32 @@ function _test_mergeTemplate() {
   const file = DriveApp.getFolderById(folderId).createFile('_test_merge.html', html, 'text/html');
   Logger.log('테스트 파일: ' + file.getUrl());
 }
+
+// ─────────────────────────────────────────────────────────────
+// 합성된 HTML → Drive에 회사명_가이드메일_YYYYMMDD-HHmm_v{N}.html 저장
+// ─────────────────────────────────────────────────────────────
+function saveGuideToDrive(html, company, version) {
+  const folderId = _guideProp(GUIDE_PROP_KEYS.DRIVE_FOLDER_ID);
+  if (!folderId) throw new Error('GUIDE_DRIVE_FOLDER_ID not set');
+
+  const safeName = String(company || 'unknown').replace(/[\/\\:?*"<>|]+/g, '_').trim();
+  const ts = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyyMMdd-HHmm');
+  const filename = safeName + '_가이드메일_' + ts + '_v' + version + '.html';
+
+  const file = DriveApp.getFolderById(folderId)
+    .createFile(filename, html, MimeType.HTML);
+
+  // 누구나 링크로 읽기 가능 (메일에서 열 수 있도록)
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+  return {
+    id: file.getId(),
+    name: filename,
+    url: file.getUrl()
+  };
+}
+
+function _test_saveGuideToDrive() {
+  const r = saveGuideToDrive('<html><body>테스트</body></html>', '㈜테스트회사', 1);
+  Logger.log(JSON.stringify(r, null, 2));
+}
