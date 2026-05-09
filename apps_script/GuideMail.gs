@@ -138,3 +138,37 @@ function _test_callOpenAI() {
   });
   Logger.log(out);
 }
+
+// ─────────────────────────────────────────────────────────────
+// GPT 응답 마크다운 → { part1, part2, ..., part5 }
+// ## PART N 헤더 단위로 split
+// ─────────────────────────────────────────────────────────────
+function parseScript(markdown) {
+  const result = { part1:'', part2:'', part3:'', part4:'', part5:'' };
+  // 헤더 정규식: ## PART <number> [...]
+  const re = /##\s*PART\s*(\d)[^\n]*\n([\s\S]*?)(?=\n##\s*PART\s*\d|\s*$)/gi;
+  let m;
+  while ((m = re.exec(markdown)) !== null) {
+    const n = parseInt(m[1], 10);
+    if (n >= 1 && n <= 5) {
+      result['part' + n] = m[2].trim();
+    }
+  }
+  // 검증 — 5개 모두 채워졌는지
+  for (let i = 1; i <= 5; i++) {
+    if (!result['part' + i]) {
+      throw new Error('PART ' + i + ' 파싱 실패. raw 응답:\n' + markdown);
+    }
+  }
+  return result;
+}
+
+function _test_parseScript() {
+  const md = '## PART 1 · 자기소개 (10초)\n안녕하세요.\n첫번째 본문.\n\n' +
+             '## PART 2 · 제품소개 (15초)\n두번째.\n\n' +
+             '## PART 3 · 문제점 (30초)\n세번째.\n\n' +
+             '## PART 4 · 효과 (20초)\n네번째.\n\n' +
+             '## PART 5 · 마무리 (5초)\n다섯번째.';
+  const out = parseScript(md);
+  Logger.log(JSON.stringify(out, null, 2));
+}
