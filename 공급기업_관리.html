@@ -2454,11 +2454,19 @@ async function sendQuote(){
   showToast(`${d.company} 견적서 v${newVersion} 확정 — PDF 생성 중...`);
 
   // 즉시 PDF 생성 (다운로드 + Drive 업로드). 사용자가 별도 [PDF] 버튼을 누를 필요 없음
+  // 견적서 PDF 먼저, 그 다음 장비사양서 PDF (사용자가 「장비」 버튼 삭제했으므로 자동 호출)
   try {
     await genPDF(qt.id);
   } catch(e) {
     console.error('[sendQuote] genPDF 실패', e);
-    showToast(`PDF 발급 실패: ${(e&&e.message)||'알 수 없는 오류'}`,'error');
+    showToast(`견적서 PDF 발급 실패: ${(e&&e.message)||'알 수 없는 오류'}`,'error');
+    return;  // 견적서 실패 시 장비사양서 시도 안 함
+  }
+  try {
+    await genEquipPDF(qt.id);
+  } catch(e) {
+    console.error('[sendQuote] genEquipPDF 실패', e);
+    showToast(`장비사양서 PDF 발급 실패: ${(e&&e.message)||'알 수 없는 오류'}`,'error');
   }
 }
 
