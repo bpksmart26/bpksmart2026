@@ -482,11 +482,16 @@ function sendGuideForRow(unifiedRow) {
       try {
         const pdfFileId = _extractDriveFileId(unifiedRow.pdfUrl);
         const pdfBlob = DriveApp.getFileById(pdfFileId).getBlob();
-        attachments.push({
-          name: pdfBlob.getName() || '견적서.pdf',
-          base64: Utilities.base64Encode(pdfBlob.getBytes()),
-          mime: 'application/pdf'
-        });
+        const pdfBytes = pdfBlob.getBytes();
+        if (pdfBytes.length > 20 * 1024 * 1024) {
+          Logger.log('[sendGuideForRow] PDF 20MB 초과, 첨부 생략 (크기:' + pdfBytes.length + ')');
+        } else {
+          attachments.push({
+            name: pdfBlob.getName() || '견적서.pdf',
+            base64: Utilities.base64Encode(pdfBytes),
+            mime: 'application/pdf'
+          });
+        }
       } catch (e) {
         Logger.log('[sendGuideForRow] PDF 첨부 실패 (메일은 계속): ' + e);
       }
