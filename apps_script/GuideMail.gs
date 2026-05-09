@@ -300,3 +300,97 @@ function updateUnifiedRowFields(unifiedId, fields) {
     sheet.getRange(rowIdx, col).setValue(fields[key]);
   });
 }
+
+
+// ─────────────────────────────────────────────────────────────
+// 메인 진입점 — 통합정보 row를 받아 GPT→HTML→Drive 저장→시트 업데이트
+// 견적 발급 시 saveQt 후크에서 호출됨
+// ─────────────────────────────────────────────────────────────
+function generateGuide(unifiedRow) {
+  if (!unifiedRow || !unifiedRow.id) {
+    Logger.log('[generateGuide] unifiedRow 또는 id 없음, skip');
+    return { ok: false, reason: 'no_row' };
+  }
+
+  const id = unifiedRow.id;
+  const company = unifiedRow.company || '';
+  const prevVersion = parseInt(unifiedRow.guide_version, 10) || 0;
+  const newVersion = prevVersion + 1;
+  const nowKst = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm');
+
+  try {
+    // 1. GPT 입력 데이터 추출
+    const items = (unifiedRow.items || []).map(function(it) {
+      return { name: it.name, model: it.model, qty: it.qty };
+    });
+    const promptInput = {
+      company: company,
+      ceo:     unifiedRow.ceo || '',
+      pname:   unifiedRow.pname || '',
+      processes:      unifiedRow.processes || [],
+      problem_type:   unifiedRow.problem_type || '',
+      problem_points: unifiedRow.problem_points || [],
+      memo:    unifiedRow.memo || '',
+      items:   items,
+      space_w: unifiedRow.space_w || '',
+      space_h: unifiedRow.space_h || ''
+    };
+
+    // 2. GPT 호출
+    Logger.log('[generateGuide] OpenAI 호출 시작 id=' + id);
+    const rawScript = callOpenAI(promptInput);
+    const parts = parseScript(rawScript);
+
+    // 3. HTML 합성
+    const tpl = getDriveTemplate();
+    const html = mergeTemplate(tpl, parts);
+
+    // 4. Drive 저장
+    const saved = saveGuideToDrive(html, company, newVersion);
+
+    // 5. 시트 업데이트 — 새 버전 시 status는 '대기중'으로 reset, 기존 발송 이력 클리어
+    updateUnifiedRowFields(id, {
+      guide_script:        rawScript,
+      guide_generated_at:  nowKst,
+      guide_html_url:      saved.url,
+      guide_version:       newVersion,
+      guide_send_request:  false,
+      guide_sent_at:       '',
+      guide_sent_status:   GUIDE_STATUS.PENDING,
+      guide_error:         ''
+    });
+
+    Logger.log('[generateGuide] 성공 id=' + id + ' v' + newVersion + ' file=' + saved.name);
+    return { ok: true, version: newVersion, url: saved.url };
+
+  } catch (err) {
+    const errMsg = String(err && err.message || err);
+    Logger.log('[generateGuide] 실패 id=' + id + ': ' + errMsg);
+    try {
+      updateUnifiedRowFields(id, {
+        guide_sent_status: GUIDE_STATUS.FAILED,
+        guide_error:       errMsg,
+        guide_generated_at: nowKst
+      });
+    } catch (e2) {
+      Logger.log('[generateGuide] 시트 업데이트 실패: ' + e2);
+    }
+    return { ok: false, error: errMsg };
+  }
+}
+
+function _test_generateGuide() {
+  // 통합정보 시트의 첫번째 row를 사용해서 실제로 가이드 생성
+  const sheet = getSheet(SN.UNIFIED);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const data = sheet.getRange(2, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const row = {};
+  headers.forEach(function(h, i) { row[h] = data[i]; });
+  // 배열 컬럼 파싱
+  ['processes','problem_points','items'].forEach(function(k){
+    if (typeof row[k] === 'string' && row[k]) {
+      try { row[k] = JSON.parse(row[k]); } catch(e) {}
+    }
+  });
+  Logger.log(JSON.stringify(generateGuide(row)));
+}
