@@ -264,3 +264,38 @@ function _test_saveGuideToDrive() {
   const r = saveGuideToDrive('<html><body>테스트</body></html>', '㈜테스트회사', 1);
   Logger.log(JSON.stringify(r, null, 2));
 }
+
+// ─────────────────────────────────────────────────────────────
+// 통합정보 시트 1행의 일부 컬럼만 업데이트 (id 매칭)
+// fields: { guide_script: '...', guide_sent_at: '...' } 형태
+// ─────────────────────────────────────────────────────────────
+function updateUnifiedRowFields(unifiedId, fields) {
+  const sheet = getSheet(SN.UNIFIED);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) throw new Error('통합정보 시트가 비어있음');
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const idCol = headers.indexOf('id') + 1;
+  if (idCol === 0) throw new Error('통합정보 시트에 id 컬럼 없음');
+
+  // id 매칭 행 찾기
+  const idValues = sheet.getRange(2, idCol, lastRow - 1, 1).getValues();
+  let rowIdx = -1;
+  for (let i = 0; i < idValues.length; i++) {
+    if (String(idValues[i][0]) === String(unifiedId)) {
+      rowIdx = i + 2;
+      break;
+    }
+  }
+  if (rowIdx === -1) throw new Error('id=' + unifiedId + ' 행 없음');
+
+  // 각 필드 업데이트
+  Object.keys(fields).forEach(function(key) {
+    const col = headers.indexOf(key) + 1;
+    if (col === 0) {
+      Logger.log('[updateUnifiedRowFields] 컬럼 없음: ' + key + ' (skip)');
+      return;
+    }
+    sheet.getRange(rowIdx, col).setValue(fields[key]);
+  });
+}
