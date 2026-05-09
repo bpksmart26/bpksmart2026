@@ -49,11 +49,19 @@ const NOTION_PROP_MAP = {
   quoteDate:      { name: '견적생성일',     type: 'date' },
   pdfUrl:         { name: '견적PDF',        type: 'url' },
   equipPdfUrl:    { name: '장비사양PDF',    type: 'url' },
-  version:        { name: '견적버전',       type: 'number' }
+  version:        { name: '견적버전',         type: 'number' },
+  // 가이드 메일 (Phase 4)
+  guide_script:        { name: '가이드스크립트',     type: 'rich_text' },
+  guide_generated_at:  { name: '가이드생성일',       type: 'date' },
+  guide_html_url:      { name: '가이드메일HTML',     type: 'url' },
+  guide_version:       { name: '가이드버전',         type: 'number' },
+  guide_send_request:  { name: '가이드발송요청',     type: 'checkbox',  bidirectional: true },
+  guide_sent_at:       { name: '가이드발송일',       type: 'date' },
+  guide_sent_status:   { name: '가이드발송상태',     type: 'select' }
 };
 
 // 양방향 필드 — 시트와 노션 둘 다 source 가능
-const BIDIRECTIONAL_FIELDS = ['status','manager','memo','quoteMemo'];
+const BIDIRECTIONAL_FIELDS = ['status','manager','memo','quoteMemo','guide_send_request'];
 
 // 시트 컬럼 (영문) → 노션 속성명 (한글) 매핑
 const SHEET_TO_NOTION_NAME = {};
