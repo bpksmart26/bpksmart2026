@@ -530,6 +530,8 @@ function pollAndSend() {
   }
 
   try {
+    const MAX_PER_TICK = 30;
+
     const sheet = getSheet(SN.UNIFIED);
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return { ok:true, processed:0 };
@@ -576,6 +578,11 @@ function pollAndSend() {
         if (freshRow) pushToNotion(freshRow);
       } catch (e) {
         Logger.log('[pollAndSend] pushToNotion 실패 (무시): ' + e);
+      }
+
+      if (processed >= MAX_PER_TICK) {
+        Logger.log('[pollAndSend] 이번 틱 한도(' + MAX_PER_TICK + ') 도달, 다음 틱에서 계속');
+        break;
       }
     }
 
