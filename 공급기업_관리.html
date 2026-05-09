@@ -2480,68 +2480,97 @@ async function genPDF(qtId){
       spec_dimension:'',spec_weight:'',spec_air:'',spec_voltage:''}, item);
   });
 
+  let progressActive = true;
   try {
-    showApiLoading('PDF 폰트 준비 중...');
+    // 단계 1/5: 폰트 준비
+    showPdfProgress(1, 5, 'PDF 폰트 준비 중...');
     // 1) 폰트 lazy load (첫 호출 시 ~12MB 다운로드, 이후 캐시)
     await ensurePdfFonts();
-    // 2) 직인 lazy load
+    // 2) 직인 lazy load (단계로 카운트 안 함, 빠름)
     const jikin = await loadJikin();
-    // 3) 사진 사전조회 — 장비 + 신청 제품 + 신청 설치장소 (모두 한 번에 병렬)
+
+    // 단계 2/5: 사진 로딩 — 장비 + 신청 제품 + 신청 설치장소 (모두 한 번에 병렬)
     const eqPhotoUrls      = eqInfoList.map(eq => (eq.photos && eq.photos[0]) || null);
     const productPhotoUrls = (a.product_photos || []).filter(Boolean);
     const spacePhotoUrls   = (a.space_photos   || []).filter(Boolean);
     const totalPhotoCount = eqPhotoUrls.filter(Boolean).length + productPhotoUrls.length + spacePhotoUrls.length;
-    showApiLoading('사진 로딩 중... (' + totalPhotoCount + '장)');
+    showPdfProgress(2, 5, '사진 로딩 중... (' + totalPhotoCount + '장)');
     const [eqPhotos, productPhotos, spacePhotos] = await Promise.all([
       resolvePhotosBatch(eqPhotoUrls),
       resolvePhotosBatch(productPhotoUrls),
       resolvePhotosBatch(spacePhotoUrls)
     ]);
-    // 4) 누락 사진 사용자 확인
+
+    // 누락 사진 사용자 확인
     const missing =
       eqPhotos.filter((p,i)      => eqPhotoUrls[i]      && !p).length +
       productPhotos.filter((p,i) => productPhotoUrls[i] && !p).length +
       spacePhotos.filter((p,i)   => spacePhotoUrls[i]   && !p).length;
     if (missing > 0) {
-      hideApiLoading();
+      hidePdfProgress();  // confirm 띄우기 위해 잠시 닫음
+      progressActive = false;
       const ok = confirm(`사진 ${missing}장이 로드되지 않았습니다.\n해당 자리에 빈 공간이 들어간 채로 PDF를 생성할까요?\n\n[확인] 빈칸 상태로 발행  /  [취소] PDF 생성 중단`);
       if (!ok) { showToast('PDF 생성을 취소했습니다.','warn'); return; }
+      showPdfProgress(2, 5, '사진 로딩 완료 (' + missing + '장 누락)');
+      progressActive = true;
     }
-    showApiLoading('견적서 PDF 생성 중...');
-    // 5) jsPDF 직접 그리기 (한자/한글/자간 모두 정확, 화면 노출 없음)
+
+    // 단계 3/5: PDF 생성
+    showPdfProgress(3, 5, '견적서 PDF 생성 중...');
+    // jsPDF 직접 그리기 (한자/한글/자간 모두 정확, 화면 노출 없음)
     //    인자: 견적, 신청, 장비목록, 장비사진, 직인, 신청제품사진, 신청설치사진
     const pdf = await buildQuotePdf(q, a, eqInfoList, eqPhotos, jikin, productPhotos, spacePhotos);
-    // 6) 파일 다운로드
+
+    // 단계 4/5: 파일 다운로드
     const fileName = `BPK_견적서_${q.company}_${q.appId||q.id}_v${q.version||1}_${(q.date||'').slice(0,10)}.pdf`;
+    showPdfProgress(4, 5, '파일 다운로드 중...');
     pdf.save(fileName);
-    showToast('PDF 다운로드 완료' + (missing > 0 ? ` (사진 ${missing}장 누락)` : ''));
-    // 7) Drive 백업 (백그라운드, 변경 없으면 skip)
+
+    // 단계 5/5: Drive 백업 (변경 없으면 skip)
     if (API_ENABLED) {
       const _hash = quoteHash(q);
       if (q.pdfUrl && q.pdfHash === _hash) {
-        showToast('Drive 백업 (이전 PDF 재사용)');
+        // 변경 없음 — Drive 재사용
+        hidePdfProgress(true, 'Drive 백업 (이전 PDF 재사용)');
+        progressActive = false;
       } else {
+        showPdfProgress(5, 5, 'Drive 백업 중...');
         _markPdfUploading(q.id, 'quote');
-        (async () => {
-          try {
-            const pdfUri = pdf.output('datauristring');
-            const url = await apiUploadPhoto(pdfUri, fileName, {type:'quote', company:q.company});
-            if (url && url.startsWith('http')) {
-              q.pdfUrl = url; q.pdfHash = _hash;
-              await syncQt(q, false);
-              showToast('Drive 백업 완료');
-              renderQuotes();
-            }
-          } catch(e) { console.warn('견적서 Drive 저장 실패', e); }
-          finally { _markPdfUploaded(q.id, 'quote'); }
-        })();
+        // Drive 업로드는 동기적으로 진행해서 완료될 때까지 모달 유지
+        // (기존 fire-and-forget IIFE 흐름 변경 — 사용자가 진행 상황 보고싶어함)
+        try {
+          const pdfUri = pdf.output('datauristring');
+          const url = await apiUploadPhoto(pdfUri, fileName, {type:'quote', company:q.company});
+          if (url && url.startsWith('http')) {
+            q.pdfUrl = url; q.pdfHash = _hash;
+            await syncQt(q, false);
+            renderQuotes();
+            hidePdfProgress(true, 'Drive에 저장 완료' + (missing > 0 ? ` (사진 ${missing}장 누락)` : ''));
+            progressActive = false;
+          } else {
+            hidePdfProgress(true, 'PDF 다운로드 완료 (Drive 백업 실패 — 다시 시도해주세요)');
+            progressActive = false;
+          }
+        } catch(e) {
+          console.warn('견적서 Drive 저장 실패', e);
+          hidePdfProgress(true, 'PDF 다운로드 완료 (Drive 백업 실패)');
+          progressActive = false;
+        } finally {
+          _markPdfUploaded(q.id, 'quote');
+        }
       }
+    } else {
+      // API_ENABLED=false 환경 — PDF 다운로드만 완료
+      hidePdfProgress(true, 'PDF 다운로드 완료');
+      progressActive = false;
     }
   } catch(e) {
     console.error('genPDF 실패', e);
-    showToast('PDF 생성 실패: ' + (e?.message || '알 수 없는 오류'), 'error');
-  } finally {
-    hideApiLoading();
+    if (progressActive) {
+      hidePdfProgress(false, e?.message || '알 수 없는 오류');
+    } else {
+      showToast('PDF 생성 실패: ' + (e?.message || '알 수 없는 오류'), 'error');
+    }
   }
 }
 
