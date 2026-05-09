@@ -35,7 +35,7 @@ const EQ_ARR   = ['photos','photos_pkg','videos'];
 const APP_ARR  = ['processes','pkgtypes','problem_points','equipment','electric','space_photos','product_photos'];
 const QT_ARR   = ['items','options'];
 
-// 통합정보 시트 — 신청 28 + 견적 16 (company/appId 제외, 충돌 컬럼은 quote* prefix)
+// 통합정보 시트 — 신청 28 + 견적 16 + 가이드 8 (company/appId 제외, 충돌 컬럼은 quote* prefix)
 const UNIFIED_COLS = [
   // 신청 (28)
   'id','company','ceo','bizno','phone','email','address',
@@ -47,7 +47,10 @@ const UNIFIED_COLS = [
   'quoteId','quoteProcess','quoteMemo','validUntil',
   'items','options','total','eqCount',
   'quoteStatus','quoteDate','pdfUrl','equipPdfUrl',
-  'pdfHash','equipPdfHash','version','isLatest'
+  'pdfHash','equipPdfHash','version','isLatest',
+  // 가이드 (8) — Phase 1 추가
+  'guide_script','guide_generated_at','guide_html_url','guide_version',
+  'guide_send_request','guide_sent_at','guide_sent_status','guide_error'
 ];
 
 const UNIFIED_ARR = [
@@ -55,7 +58,9 @@ const UNIFIED_ARR = [
   'space_photos','product_photos','items','options'
 ];
 
-const UNIFIED_NUM = { total:'number', eqCount:'number', version:'number' };
+const UNIFIED_NUM = { total:'number', eqCount:'number', version:'number', guide_version:'number' };
+
+const UNIFIED_BOOL = { guide_send_request:'boolean' };
 
 // _sync_queue 시트 — Notion API 실패 재시도용
 const QUEUE_COLS = ['id','action','payload_json','retry_count','last_error','created_at'];
