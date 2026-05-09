@@ -522,57 +522,68 @@ function _extractDriveFileId(url) {
 // 5분 시간 트리거에서 호출 — 발송요청=TRUE & status≠'발송완료' 행 일괄 처리
 // ─────────────────────────────────────────────────────────────
 function pollAndSend() {
-  const sheet = getSheet(SN.UNIFIED);
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return { ok:true, processed:0 };
-
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
-
-  const reqCol    = headers.indexOf('guide_send_request');
-  const statusCol = headers.indexOf('guide_sent_status');
-  if (reqCol === -1 || statusCol === -1) {
-    Logger.log('[pollAndSend] 가이드 컬럼 없음. autoInitSheets 실행 필요.');
-    return { ok:false, error:'columns not migrated' };
+  // 동시 실행 방지 — 이전 5분 트리거가 아직 돌고 있으면 skip
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(0)) {
+    Logger.log('[pollAndSend] 다른 실행이 진행 중, skip');
+    return { ok:true, skipped:'lock held' };
   }
 
-  let processed = 0;
-  let succeeded = 0;
-  let failed = 0;
+  try {
+    const sheet = getSheet(SN.UNIFIED);
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { ok:true, processed:0 };
 
-  for (let i = 0; i < data.length; i++) {
-    const reqVal = data[i][reqCol];
-    const statusVal = data[i][statusCol];
-    const isRequested = (reqVal === true || String(reqVal).toLowerCase() === 'true');
-    if (!isRequested) continue;
-    if (statusVal === GUIDE_STATUS.SENT) continue;
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
 
-    // row 객체 구성
-    const row = {};
-    headers.forEach(function(h, j) { row[h] = data[i][j]; });
-    // 배열 컬럼 파싱
-    UNIFIED_ARR.forEach(function(k){
-      if (typeof row[k] === 'string' && row[k]) {
-        try { row[k] = JSON.parse(row[k]); } catch(e) {}
-      }
-    });
-
-    Logger.log('[pollAndSend] 발송 시작 id=' + row.id + ' company=' + row.company);
-    const r = sendGuideForRow(row);
-    processed++;
-    if (r.ok) succeeded++; else failed++;
-
-    // 발송 후 노션에도 push (sent_at, status 반영)
-    try {
-      var freshRow = _loadUnifiedByBizno(row.bizno);
-      if (freshRow) pushToNotion(freshRow);
-    } catch (e) {
-      Logger.log('[pollAndSend] pushToNotion 실패 (무시): ' + e);
+    const reqCol    = headers.indexOf('guide_send_request');
+    const statusCol = headers.indexOf('guide_sent_status');
+    if (reqCol === -1 || statusCol === -1) {
+      Logger.log('[pollAndSend] 가이드 컬럼 없음. autoInitSheets 실행 필요.');
+      return { ok:false, error:'columns not migrated' };
     }
-  }
 
-  Logger.log('[pollAndSend] 완료 — 처리:' + processed + ' 성공:' + succeeded + ' 실패:' + failed);
-  return { ok:true, processed:processed, succeeded:succeeded, failed:failed };
+    let processed = 0;
+    let succeeded = 0;
+    let failed = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      const reqVal = data[i][reqCol];
+      const statusVal = data[i][statusCol];
+      const isRequested = (reqVal === true || String(reqVal).toLowerCase() === 'true');
+      if (!isRequested) continue;
+      if (statusVal === GUIDE_STATUS.SENT) continue;
+
+      // row 객체 구성
+      const row = {};
+      headers.forEach(function(h, j) { row[h] = data[i][j]; });
+      // 배열 컬럼 파싱
+      UNIFIED_ARR.forEach(function(k){
+        if (typeof row[k] === 'string' && row[k]) {
+          try { row[k] = JSON.parse(row[k]); } catch(e) {}
+        }
+      });
+
+      Logger.log('[pollAndSend] 발송 시작 id=' + row.id + ' company=' + row.company);
+      const r = sendGuideForRow(row);
+      processed++;
+      if (r.ok) succeeded++; else failed++;
+
+      // 발송 후 노션에도 push (sent_at, status 반영)
+      try {
+        var freshRow = _loadUnifiedByBizno(row.bizno);
+        if (freshRow) pushToNotion(freshRow);
+      } catch (e) {
+        Logger.log('[pollAndSend] pushToNotion 실패 (무시): ' + e);
+      }
+    }
+
+    Logger.log('[pollAndSend] 완료 — 처리:' + processed + ' 성공:' + succeeded + ' 실패:' + failed);
+    return { ok:true, processed:processed, succeeded:succeeded, failed:failed };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function _test_pollAndSend() {
