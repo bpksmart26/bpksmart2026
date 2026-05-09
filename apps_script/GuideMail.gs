@@ -394,3 +394,41 @@ function _test_generateGuide() {
   });
   Logger.log(JSON.stringify(generateGuide(row)));
 }
+
+// ─────────────────────────────────────────────────────────────
+// bpksmart26 Mailer Web App 호출 — 메일 발송 위임
+// ─────────────────────────────────────────────────────────────
+function callMailer(payload) {
+  const url = _guideProp(GUIDE_PROP_KEYS.MAILER_WEBAPP_URL);
+  const token = _guideProp(GUIDE_PROP_KEYS.MAILER_TOKEN);
+  if (!url) throw new Error('MAILER_WEBAPP_URL not set');
+  if (!token) throw new Error('MAILER_TOKEN not set');
+
+  const body = Object.assign({ token: token }, payload);
+
+  const res = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(body),
+    muteHttpExceptions: true,
+    followRedirects: true
+  });
+
+  const code = res.getResponseCode();
+  const text = res.getContentText();
+  let json;
+  try { json = JSON.parse(text); } catch (e) { json = { ok:false, error:'non-json: ' + text }; }
+  if (code !== 200 || !json.ok) {
+    throw new Error('Mailer 응답 NG (HTTP ' + code + '): ' + (json.error || text));
+  }
+  return json;
+}
+
+function _test_callMailer() {
+  const r = callMailer({
+    to: 'bpksmart26@gmail.com',
+    subject: '[BPK 통신 테스트] ' + new Date().toISOString(),
+    html: '<h1>smart@paxc → bpksmart26 호출 성공</h1>'
+  });
+  Logger.log(JSON.stringify(r));
+}
