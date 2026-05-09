@@ -461,6 +461,16 @@ function sendGuideForRow(unifiedRow) {
     return { ok:false, error: err };
   }
 
+  // 멱등성 — 5분 이내 발송된 적 있으면 skip (Make 재시도 / 동시 폴링 안전망)
+  if (unifiedRow.guide_sent_status === GUIDE_STATUS.SENT && unifiedRow.guide_sent_at) {
+    const sentAt = new Date(unifiedRow.guide_sent_at);
+    const ageMs = Date.now() - sentAt.getTime();
+    if (!isNaN(sentAt.getTime()) && ageMs >= 0 && ageMs < 5 * 60 * 1000) {
+      Logger.log('[sendGuideForRow] 5분 이내 이미 발송됨, skip id=' + id);
+      return { ok:true, skipped:'recently sent' };
+    }
+  }
+
   try {
     // 1. HTML 본문 Drive에서 fetch
     const htmlFileId = _extractDriveFileId(unifiedRow.guide_html_url);
