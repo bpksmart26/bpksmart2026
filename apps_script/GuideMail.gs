@@ -144,6 +144,12 @@ function _test_callOpenAI() {
 // ## PART N 헤더 단위로 split
 // ─────────────────────────────────────────────────────────────
 function parseScript(markdown) {
+  // 코드펜스 방어 — GPT가 가끔 ```markdown...``` 으로 감싸 응답
+  if (typeof markdown === 'string') {
+    markdown = markdown
+      .replace(/^\s*```[a-z]*\s*\n?/i, '')
+      .replace(/\n?```\s*$/, '');
+  }
   const result = { part1:'', part2:'', part3:'', part4:'', part5:'' };
   // 헤더 정규식: ## PART <number> [...]
   const re = /##\s*PART\s*(\d)[^\n]*\n([\s\S]*?)(?=\n##\s*PART\s*\d|\s*$)/gi;
