@@ -178,3 +178,60 @@ function _test_parseScript() {
   const out = parseScript(md);
   Logger.log(JSON.stringify(out, null, 2));
 }
+
+// ─────────────────────────────────────────────────────────────
+// 템플릿 HTML + 5 PART 본문 → 회사별 메일 HTML
+// 각 <!-- PART N --> 블록 안의 본문 <td> 첫 인스턴스만 치환
+// ─────────────────────────────────────────────────────────────
+function mergeTemplate(templateHtml, parts) {
+  let html = templateHtml;
+  for (let i = 1; i <= 5; i++) {
+    const marker = '<!-- PART ' + i + ' -->';
+    const idx = html.indexOf(marker);
+    if (idx === -1) throw new Error('템플릿에 ' + marker + ' 없음');
+
+    // marker 뒤에서 시작하는 본문 <td>를 찾음
+    // 패턴: <td style="padding:18px 22px; ...> ... </td>
+    // 본문 <td>는 padding:18px 22px로 식별 (헤더 td는 padding:12px 18px)
+    const bodyTdRe = /<td[^>]*padding:18px 22px[^>]*>([\s\S]*?)<\/td>/i;
+    const tail = html.substring(idx);
+    const tailMatch = tail.match(bodyTdRe);
+    if (!tailMatch) throw new Error('PART ' + i + ' 본문 td 못 찾음');
+
+    const newBody = _formatPartHtml(parts['part' + i]);
+    const replaced = tailMatch[0].replace(bodyTdRe, function(_, __) {
+      return tailMatch[0].replace(tailMatch[1], newBody);
+    });
+
+    html = html.substring(0, idx) + tail.replace(tailMatch[0], replaced);
+  }
+  return html;
+}
+
+// PART 본문 텍스트 → HTML (줄바꿈 <br>, 따옴표 보존, 굵게는 마크다운 ** 변환)
+function _formatPartHtml(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+}
+
+function _test_mergeTemplate() {
+  const tpl = getDriveTemplate();
+  const parts = {
+    part1: '안녕하세요. ㈜테스트 대표 홍길동입니다.\n부정수급을 하지 않을 것이며...',
+    part2: '저희는 떡볶이 분말을 생산하고 있습니다.',
+    part3: '현재 수작업으로 ... 이번에 도입할 **스틱포장기 SP-200**은 ...',
+    part4: '이 공간에 설치할 예정이며 효과는 ...',
+    part5: '감사합니다.'
+  };
+  const html = mergeTemplate(tpl, parts);
+  // Drive에 임시 저장해서 브라우저로 시각 확인
+  const folderId = _guideProp(GUIDE_PROP_KEYS.DRIVE_FOLDER_ID);
+  const file = DriveApp.getFolderById(folderId).createFile('_test_merge.html', html, 'text/html');
+  Logger.log('테스트 파일: ' + file.getUrl());
+}
