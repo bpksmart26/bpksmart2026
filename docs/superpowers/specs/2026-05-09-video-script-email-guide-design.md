@@ -156,7 +156,15 @@
 
 #### `generateGuide(unifiedRow)`
 1. `unifiedRow`에서 GPT 프롬프트 데이터 추출
-   - company, ceo, pname, processes(배열), problem_type, problem_points(배열), equipment(배열), space_w, space_h
+   - **회사 정보**: company, ceo
+   - **제품/공정**: pname(제품명), processes(공정 배열)
+   - **문제·도입장비**:
+     - problem_type, problem_points(문제점 체크리스트)
+     - **`items`(견적 확정 장비 명세) ← 핵심 입력**
+       - 형식: `[{name, model, qty, unit, price}, ...]`
+       - GPT에는 `name`, `model`, `qty`만 전달 (가격 정보는 동영상 스크립트에 불필요)
+       - `equipment`(ID 배열)는 사용 안 함 — `items`가 BPK 담당자 확정한 실제 장비 정보를 담고 있어 더 정확
+   - **설치 공간**: space_w, space_h
 2. OpenAI Chat Completions API 호출
    - 모델: `gpt-4o-mini`
    - System: 한국어 동영상 스크립트 작성 가이드라인 + 마크다운 출력 강제
