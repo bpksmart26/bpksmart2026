@@ -432,3 +432,88 @@ function _test_callMailer() {
   });
   Logger.log(JSON.stringify(r));
 }
+
+// ─────────────────────────────────────────────────────────────
+// 통합정보 1행 → 메일 발송 + 시트 업데이트
+// pollAndSend / sendGuideNow 둘 다 이 함수를 사용
+// ─────────────────────────────────────────────────────────────
+function sendGuideForRow(unifiedRow) {
+  const id = unifiedRow.id;
+  const nowKst = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm');
+
+  if (!unifiedRow.email) {
+    const err = '이메일 없음';
+    updateUnifiedRowFields(id, {
+      guide_sent_status: GUIDE_STATUS.FAILED,
+      guide_error: err,
+      guide_send_request: false
+    });
+    return { ok:false, error: err };
+  }
+
+  if (!unifiedRow.guide_html_url) {
+    const err = '가이드 HTML 없음 (generateGuide 미실행?)';
+    updateUnifiedRowFields(id, {
+      guide_sent_status: GUIDE_STATUS.FAILED,
+      guide_error: err,
+      guide_send_request: false
+    });
+    return { ok:false, error: err };
+  }
+
+  try {
+    // 1. HTML 본문 Drive에서 fetch
+    const htmlFileId = _extractDriveFileId(unifiedRow.guide_html_url);
+    const html = DriveApp.getFileById(htmlFileId).getBlob().getDataAsString('UTF-8');
+
+    // 2. 견적 PDF (있으면) 첨부
+    const attachments = [];
+    if (unifiedRow.pdfUrl) {
+      try {
+        const pdfFileId = _extractDriveFileId(unifiedRow.pdfUrl);
+        const pdfBlob = DriveApp.getFileById(pdfFileId).getBlob();
+        attachments.push({
+          name: pdfBlob.getName() || '견적서.pdf',
+          base64: Utilities.base64Encode(pdfBlob.getBytes()),
+          mime: 'application/pdf'
+        });
+      } catch (e) {
+        Logger.log('[sendGuideForRow] PDF 첨부 실패 (메일은 계속): ' + e);
+      }
+    }
+
+    // 3. Mailer 호출
+    const subject = '[BPK] 2026 스마트제조 지원사업 신청 가이드 — ' + (unifiedRow.company || '');
+    callMailer({
+      to: unifiedRow.email,
+      subject: subject,
+      html: html,
+      attachments: attachments
+    });
+
+    // 4. 시트 업데이트 — 성공
+    updateUnifiedRowFields(id, {
+      guide_sent_status:  GUIDE_STATUS.SENT,
+      guide_sent_at:      nowKst,
+      guide_send_request: false,
+      guide_error:        ''
+    });
+    return { ok:true };
+
+  } catch (err) {
+    const errMsg = String(err && err.message || err);
+    Logger.log('[sendGuideForRow] 실패 id=' + id + ': ' + errMsg);
+    updateUnifiedRowFields(id, {
+      guide_sent_status:  GUIDE_STATUS.FAILED,
+      guide_error:        errMsg,
+      guide_send_request: false  // 실패해도 자동 재시도 안 함 — 사용자가 다시 체크해야 함
+    });
+    return { ok:false, error: errMsg };
+  }
+}
+
+function _extractDriveFileId(url) {
+  const m = String(url).match(/[?&]id=([^&\s]+)/) || String(url).match(/\/d\/([^/?]+)/);
+  if (!m) throw new Error('Drive URL에서 파일 ID 추출 실패: ' + url);
+  return m[1];
+}
