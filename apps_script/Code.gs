@@ -179,8 +179,19 @@ function doPost(e) {
           var app = _findApp(data.appId);
           if (!app) return;
           var row = _loadUnifiedByBizno(app.bizno);
-          Logger.log('[updateQt] generateGuide row id=' + (row ? row.id : 'NULL') + ', pdfUrl=' + data.pdfUrl);
           if (!row) return;
+
+          // 멱등성 — 같은 견적 버전에 대해 중복 실행 방지
+          // sendQuote가 genPDF + genEquipPDF를 차례로 호출 → updateQt 2번 발동.
+          // 두 번째는 같은 quote.version에 대한 호출이므로 skip.
+          var quoteVersion = parseInt(data.version, 10) || 0;
+          var guideVersion = parseInt(row.guide_version, 10) || 0;
+          if (quoteVersion > 0 && quoteVersion <= guideVersion) {
+            Logger.log('[updateQt] generateGuide skip — quote v' + quoteVersion + ' 이미 가이드 v' + guideVersion + ' 생성됨');
+            return;
+          }
+
+          Logger.log('[updateQt] generateGuide row id=' + row.id + ', quoteVer=' + quoteVersion + ', guideVer=' + guideVersion + ', pdfUrl=' + data.pdfUrl);
           var r = generateGuide(row);
           Logger.log('[updateQt] generateGuide result: ' + JSON.stringify(r));
           if (r.ok) {
