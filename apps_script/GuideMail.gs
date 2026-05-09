@@ -40,8 +40,13 @@ function getDriveTemplate() {
   if (!fileId) throw new Error('GUIDE_TEMPLATE_FILE_ID not set in PropertiesService');
 
   const html = DriveApp.getFileById(fileId).getBlob().getDataAsString('UTF-8');
-  if (!html || html.indexOf('<!-- PART 1 -->') === -1) {
-    throw new Error('Template missing PART markers (PART 1~5)');
+  if (!html) throw new Error('Template empty');
+  // 5개 PART 마커 존재 확인 (주석 안에 추가 텍스트 허용 — 예: <!-- PART 3 (핵심) -->)
+  for (let i = 1; i <= 5; i++) {
+    const re = new RegExp('<!--\\s*PART\\s*' + i + '[^>]*?-->', 'i');
+    if (!re.test(html)) {
+      throw new Error('Template missing PART ' + i + ' marker');
+    }
   }
 
   cache.put(GUIDE_TEMPLATE_CACHE_KEY, html, GUIDE_TEMPLATE_CACHE_SEC);
@@ -186,9 +191,11 @@ function _test_parseScript() {
 function mergeTemplate(templateHtml, parts) {
   let html = templateHtml;
   for (let i = 1; i <= 5; i++) {
-    const marker = '<!-- PART ' + i + ' -->';
-    const idx = html.indexOf(marker);
-    if (idx === -1) throw new Error('템플릿에 ' + marker + ' 없음');
+    // PART 마커는 주석 안에 추가 텍스트 허용 (예: <!-- PART 3 (핵심) -->)
+    const markerRe = new RegExp('<!--\\s*PART\\s*' + i + '[^>]*?-->', 'i');
+    const markerMatch = markerRe.exec(html);
+    if (!markerMatch) throw new Error('템플릿에 PART ' + i + ' 마커 없음');
+    const idx = markerMatch.index;
 
     // marker 뒤 본문 <td> 첫 인스턴스를 찾음
     // 본문 <td>는 padding:18px 22px (헤더 td는 padding:12px 18px)
