@@ -190,20 +190,21 @@ function mergeTemplate(templateHtml, parts) {
     const idx = html.indexOf(marker);
     if (idx === -1) throw new Error('템플릿에 ' + marker + ' 없음');
 
-    // marker 뒤에서 시작하는 본문 <td>를 찾음
-    // 패턴: <td style="padding:18px 22px; ...> ... </td>
-    // 본문 <td>는 padding:18px 22px로 식별 (헤더 td는 padding:12px 18px)
+    // marker 뒤 본문 <td> 첫 인스턴스를 찾음
+    // 본문 <td>는 padding:18px 22px (헤더 td는 padding:12px 18px)
     const bodyTdRe = /<td[^>]*padding:18px 22px[^>]*>([\s\S]*?)<\/td>/i;
     const tail = html.substring(idx);
     const tailMatch = tail.match(bodyTdRe);
     if (!tailMatch) throw new Error('PART ' + i + ' 본문 td 못 찾음');
 
+    // split/join 사용 — String.replace(string, string)은 $ 토큰을 해석하므로
+    // 사용자 입력에 $&, $$, $1 등이 있으면 출력이 깨짐
     const newBody = _formatPartHtml(parts['part' + i]);
-    const replaced = tailMatch[0].replace(bodyTdRe, function(_, __) {
-      return tailMatch[0].replace(tailMatch[1], newBody);
-    });
-
-    html = html.substring(0, idx) + tail.replace(tailMatch[0], replaced);
+    const fullTd = tailMatch[0];
+    const innerBody = tailMatch[1];
+    const newFullTd = fullTd.split(innerBody).join(newBody);
+    const newTail = tail.split(fullTd).join(newFullTd);
+    html = html.substring(0, idx) + newTail;
   }
   return html;
 }
