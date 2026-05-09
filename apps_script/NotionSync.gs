@@ -874,6 +874,50 @@ function _cleanup_test_notion() {
 }
 
 // ─────────────────────────────────────────────────────────────
+// _cleanupOrphanHashes: 통합정보 시트에 없는 bizno의 hash_* 속성을 일괄 삭제
+// 테스트 잔여물 / 삭제 후 cleanup 누락된 hash를 안전하게 정리한다.
+// dryRun=true로 먼저 실행해 삭제 대상을 확인할 것을 권장.
+// ─────────────────────────────────────────────────────────────
+function _cleanupOrphanHashes(dryRun) {
+  const props = PropertiesService.getScriptProperties();
+  const all = props.getProperties();
+
+  // 통합정보 시트에서 살아있는 bizno 집합 구성
+  const sheet = getSheet(SN.UNIFIED);
+  const data = sheet.getDataRange().getValues();
+  const biznoIdx = UNIFIED_COLS.indexOf('bizno');
+  const liveBiznos = {};
+  for (let i = 1; i < data.length; i++) {
+    const b = String(data[i][biznoIdx] || '').trim();
+    if (b) liveBiznos[b] = true;
+  }
+
+  const orphans = [];
+  Object.keys(all).forEach(function(key) {
+    if (key.indexOf('hash_') !== 0) return;
+    const bizno = key.substring(5);
+    if (!liveBiznos[bizno]) orphans.push(key);
+  });
+
+  Logger.log('hash_* 총 ' + Object.keys(all).filter(function(k){return k.indexOf('hash_')===0;}).length + '개 중 고아 ' + orphans.length + '개');
+  orphans.forEach(function(k) { Logger.log('  - ' + k); });
+
+  if (dryRun) {
+    Logger.log('dryRun=true — 실제 삭제는 수행하지 않음. 삭제하려면 _cleanupOrphanHashes(false) 실행.');
+    return { ok: true, dryRun: true, orphans: orphans };
+  }
+
+  orphans.forEach(function(k) { props.deleteProperty(k); });
+  Logger.log('삭제 완료: ' + orphans.length + '개');
+  return { ok: true, deleted: orphans.length, orphans: orphans };
+}
+
+// dryRun: 삭제 대상만 로그로 확인 (실제 삭제 X)
+function _cleanupOrphanHashes_dryRun() { return _cleanupOrphanHashes(true); }
+// 실제 삭제 실행
+function _cleanupOrphanHashes_run()    { return _cleanupOrphanHashes(false); }
+
+// ─────────────────────────────────────────────────────────────
 // 진단: 마지막 견적의 sync 상태를 확인
 // 견적은 시트에 정상 들어갔는데 통합정보에는 안 들어갈 때 원인 분석
 // Apps Script 에디터 함수 드롭다운에서 실행
