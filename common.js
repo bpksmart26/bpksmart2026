@@ -365,3 +365,63 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
   });
 });
+
+// ============================================================
+// PDF 생성 진행 모달 — 단계별 progress + UI 차단
+// 견적서 발급/재발급 시 PDF 생성·다운로드·Drive 업로드 흐름에서 사용
+// ============================================================
+function showPdfProgress(stage, totalStages, label) {
+  let el = document.getElementById('pdf-progress-modal');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'pdf-progress-modal';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);font-family:Pretendard,sans-serif';
+    el.innerHTML = `
+      <div style="background:#fff;border-radius:14px;padding:32px 36px;min-width:380px;max-width:480px;box-shadow:0 24px 64px rgba(0,0,0,.25)">
+        <div style="font-size:11px;color:#64748b;letter-spacing:2px;font-weight:700;margin-bottom:6px">BPK SMART 2026</div>
+        <div style="font-size:18px;font-weight:700;color:#0f172a;margin-bottom:20px" id="pdf-progress-title">견적서 생성 중</div>
+        <div style="background:#e2e8f0;border-radius:8px;height:8px;overflow:hidden;margin-bottom:14px">
+          <div id="pdf-progress-bar" style="background:linear-gradient(90deg,#1d4ed8,#3b82f6);height:100%;width:0%;transition:width .3s ease"></div>
+        </div>
+        <div id="pdf-progress-label" style="font-size:13.5px;color:#475569;line-height:1.5;font-weight:500"></div>
+        <div id="pdf-progress-stage" style="font-size:12px;color:#94a3b8;margin-top:8px"></div>
+      </div>
+    `;
+    document.body.appendChild(el);
+  }
+  // 색상 reset (이전 실패에서 빨간색이었을 수 있음)
+  document.getElementById('pdf-progress-bar').style.background = 'linear-gradient(90deg,#1d4ed8,#3b82f6)';
+  document.getElementById('pdf-progress-title').textContent = '견적서 생성 중';
+
+  const pct = Math.min(100, Math.max(0, Math.round((stage / totalStages) * 100)));
+  document.getElementById('pdf-progress-bar').style.width = pct + '%';
+  document.getElementById('pdf-progress-label').textContent = label || '';
+  document.getElementById('pdf-progress-stage').textContent = `${stage} / ${totalStages} 단계 (${pct}%)`;
+  el.style.display = 'flex';
+}
+
+// success === true: 완료 표시 후 1.5초 뒤 자동 닫기
+// success === false: 에러 표시 + 사용자 닫기 버튼 (수동 닫기)
+// success === undefined: 즉시 닫기
+function hidePdfProgress(success, message) {
+  const el = document.getElementById('pdf-progress-modal');
+  if (!el) return;
+  if (success === true) {
+    document.getElementById('pdf-progress-bar').style.width = '100%';
+    document.getElementById('pdf-progress-bar').style.background = 'linear-gradient(90deg,#10b981,#22c55e)';
+    document.getElementById('pdf-progress-title').textContent = '✓ 완료';
+    document.getElementById('pdf-progress-label').textContent = message || 'Drive에 저장 완료';
+    document.getElementById('pdf-progress-stage').textContent = '';
+    setTimeout(() => { if (el) el.style.display = 'none'; }, 1500);
+  } else if (success === false) {
+    document.getElementById('pdf-progress-title').textContent = '⚠️ 생성 실패';
+    document.getElementById('pdf-progress-bar').style.background = '#dc2626';
+    document.getElementById('pdf-progress-label').textContent = message || '알 수 없는 오류';
+    document.getElementById('pdf-progress-stage').innerHTML = '<button onclick="document.getElementById(\'pdf-progress-modal\').style.display=\'none\'" style="margin-top:14px;padding:8px 18px;background:#dc2626;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-family:inherit">닫기</button>';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+window.showPdfProgress = showPdfProgress;
+window.hidePdfProgress = hidePdfProgress;
