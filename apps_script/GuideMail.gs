@@ -144,6 +144,207 @@ function _test_callOpenAI() {
   Logger.log(out);
 }
 
+// ═════════════════════════════════════════════════════════════
+// 프롬프트 튜닝 전용 테스트 함수
+//
+// 사용법:
+//   1. 아래 [편집 영역 1] 의 TEST_SYSTEM_PROMPT 를 자유롭게 수정
+//   2. 필요하면 [편집 영역 2] 의 TEST_INPUT 도 수정 (또는 시트에서 로드 사용)
+//   3. Apps Script 에디터에서 _test_promptIteration 선택 → 「실행」
+//   4. 「실행 로그」에서 PART 1~5 결과 확인
+//   5. 결과가 만족스러우면 TEST_SYSTEM_PROMPT 내용을 위쪽 GUIDE_SYSTEM_PROMPT 상수에
+//      복사해서 붙여넣고 저장 → 이후 production generateGuide 가 새 프롬프트로 동작
+//
+// generateGuide / callOpenAI 본 함수는 건드리지 않고, 이 함수만 단독으로 반복 실행
+// 가능. 토큰 비용도 같이 표시됨.
+// ═════════════════════════════════════════════════════════════
+function _test_promptIteration() {
+  // ───── [편집 영역 1] 테스트할 System 프롬프트 ─────
+  // (처음에는 GUIDE_SYSTEM_PROMPT 와 동일. 자유롭게 수정해서 응답 변화 비교)
+  const TEST_SYSTEM_PROMPT = [
+    '당신은 한국 소공인 스마트제조 지원사업 신청자의 동영상 촬영 대본 작가입니다.',
+    '아래 회사 정보를 바탕으로 동영상 스크립트 5개 PART를 작성하세요.',
+    '',
+    '【출력 형식】',
+    '반드시 다음 마크다운 형식으로만 응답하세요. 다른 텍스트 금지:',
+    '',
+    '## PART 1 · 자기소개 및 필수 문구 (10초)',
+    '<3~5문장 구어체>',
+    '',
+    '## PART 2 · 대표 제품 및 공정 소개 (15초)',
+    '<3~5문장 구어체>',
+    '',
+    '## PART 3 · 현 공정의 문제점 및 도입 장비 (30초)',
+    '<3~5문장 구어체>',
+    '',
+    '## PART 4 · 설치 장소 및 기대효과 (20초)',
+    '<3~5문장 구어체>',
+    '',
+    '## PART 5 · 간단한 마무리 (5초)',
+    '<3~5문장 구어체>',
+    '',
+    '【작성 지침】',
+    '- 모든 문장은 자연스러운 구어체로 작성',
+    '- PART 1 마지막에 반드시 다음 문구를 그대로 포함: "부정수급을 하지 않을 것이며, 부정수급 발생 시 보조금 환수 및 제재처분에 동의합니다."',
+    '- PART 3에서 도입 장비명은 input.items의 name/model을 그대로 사용 (대체 표현 금지)',
+    '- input.memo가 비어있지 않으면 PART 3의 어조와 디테일에 반영',
+    '- 가격/금액 정보는 절대 노출 금지',
+    '- 회사명·대표명·제품명은 input의 값을 그대로 사용'
+  ].join('\n');
+
+  // ───── [편집 영역 2] 테스트 입력 데이터 ─────
+  // 옵션 A: 시트에서 로드 — UNIFIED_ID 에 통합정보 시트의 신청 id 입력 (빈 문자열이면 첫 번째 row)
+  // 옵션 B: 직접 정의 — TEST_INPUT 를 수정 (UNIFIED_ID는 무시됨)
+  const UNIFIED_ID = '';        // 예: 'APP-2026-001' 또는 '' (첫 row)
+  const TEST_INPUT = null;      // null 이면 시트에서 로드. 객체로 덮어쓰려면:
+  // const TEST_INPUT = {
+  //   company: '테스트회사', ceo: '홍길동', pname: '떡볶이 분말',
+  //   processes: ['계량','혼합','충진','포장'],
+  //   problem_type: '공정자동화', problem_points: ['생산속도','수작업부담'],
+  //   memo: '주문량이 늘어나면 손이 부족해서 야근이 많습니다.',
+  //   items: [{ name: '스틱포장기', model: 'SP-200', qty: 1 }],
+  //   space_w: '3000', space_h: '2500'
+  // };
+
+  // ───── 이하 함수 본문 (수정 불필요) ─────
+  const promptInput = TEST_INPUT || _loadPromptInputFromSheet(UNIFIED_ID);
+
+  Logger.log('═══════════════════════════════════════════════');
+  Logger.log('  프롬프트 튜닝 테스트');
+  Logger.log('═══════════════════════════════════════════════');
+  Logger.log('');
+  Logger.log('━━━━━━━━━━ 입력 데이터 ━━━━━━━━━━');
+  Logger.log(JSON.stringify(promptInput, null, 2));
+  Logger.log('');
+
+  const apiKey = _guideProp(GUIDE_PROP_KEYS.OPENAI_API_KEY);
+  if (!apiKey) throw new Error('OPENAI_API_KEY not set');
+
+  const payload = {
+    model: 'gpt-4o-mini',
+    temperature: 0.7,
+    messages: [
+      { role: 'system', content: TEST_SYSTEM_PROMPT },
+      { role: 'user',   content: JSON.stringify(promptInput, null, 2) }
+    ]
+  };
+
+  const t0 = new Date().getTime();
+  const res = UrlFetchApp.fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + apiKey },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+  const elapsedMs = new Date().getTime() - t0;
+
+  const code = res.getResponseCode();
+  const body = res.getContentText();
+  if (code !== 200) {
+    Logger.log('━━━━━━━━━━ ❌ OpenAI 에러 ━━━━━━━━━━');
+    Logger.log('HTTP ' + code);
+    Logger.log(body);
+    return;
+  }
+
+  const json = JSON.parse(body);
+  const text = (json.choices && json.choices[0] && json.choices[0].message && json.choices[0].message.content) || '';
+
+  Logger.log('━━━━━━━━━━ Raw 응답 (' + elapsedMs + 'ms) ━━━━━━━━━━');
+  Logger.log(text);
+  Logger.log('');
+
+  // 파싱
+  let parts;
+  try {
+    parts = parseScript(text);
+  } catch (e) {
+    Logger.log('━━━━━━━━━━ ❌ 파싱 실패 ━━━━━━━━━━');
+    Logger.log(e.message);
+    return;
+  }
+
+  // 각 PART 출력
+  const titles = {
+    1: '자기소개 및 필수 문구 (10초)',
+    2: '대표 제품 및 공정 소개 (15초)',
+    3: '현 공정의 문제점 및 도입 장비 (30초)',
+    4: '설치 장소 및 기대효과 (20초)',
+    5: '간단한 마무리 (5초)'
+  };
+
+  Logger.log('████████████████████████████████████████████████');
+  Logger.log('  파싱된 5 PART 결과');
+  Logger.log('████████████████████████████████████████████████');
+
+  for (let i = 1; i <= 5; i++) {
+    Logger.log('');
+    Logger.log('━━━━━━━ PART ' + i + ' · ' + titles[i] + ' ━━━━━━━');
+    Logger.log(parts['part' + i]);
+  }
+
+  // 사용량 + 비용
+  if (json.usage) {
+    const u = json.usage;
+    const cost = (u.prompt_tokens * 0.00000015) + (u.completion_tokens * 0.00000060);
+    const krw = Math.round(cost * 1400 * 100) / 100;
+    Logger.log('');
+    Logger.log('━━━━━━━━━━ 사용량 ━━━━━━━━━━');
+    Logger.log('Prompt: ' + u.prompt_tokens + ' tokens / Completion: ' + u.completion_tokens + ' / Total: ' + u.total_tokens);
+    Logger.log('비용: ~$' + cost.toFixed(6) + ' (≈ ' + krw + '원)');
+  }
+}
+
+// _test_promptIteration 의 시트 로드 헬퍼
+// generateGuide 와 동일한 입력 형식으로 변환
+function _loadPromptInputFromSheet(unifiedId) {
+  const sheet = getSheet(SN.UNIFIED);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) throw new Error('통합정보 시트에 데이터 없음');
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+
+  let target = data[0];
+  if (unifiedId) {
+    const idCol = headers.indexOf('id');
+    if (idCol === -1) throw new Error('통합정보 시트에 id 컬럼 없음');
+    target = null;
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][idCol]) === String(unifiedId)) { target = data[i]; break; }
+    }
+    if (!target) throw new Error('id=' + unifiedId + ' 행 없음');
+  }
+
+  const row = {};
+  headers.forEach(function(h, i) { row[h] = target[i]; });
+
+  // 배열 컬럼 파싱
+  ['processes','problem_points','items','equipment','pkgtypes','electric'].forEach(function(k) {
+    if (typeof row[k] === 'string' && row[k]) {
+      try { row[k] = JSON.parse(row[k]); } catch(e) {}
+    }
+  });
+
+  // generateGuide 와 동일한 입력 형식
+  const items = (row.items || []).map(function(it) {
+    return { name: it.name, model: it.model, qty: it.qty };
+  });
+  return {
+    company: row.company || '',
+    ceo:     row.ceo || '',
+    pname:   row.pname || '',
+    processes:      row.processes || [],
+    problem_type:   row.problem_type || '',
+    problem_points: row.problem_points || [],
+    memo:    row.memo || '',
+    items:   items,
+    space_w: row.space_w || '',
+    space_h: row.space_h || ''
+  };
+}
+
 // ─────────────────────────────────────────────────────────────
 // GPT 응답 마크다운 → { part1, part2, ..., part5 }
 // ## PART N 헤더 단위로 split
