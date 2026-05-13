@@ -669,7 +669,17 @@ function sendGuideForRow(unifiedRow) {
     return { ok:false, error: err };
   }
 
-  // 멱등성 — 5분 이내 발송된 적 있으면 skip (Make 재시도 / 동시 폴링 안전망)
+  // 버전 기반 멱등성 — 이 가이드 버전이 이미 발송 완료된 경우 skip
+  // 시간창(5분)에 의존하지 않는 단일 진실: guide_sent_version === guide_version 이면 발송 완료
+  const curVer  = Number(unifiedRow.guide_version)      || 0;
+  const sentVer = Number(unifiedRow.guide_sent_version) || 0;
+  if (curVer > 0 && sentVer >= curVer && unifiedRow.guide_sent_status === GUIDE_STATUS.SENT) {
+    Logger.log('[sendGuideForRow] 버전 멱등성 skip — guide_version=' + curVer
+      + ' guide_sent_version=' + sentVer + ' id=' + id);
+    return { ok:true, skipped:'already sent for guide_version=' + curVer };
+  }
+
+  // 5분 이내 멱등성 — Make 재시도 / 동시 폴링 안전망 (버전 가드 보완)
   if (unifiedRow.guide_sent_status === GUIDE_STATUS.SENT && unifiedRow.guide_sent_at) {
     const sentAt = new Date(unifiedRow.guide_sent_at);
     const ageMs = Date.now() - sentAt.getTime();
@@ -677,6 +687,14 @@ function sendGuideForRow(unifiedRow) {
       Logger.log('[sendGuideForRow] 5분 이내 이미 발송됨, skip id=' + id);
       return { ok:true, skipped:'recently sent' };
     }
+  }
+
+  // TOCTOU 방어 — 발송 시도 전 guide_send_request 먼저 클리어
+  // 이 시점 이후 다른 트리거(syncFromNotion→pollAndSend)가 같은 행을 봐도 isRequested=false 로 skip
+  try {
+    updateUnifiedRowFields(id, { guide_send_request: false });
+  } catch (e) {
+    Logger.log('[sendGuideForRow] pre-clear 실패 (무시하고 계속): ' + e);
   }
 
   try {
@@ -716,10 +734,11 @@ function sendGuideForRow(unifiedRow) {
 
     // 4. 시트 업데이트 — 성공
     updateUnifiedRowFields(id, {
-      guide_sent_status:  GUIDE_STATUS.SENT,
-      guide_sent_at:      nowKst,
-      guide_send_request: false,
-      guide_error:        ''
+      guide_sent_status:   GUIDE_STATUS.SENT,
+      guide_sent_at:       nowKst,
+      guide_send_request:  false,
+      guide_sent_version:  curVer,   // 버전 멱등성 키 기록
+      guide_error:         ''
     });
     return { ok:true };
 
@@ -1010,4 +1029,41 @@ function _audit_notionGuideCheckbox() {
     + ', 노션페이지없음: ' + missing + ', 단순불일치: ' + diverge);
   Logger.log('=== _audit_notionGuideCheckbox 완료 ===');
   return { ok:true, checked:checked, mismatch:mismatch, missing:missing, diverge:diverge };
+}
+
+// Task 7 — sendGuideForRow 버전 멱등성 검증
+// 시트에 status=발송완료 && guide_sent_version === guide_version 인 행이 있어야 의미있게 동작
+// (Task 10 정리 후 백필되어 있어야 함)
+function _test_sendGuideForRow_versionIdempotency() {
+  const sheet = getSheet(SN.UNIFIED);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) { Logger.log('[SKIP] 시트 비어있음'); return; }
+  const headers   = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const statusCol  = headers.indexOf('guide_sent_status');
+  const verCol     = headers.indexOf('guide_version');
+  const sentVerCol = headers.indexOf('guide_sent_version');
+  const biznoCol   = headers.indexOf('bizno');
+  if (sentVerCol < 0) { Logger.log('[SKIP] guide_sent_version 컬럼 없음 — initSheets 필요'); return; }
+
+  const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  let target = null;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i][statusCol] === GUIDE_STATUS.SENT
+        && data[i][verCol] && data[i][sentVerCol]
+        && Number(data[i][verCol]) === Number(data[i][sentVerCol])) {
+      target = { bizno: data[i][biznoCol], v: Number(data[i][verCol]) };
+      break;
+    }
+  }
+  if (!target) {
+    Logger.log('[SKIP] guide_sent_version 백필된 행 없음 — Task 10 정리 후 재실행');
+    return;
+  }
+  const row = _loadUnifiedByBizno(target.bizno);
+  const r = sendGuideForRow(row);
+  if (r.ok && r.skipped && /version/.test(r.skipped)) {
+    Logger.log('[PASS] 같은 버전 재발송 skip: ' + r.skipped);
+  } else {
+    Logger.log('[FAIL] bizno=' + target.bizno + ' v=' + target.v + ' 결과=' + JSON.stringify(r));
+  }
 }
