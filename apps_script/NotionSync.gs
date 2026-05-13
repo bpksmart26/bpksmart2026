@@ -795,11 +795,18 @@ function _findNotionPageByBizno(bizno) {
   return results.length ? results[0] : null;
 }
 
-// 양방향 4필드의 현재 값 hash — _lastPushedHash 비교로 무한루프 방지
+// 양방향 필드의 현재 값 hash — _lastPushedHash 비교로 무한루프 방지
 // (syncFromNotion이 노션→시트 갱신 직후 다시 push 트리거하지 않도록)
+// boolean 컬럼은 'true'/'false' 로 정규화 — true 와 "true" 가 같은 해시를 내도록
 function _bidirectionalHash(unifiedRow) {
   const parts = BIDIRECTIONAL_FIELDS.map(function(f) {
-    return f + '=' + (unifiedRow[f] == null ? '' : String(unifiedRow[f]));
+    let v = unifiedRow[f];
+    if (UNIFIED_BOOL[f] === 'boolean') {
+      v = (v === true || String(v).toLowerCase() === 'true') ? 'true' : 'false';
+    } else {
+      v = (v == null ? '' : String(v));
+    }
+    return f + '=' + v;
   });
   return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, parts.join('|'))
     .map(function(b) { return ((b < 0 ? b + 256 : b)).toString(16); })
@@ -1492,6 +1499,23 @@ function _test_loadUnifiedByBizno_boolean() {
     Logger.log('[PASS] guide_send_request 가 boolean: ' + v + ' (bizno=' + firstBizno + ')');
   } else {
     Logger.log('[FAIL] guide_send_request 가 boolean 아님. 타입=' + typeof v + ', 값=' + JSON.stringify(v));
+  }
+}
+
+// Task 5 — _bidirectionalHash 가 boolean ↔ "true"/"false" 동등성을 보장하는지
+function _test_bidirectionalHash_boolEquivalence() {
+  const a = { status:'접수', manager:'', memo:'', quoteMemo:'', guide_send_request: true };
+  const b = { status:'접수', manager:'', memo:'', quoteMemo:'', guide_send_request: 'true' };
+  const c = { status:'접수', manager:'', memo:'', quoteMemo:'', guide_send_request: false };
+  const d = { status:'접수', manager:'', memo:'', quoteMemo:'', guide_send_request: 'false' };
+  const ha = _bidirectionalHash(a);
+  const hb = _bidirectionalHash(b);
+  const hc = _bidirectionalHash(c);
+  const hd = _bidirectionalHash(d);
+  if (ha === hb && hc === hd && ha !== hc) {
+    Logger.log('[PASS] hash(true)==hash("true"), hash(false)==hash("false"), true≠false');
+  } else {
+    Logger.log('[FAIL] ha=' + ha + ' hb=' + hb + ' hc=' + hc + ' hd=' + hd);
   }
 }
 
