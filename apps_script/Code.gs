@@ -50,7 +50,9 @@ const UNIFIED_COLS = [
   'pdfHash','equipPdfHash','version','isLatest',
   // 가이드 (8) — Phase 1 추가
   'guide_script','guide_generated_at','guide_html_url','guide_version',
-  'guide_send_request','guide_sent_at','guide_sent_status','guide_error'
+  'guide_send_request','guide_sent_at','guide_sent_status','guide_error',
+  // 가이드 멱등성 키 (Phase 2) — 마지막으로 발송 완료된 guide_version
+  'guide_sent_version'
 ];
 
 const UNIFIED_ARR = [
@@ -58,7 +60,7 @@ const UNIFIED_ARR = [
   'space_photos','product_photos','items','options'
 ];
 
-const UNIFIED_NUM = { total:'number', eqCount:'number', version:'number', guide_version:'number' };
+const UNIFIED_NUM = { total:'number', eqCount:'number', version:'number', guide_version:'number', guide_sent_version:'number' };
 
 const UNIFIED_BOOL = { guide_send_request:'boolean' };
 

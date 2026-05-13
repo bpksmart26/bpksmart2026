@@ -57,7 +57,8 @@ const NOTION_PROP_MAP = {
   guide_version:       { name: '가이드버전',         type: 'number' },
   guide_send_request:  { name: '가이드발송요청',     type: 'checkbox',  bidirectional: true },
   guide_sent_at:       { name: '가이드발송일',       type: 'date' },
-  guide_sent_status:   { name: '가이드발송상태',     type: 'select' }
+  guide_sent_status:   { name: '가이드발송상태',     type: 'select' },
+  guide_sent_version:  { name: '가이드발송버전',     type: 'number' }
 };
 
 // 양방향 필드 — 시트와 노션 둘 다 source 가능
