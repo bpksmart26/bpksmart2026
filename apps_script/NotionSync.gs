@@ -663,8 +663,21 @@ function _toNotionValue(type, val) {
           };
         })
       };
-    case 'checkbox':
-      return { checkbox: !!val };
+    case 'checkbox': {
+      // strict 매칭 — 자바스크립트 truthy 함정 차단
+      // (이전: !!"false" === true 가 되어 노션 체크박스가 OFF 되지 않던 버그)
+      let t;
+      if (val === true || val === false) {
+        t = val;
+      } else if (val == null || val === '') {
+        t = false;
+      } else if (typeof val === 'number') {
+        t = val !== 0;
+      } else {
+        t = String(val).toLowerCase() === 'true';
+      }
+      return { checkbox: t };
+    }
     default:
       return _emptyValueFor(type);
   }
@@ -1471,4 +1484,35 @@ function _test_loadUnifiedByBizno_boolean() {
   } else {
     Logger.log('[FAIL] guide_send_request 가 boolean 아님. 타입=' + typeof v + ', 값=' + JSON.stringify(v));
   }
+}
+
+// Task 2 — _toNotionValue('checkbox', val) 이 strict 매칭으로 동작하는지
+function _test_toNotionValue_checkbox() {
+  const cases = [
+    [true,    true,  'boolean true'],
+    [false,   false, 'boolean false'],
+    ['true',  true,  '문자열 "true"'],
+    ['false', false, '문자열 "false"'],   // 핵심 회귀 — 기존 버그
+    ['TRUE',  true,  '문자열 "TRUE"'],
+    ['FALSE', false, '문자열 "FALSE"'],
+    ['',      false, '빈 문자열'],
+    [null,    false, 'null'],
+    [undefined, false, 'undefined'],
+    [0,       false, '숫자 0'],
+    [1,       true,  '숫자 1']
+  ];
+  let pass = 0, fail = 0;
+  cases.forEach(function(c) {
+    const input = c[0], expected = c[1], desc = c[2];
+    const out = _toNotionValue('checkbox', input);
+    const ok = (out && out.checkbox === expected);
+    if (ok) {
+      pass++;
+      Logger.log('[PASS] ' + desc + ' → ' + expected);
+    } else {
+      fail++;
+      Logger.log('[FAIL] ' + desc + ' → got ' + JSON.stringify(out) + ', expected {checkbox:' + expected + '}');
+    }
+  });
+  Logger.log('TOTAL: ' + pass + ' pass, ' + fail + ' fail');
 }
