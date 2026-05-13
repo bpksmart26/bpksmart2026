@@ -875,7 +875,13 @@ function sendGuideNow(data) {
     }
   });
 
+  // 백업 경로(Make.com) 진입 추적 — 버전 멱등성은 sendGuideForRow 내부에서 자동 상속
+  Logger.log('[sendGuideNow] 진입 id=' + data.id + ' bizno=' + target.bizno
+    + ' status=' + target.guide_sent_status
+    + ' guide_version=' + target.guide_version
+    + ' guide_sent_version=' + target.guide_sent_version);
   const r = sendGuideForRow(target);
+  Logger.log('[sendGuideNow] 결과 id=' + data.id + ' → ' + JSON.stringify(r));
 
   // 발송 후 노션 push
   try {
