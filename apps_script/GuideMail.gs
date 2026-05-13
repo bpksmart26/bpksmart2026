@@ -809,6 +809,18 @@ function pollAndSend() {
         }
       });
 
+      // 행 단위 재확인 — getValues 캐시 이후 다른 트리거(sendGuideNow)가 직전에 발송했을 가능성
+      // sendGuideForRow 내부에도 동일 가드가 있지만, 호출 자체를 줄여 부하·로그 노이즈 감소
+      const fresh = _loadUnifiedByBizno(row.bizno);
+      if (fresh) {
+        const cv = Number(fresh.guide_version) || 0;
+        const sv = Number(fresh.guide_sent_version) || 0;
+        if (cv > 0 && sv >= cv && fresh.guide_sent_status === GUIDE_STATUS.SENT) {
+          Logger.log('[pollAndSend] skip id=' + row.id + ' — 직전 다른 경로에서 동일 버전 발송됨 (v=' + cv + ')');
+          continue;
+        }
+      }
+
       Logger.log('[pollAndSend] 발송 시작 id=' + row.id + ' company=' + row.company);
       const r = sendGuideForRow(row);
       processed++;
