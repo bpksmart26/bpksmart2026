@@ -1260,9 +1260,18 @@ function _applyNotionPageToSheet(page) {
   Object.keys(changes).forEach(function(f) {
     const colIdx = UNIFIED_COLS.indexOf(f);
     if (colIdx >= 0) {
-      let val = changes[f];
-      if (Array.isArray(val)) val = JSON.stringify(val);
-      unifiedSheet.getRange(targetRow, colIdx + 1).setValue(val == null ? '' : String(val));
+      const val = changes[f];
+      let writeVal;
+      if (UNIFIED_BOOL[f] === 'boolean') {
+        // boolean 컬럼은 항상 boolean 으로 — 시트 체크박스 셀 유지
+        // (이전: String(val) 로 변환되어 시트 셀이 "true"/"false" 문자열이 되던 문제)
+        writeVal = (val === true || String(val).toLowerCase() === 'true');
+      } else if (Array.isArray(val)) {
+        writeVal = JSON.stringify(val);
+      } else {
+        writeVal = (val == null ? '' : String(val));
+      }
+      unifiedSheet.getRange(targetRow, colIdx + 1).setValue(writeVal);
     }
   });
 
