@@ -1085,3 +1085,126 @@ function _test_sendGuideForRow_versionIdempotency() {
     Logger.log('[FAIL] bizno=' + target.bizno + ' v=' + target.v + ' 결과=' + JSON.stringify(r));
   }
 }
+
+// ─────────────────────────────────────────────────────────────
+// 운영 데이터 정리 — dryRun 기본 true (READ-ONLY 로 시뮬레이션)
+//
+// 변경 대상:
+//   (1) 시트 guide_send_request 가 "true"/"false" 문자열 → boolean 으로 정규화
+//   (2) status=발송완료 인데 guide_send_request truthy → false 로
+//   (3) status=발송완료 이고 guide_sent_version 비어있음 → 현재 guide_version 으로 백필
+//   (4) 위 변경이 있던 행에 한해 pushToNotion 으로 노션 동기화
+//
+// 절대 변경하지 않는 항목: guide_sent_status, guide_sent_at,
+//   guide_version, guide_html_url, 기타 신청·견적 필드.
+// 노션 페이지 archive·삭제 호출 없음.
+//
+// 실행:
+//   _repair_guideSendState_dryRun()  → 로그만, 시트·노션 무변경
+//   _repair_guideSendState_apply()   → 실제 변경 (충분히 검토 후)
+// ─────────────────────────────────────────────────────────────
+function _repair_guideSendState(dryRun) {
+  const isDryRun = (dryRun !== false);
+  Logger.log('=== _repair_guideSendState 시작 (dryRun=' + isDryRun + ') ===');
+
+  const sheet = getSheet(SN.UNIFIED);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) { Logger.log('시트 비어있음'); return { ok:true, touched:0 }; }
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const idCol      = headers.indexOf('id');
+  const biznoCol   = headers.indexOf('bizno');
+  const companyCol = headers.indexOf('company');
+  const reqCol     = headers.indexOf('guide_send_request');
+  const statusCol  = headers.indexOf('guide_sent_status');
+  const verCol     = headers.indexOf('guide_version');
+  const sentVerCol = headers.indexOf('guide_sent_version');
+
+  if (sentVerCol < 0) {
+    Logger.log('[ERROR] guide_sent_version 컬럼 없음 — initSheets() 실행 필요');
+    return { ok:false, reason:'no_sent_version_col' };
+  }
+
+  const data = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  let touched = 0;
+  const notionToPush = [];
+
+  for (let i = 0; i < data.length; i++) {
+    const r = data[i];
+    const rowNum  = i + 2;
+    const id      = r[idCol];
+    const bizno   = r[biznoCol];
+    const company = r[companyCol];
+    const reqRaw  = r[reqCol];
+    const status  = r[statusCol];
+    const ver     = Number(r[verCol]) || 0;
+    const sentVer = Number(r[sentVerCol]) || 0;
+    const isSent  = (status === GUIDE_STATUS.SENT);
+    const reqTruthy = (reqRaw === true || String(reqRaw).toLowerCase() === 'true');
+
+    const ops = [];
+
+    // (1) 문자열 "true"/"false" → boolean
+    if (typeof reqRaw === 'string' && reqRaw !== '') {
+      const target = (reqRaw.toLowerCase() === 'true');
+      ops.push({ col:'guide_send_request', from:reqRaw, to:target, reason:'string→boolean' });
+    }
+
+    // (2) status=발송완료 + request truthy → false
+    if (isSent && reqTruthy) {
+      const existing = ops.find(function(o){ return o.col === 'guide_send_request'; });
+      if (existing) {
+        existing.to = false;
+        existing.reason = 'sent_state_with_truthy_request';
+      } else {
+        ops.push({ col:'guide_send_request', from:reqRaw, to:false, reason:'sent_state_with_truthy_request' });
+      }
+    }
+
+    // (3) 발송완료 + sent_version 미백필 → 현재 ver 로 백필
+    if (isSent && sentVer === 0 && ver > 0) {
+      ops.push({ col:'guide_sent_version', from:r[sentVerCol], to:ver, reason:'backfill_sent_version' });
+    }
+
+    if (ops.length === 0) continue;
+
+    touched++;
+    Logger.log('--- row ' + rowNum + ' id=' + id + ' bizno=' + bizno + ' company=' + company + ' ---');
+    ops.forEach(function(o) {
+      Logger.log('  ' + o.col + ': ' + JSON.stringify(o.from) + ' → ' + JSON.stringify(o.to) + '  (' + o.reason + ')');
+    });
+
+    if (!isDryRun) {
+      ops.forEach(function(o) {
+        const colIdx = headers.indexOf(o.col);
+        if (colIdx < 0) return;
+        sheet.getRange(rowNum, colIdx + 1).setValue(o.to);
+      });
+      notionToPush.push(bizno);
+    }
+  }
+
+  Logger.log('변경 대상 행: ' + touched + (isDryRun ? '  (dry-run, 시트·노션 무변경)' : ''));
+
+  if (!isDryRun && notionToPush.length > 0) {
+    Logger.log('--- 노션 push 시작 (' + notionToPush.length + '건) ---');
+    notionToPush.forEach(function(bizno) {
+      try {
+        const fresh = _loadUnifiedByBizno(bizno);
+        if (fresh) {
+          const pr = pushToNotion(fresh);
+          Logger.log('  bizno=' + bizno + ' push → ' + JSON.stringify(pr));
+        }
+      } catch (e) {
+        Logger.log('  bizno=' + bizno + ' push 실패: ' + e);
+      }
+    });
+  }
+
+  Logger.log('=== _repair_guideSendState 완료 ===');
+  return { ok:true, touched:touched, dryRun:isDryRun };
+}
+
+// 편의 래퍼 — Apps Script 에디터에서 함수 드롭다운으로 직접 실행 가능
+function _repair_guideSendState_dryRun() { return _repair_guideSendState(true); }
+function _repair_guideSendState_apply()  { return _repair_guideSendState(false); }
