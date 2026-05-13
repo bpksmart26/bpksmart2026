@@ -1481,6 +1481,20 @@ function _peek_syncQueue() {
 // 통과: "[PASS] ..." / 실패: "[FAIL] ..." 로그
 // ─────────────────────────────────────────────────────────────
 
+// Task 12 — 노션 스키마 자동 동기화 트리거 (가이드발송버전 속성 추가 확인용)
+// 임의의 첫 행을 노션에 push 하여 ensureNotionSchema 가 신설 속성을 추가하게 함
+function _test_notionSchemaSync() {
+  const sheet = getSheet(SN.UNIFIED);
+  if (sheet.getLastRow() < 2) { Logger.log('[SKIP] 시트 비어있음'); return; }
+  const headers  = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const biznoCol = headers.indexOf('bizno');
+  const firstBizno = sheet.getRange(2, biznoCol + 1).getValue();
+  if (!firstBizno) { Logger.log('[SKIP] 첫 행 bizno 없음'); return; }
+  const row = _loadUnifiedByBizno(firstBizno);
+  const r = pushToNotion(row);
+  Logger.log('[INFO] _test_notionSchemaSync bizno=' + firstBizno + ' → ' + JSON.stringify(r));
+}
+
 // Task 1 — _loadUnifiedByBizno 가 UNIFIED_BOOL 컬럼을 boolean 으로 반환하는지
 function _test_loadUnifiedByBizno_boolean() {
   const sheet = getSheet(SN.UNIFIED);
