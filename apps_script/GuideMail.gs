@@ -866,3 +866,148 @@ function sendGuideNow(data) {
 
   return r;
 }
+
+// ─────────────────────────────────────────────────────────────
+// 진단 (READ-ONLY) — 가이드 발송 상태 불일치 검사
+// 절대로 시트·노션을 변경하지 않음. Logger.log 만 출력.
+// 실행: Apps Script 에디터에서 함수 선택 후 ▶️
+// 결과 확인: View > Logs (또는 Execution log)
+// ─────────────────────────────────────────────────────────────
+function _audit_guideSendState() {
+  Logger.log('=== _audit_guideSendState 시작 (READ-ONLY) ===');
+  const sheet = getSheet(SN.UNIFIED);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    Logger.log('통합정보 시트가 비어있음');
+    return { ok: true, rows: 0 };
+  }
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const data    = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+
+  const idCol      = headers.indexOf('id');
+  const companyCol = headers.indexOf('company');
+  const biznoCol   = headers.indexOf('bizno');
+  const reqCol     = headers.indexOf('guide_send_request');
+  const statusCol  = headers.indexOf('guide_sent_status');
+  const sentAtCol  = headers.indexOf('guide_sent_at');
+  const verCol     = headers.indexOf('guide_version');
+
+  const findings = {
+    sheetReqAsString:        [],
+    sentButRequestStillTrue: [],
+    sentNoSentAt:            [],
+    sentWithoutGuideVersion: [],
+    totalRows: 0
+  };
+
+  for (let i = 0; i < data.length; i++) {
+    findings.totalRows++;
+    const r       = data[i];
+    const id      = r[idCol];
+    const company = r[companyCol];
+    const bizno   = r[biznoCol];
+    const reqRaw  = r[reqCol];
+    const status  = r[statusCol];
+    const sentAt  = r[sentAtCol];
+    const ver     = r[verCol];
+
+    const reqIsString = (typeof reqRaw === 'string');
+    const reqTruthy   = (reqRaw === true || String(reqRaw).toLowerCase() === 'true');
+    const isSent     = (status === GUIDE_STATUS.SENT);
+
+    if (reqIsString && reqRaw !== '') {
+      findings.sheetReqAsString.push({ id:id, company:company, bizno:bizno, value:reqRaw });
+    }
+    if (isSent && reqTruthy) {
+      findings.sentButRequestStillTrue.push({ id:id, company:company, bizno:bizno, sentAt:sentAt, version:ver });
+    }
+    if (isSent && !sentAt) {
+      findings.sentNoSentAt.push({ id:id, company:company, bizno:bizno });
+    }
+    if (isSent && (ver === '' || ver == null)) {
+      findings.sentWithoutGuideVersion.push({ id:id, company:company, bizno:bizno });
+    }
+  }
+
+  Logger.log('총 행 수: ' + findings.totalRows);
+
+  Logger.log('--- (1) 시트 guide_send_request 가 문자열로 저장된 행: ' + findings.sheetReqAsString.length + '개 ---');
+  findings.sheetReqAsString.forEach(function(f){
+    Logger.log('  id=' + f.id + ' company=' + f.company + ' bizno=' + f.bizno + ' value=' + JSON.stringify(f.value));
+  });
+
+  Logger.log('--- (2) status=발송완료 인데 guide_send_request truthy 인 행: ' + findings.sentButRequestStillTrue.length + '개 ---');
+  findings.sentButRequestStillTrue.forEach(function(f){
+    Logger.log('  id=' + f.id + ' company=' + f.company + ' bizno=' + f.bizno + ' sentAt=' + f.sentAt + ' version=' + f.version);
+  });
+
+  Logger.log('--- (3) status=발송완료 인데 guide_sent_at 없음: ' + findings.sentNoSentAt.length + '개 ---');
+  findings.sentNoSentAt.forEach(function(f){
+    Logger.log('  id=' + f.id + ' company=' + f.company + ' bizno=' + f.bizno);
+  });
+
+  Logger.log('--- (4) status=발송완료 인데 guide_version 없음: ' + findings.sentWithoutGuideVersion.length + '개 ---');
+  findings.sentWithoutGuideVersion.forEach(function(f){
+    Logger.log('  id=' + f.id + ' company=' + f.company + ' bizno=' + f.bizno);
+  });
+
+  Logger.log('=== _audit_guideSendState 완료 ===');
+  return { ok: true, findings: findings };
+}
+
+// 노션 측 가이드발송요청 체크박스 상태 진단 (READ-ONLY)
+// 행마다 1회 노션 API 호출 — quota·시간 주의 (100행 ≒ 수십 초)
+function _audit_notionGuideCheckbox() {
+  Logger.log('=== _audit_notionGuideCheckbox 시작 (READ-ONLY) ===');
+  const sheet = getSheet(SN.UNIFIED);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) {
+    Logger.log('통합정보 시트가 비어있음');
+    return { ok:true };
+  }
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const data    = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+
+  const idCol     = headers.indexOf('id');
+  const biznoCol  = headers.indexOf('bizno');
+  const statusCol = headers.indexOf('guide_sent_status');
+  const reqCol    = headers.indexOf('guide_send_request');
+
+  let checked = 0, mismatch = 0, missing = 0, diverge = 0;
+  data.forEach(function(r) {
+    const bizno  = String(r[biznoCol] || '').trim();
+    if (!bizno) return;
+    const status = r[statusCol];
+    const sheetReq = r[reqCol];
+    const sheetTruthy = (sheetReq === true || String(sheetReq).toLowerCase() === 'true');
+
+    const page = _findNotionPageByBizno(bizno);
+    if (!page) {
+      missing++;
+      Logger.log('  [MISSING] id=' + r[idCol] + ' bizno=' + bizno + ' → 노션 페이지 없음');
+      return;
+    }
+    const prop = page.properties && page.properties['가이드발송요청'];
+    const notionVal = !!(prop && prop.checkbox);
+    checked++;
+    const isSent = (status === GUIDE_STATUS.SENT);
+
+    if (isSent && notionVal) {
+      mismatch++;
+      Logger.log('  [MISMATCH] id=' + r[idCol] + ' bizno=' + bizno
+        + ' status=발송완료, 시트=' + JSON.stringify(sheetReq)
+        + ', 노션=TRUE (정리 대상)');
+    } else if (notionVal !== sheetTruthy) {
+      diverge++;
+      Logger.log('  [DIVERGE] id=' + r[idCol] + ' bizno=' + bizno
+        + ' status=' + status
+        + ' 시트=' + JSON.stringify(sheetReq) + ' 노션=' + notionVal);
+    }
+  });
+  Logger.log('검사: ' + checked + ', 발송완료&노션TRUE: ' + mismatch
+    + ', 노션페이지없음: ' + missing + ', 단순불일치: ' + diverge);
+  Logger.log('=== _audit_notionGuideCheckbox 완료 ===');
+  return { ok:true, checked:checked, mismatch:mismatch, missing:missing, diverge:diverge };
+}
