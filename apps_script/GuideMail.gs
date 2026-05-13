@@ -1208,3 +1208,24 @@ function _repair_guideSendState(dryRun) {
 // 편의 래퍼 — Apps Script 에디터에서 함수 드롭다운으로 직접 실행 가능
 function _repair_guideSendState_dryRun() { return _repair_guideSendState(true); }
 function _repair_guideSendState_apply()  { return _repair_guideSendState(false); }
+
+// ─────────────────────────────────────────────────────────────
+// 회귀 방지 통합 테스트 — 한 번에 모든 단위 테스트 실행
+// 실행: Apps Script 에디터에서 _test_all_guideDuplicateFix 선택 후 ▶️
+// ─────────────────────────────────────────────────────────────
+function _test_all_guideDuplicateFix() {
+  Logger.log('### _test_all_guideDuplicateFix START ###');
+  try { _test_loadUnifiedByBizno_boolean(); }
+  catch(e) { Logger.log('[ERROR] _test_loadUnifiedByBizno_boolean: ' + e); }
+
+  try { _test_toNotionValue_checkbox(); }
+  catch(e) { Logger.log('[ERROR] _test_toNotionValue_checkbox: ' + e); }
+
+  try { _test_bidirectionalHash_boolEquivalence(); }
+  catch(e) { Logger.log('[ERROR] _test_bidirectionalHash_boolEquivalence: ' + e); }
+
+  try { _test_sendGuideForRow_versionIdempotency(); }
+  catch(e) { Logger.log('[ERROR] _test_sendGuideForRow_versionIdempotency: ' + e); }
+
+  Logger.log('### _test_all_guideDuplicateFix END ###');
+}
