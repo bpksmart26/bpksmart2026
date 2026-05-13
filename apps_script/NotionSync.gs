@@ -216,6 +216,16 @@ function _loadUnifiedByBizno(bizno) {
         } else if (UNIFIED_NUM[col] === 'number') {
           // 빈 셀은 빈 문자열로 보존 (0과 구분 — 노션에 null로 가도록)
           obj[col] = (v === '' || v == null) ? '' : (Number(v) || 0);
+        } else if (UNIFIED_BOOL[col] === 'boolean') {
+          // boolean 컬럼은 boolean 으로 보존 — 시트 체크박스 / 노션 checkbox sync 일관성
+          // (이전: String(v) 로 변환되어 "false" 가 _toNotionValue 의 !!val 에서 truthy 가 되던 버그)
+          if (v === true || v === false) {
+            obj[col] = v;
+          } else if (v == null || v === '') {
+            obj[col] = false;
+          } else {
+            obj[col] = String(v).toLowerCase() === 'true';
+          }
         } else {
           obj[col] = v == null ? '' : String(v);
         }
@@ -1433,5 +1443,32 @@ function _peek_syncQueue() {
       err: String(data[i][4]).slice(0, 100),
       created: data[i][5]
     }));
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 단위 테스트 — Apps Script 에디터에서 직접 실행 (▶️)
+// 통과: "[PASS] ..." / 실패: "[FAIL] ..." 로그
+// ─────────────────────────────────────────────────────────────
+
+// Task 1 — _loadUnifiedByBizno 가 UNIFIED_BOOL 컬럼을 boolean 으로 반환하는지
+function _test_loadUnifiedByBizno_boolean() {
+  const sheet = getSheet(SN.UNIFIED);
+  if (sheet.getLastRow() < 2) {
+    Logger.log('[SKIP] 통합정보 시트가 비어있음');
+    return;
+  }
+  const biznoIdx = UNIFIED_COLS.indexOf('bizno');
+  const firstBizno = sheet.getRange(2, biznoIdx + 1).getValue();
+  if (!firstBizno) {
+    Logger.log('[SKIP] 첫 행 bizno 없음');
+    return;
+  }
+  const row = _loadUnifiedByBizno(firstBizno);
+  const v = row.guide_send_request;
+  if (typeof v === 'boolean') {
+    Logger.log('[PASS] guide_send_request 가 boolean: ' + v + ' (bizno=' + firstBizno + ')');
+  } else {
+    Logger.log('[FAIL] guide_send_request 가 boolean 아님. 타입=' + typeof v + ', 값=' + JSON.stringify(v));
   }
 }
