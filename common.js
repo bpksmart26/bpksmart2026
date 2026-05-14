@@ -370,6 +370,12 @@ document.addEventListener('DOMContentLoaded', () => {
 // PDF 생성 진행 모달 — 단계별 progress + UI 차단
 // 견적서 발급/재발급 시 PDF 생성·다운로드·Drive 업로드 흐름에서 사용
 // ============================================================
+// 단계 사이 "정체감" 해소용 creep 애니메이션 — 한 단계가 길어도 바가 천천히 움직이며 살아있는 느낌
+let _pdfProgressCreepTimer = null;
+function _stopPdfProgressCreep() {
+  if (_pdfProgressCreepTimer) { clearInterval(_pdfProgressCreepTimer); _pdfProgressCreepTimer = null; }
+}
+
 function showPdfProgress(stage, totalStages, label) {
   let el = document.getElementById('pdf-progress-modal');
   if (!el) {
@@ -393,17 +399,39 @@ function showPdfProgress(stage, totalStages, label) {
   document.getElementById('pdf-progress-bar').style.background = 'linear-gradient(90deg,#1d4ed8,#3b82f6)';
   document.getElementById('pdf-progress-title').textContent = '견적서 생성 중';
 
-  const pct = Math.min(100, Math.max(0, Math.round((stage / totalStages) * 100)));
-  document.getElementById('pdf-progress-bar').style.width = pct + '%';
+  _stopPdfProgressCreep();
+  const total = Math.max(1, totalStages);
+  const pct = Math.min(100, Math.max(0, Math.round((stage / total) * 100)));
+  // 다음 단계까지의 85% 지점을 ceiling 으로 — 다음 단계 호출 시 자연스럽게 jump up
+  const nextPct = Math.min(100, Math.round(((stage + 1) / total) * 100));
+  const ceiling = pct + (nextPct - pct) * 0.85;
+
+  const bar = document.getElementById('pdf-progress-bar');
+  bar.style.width = pct + '%';
   document.getElementById('pdf-progress-label').textContent = label || '';
-  document.getElementById('pdf-progress-stage').textContent = `${stage} / ${totalStages} 단계 (${pct}%)`;
+  document.getElementById('pdf-progress-stage').textContent =
+    stage <= 0 ? '준비 중...' : `${stage} / ${total} 단계 (${pct}%)`;
   el.style.display = 'flex';
+
+  // creep 시작 (ease-out: 처음엔 빠르게, ceiling 가까울수록 느리게)
+  if (pct < 100 && ceiling > pct + 0.5) {
+    let cur = pct;
+    const tick = () => {
+      const gap = ceiling - cur;
+      if (gap <= 0.2) { _stopPdfProgressCreep(); return; }
+      cur += Math.max(0.12, gap * 0.04);
+      bar.style.width = cur + '%';
+    };
+    tick();  // 즉시 첫 tick — 바가 비어있어 보이지 않도록
+    _pdfProgressCreepTimer = setInterval(tick, 200);
+  }
 }
 
 // success === true: 완료 표시 후 1.5초 뒤 자동 닫기
 // success === false: 에러 표시 + 사용자 닫기 버튼 (수동 닫기)
 // success === undefined: 즉시 닫기
 function hidePdfProgress(success, message) {
+  _stopPdfProgressCreep();
   const el = document.getElementById('pdf-progress-modal');
   if (!el) return;
   if (success === true) {
