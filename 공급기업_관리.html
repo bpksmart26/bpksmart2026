@@ -1229,7 +1229,21 @@ async function syncQt(qt,isNew){
     _clearIdempotencyKey('saveQt');
   }
 }
-async function syncEq(eq){ saveEq(); if(API_ENABLED){ const r=await apiCall('upsertEq',eq); if(!r||!r.ok) showToast('서버 동기화 실패(로컬 저장됨)','warn'); } }
+async function syncEq(eq, isNew){
+  saveEq();
+  if(!API_ENABLED) return;
+  // P5-G11: 신규 장비는 서버 ID 충돌 가드 (_isNew 플래그)
+  const payload = isNew ? Object.assign({}, eq, { _isNew: true }) : eq;
+  const r = await apiCall('upsertEq', payload);
+  if(!r || !r.ok){ showToast('서버 동기화 실패(로컬 저장됨)','warn'); return; }
+  // 서버가 ID 충돌로 재발급한 경우 로컬 상태 동기화
+  if (isNew && r.id && r.id !== eq.id) {
+    const oldId = eq.id;
+    eq.id = r.id;
+    saveEq();
+    showToast(`장비 ID 충돌 해소: ${oldId} → ${r.id}`, 'warn');
+  }
+}
 async function syncDeleteEq(id){ saveEq(); if(API_ENABLED) await apiCall('deleteEq',{id}); }
 
 // 노션 즉시 동기화 — 사이드바 시스템 섹션의 '노션 동기화' 메뉴 클릭 시 호출
@@ -2129,7 +2143,8 @@ async function saveProd(){
     equipment.push(targetEq);
   }
   closeModal('modal-prod');
-  if(targetEq) await syncEq(targetEq); else saveEq();
+  // P5-G11: editProdId 가 있으면 수정(isNew=false), 없으면 신규(isNew=true)
+  if(targetEq) await syncEq(targetEq, !editProdId); else saveEq();
   renderProds();
   showToast('물품 정보가 저장되었습니다. 신청 화면에 즉시 반영됩니다.');
 }
