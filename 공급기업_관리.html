@@ -1211,7 +1211,11 @@ async function syncApp(app,isNew){ saveApps(); if(API_ENABLED){ const r=await ap
 async function syncQt(qt,isNew){
   saveQts();
   if(!API_ENABLED) return;
-  const r = await apiCall(isNew?'saveQt':'updateQt', qt);
+  // P2-G6: 새 견적 발급(saveQt)에만 idempotency 적용 — updateQt 는 id 기준 update 라 자체 idempotent
+  const payload = isNew
+    ? Object.assign({}, qt, { _idemKey: _ensureIdempotencyKey('saveQt') })
+    : qt;
+  const r = await apiCall(isNew?'saveQt':'updateQt', payload);
   if(!r || !r.ok){ showToast('서버 동기화 실패(로컬 저장됨)','warn'); return; }
   // saveQuoteWithVersion 이 권위적으로 id/version 을 결정 → 서버 응답으로 로컬 qt 갱신
   if (isNew) {
@@ -1221,6 +1225,8 @@ async function syncQt(qt,isNew){
     }
     if (r.version && Number(r.version) !== Number(qt.version)) qt.version = r.version;
     saveQts();
+    // P2-G6: 성공 후 키 삭제 → 다음 견적은 새 키
+    _clearIdempotencyKey('saveQt');
   }
 }
 async function syncEq(eq){ saveEq(); if(API_ENABLED){ const r=await apiCall('upsertEq',eq); if(!r||!r.ok) showToast('서버 동기화 실패(로컬 저장됨)','warn'); } }
@@ -2358,7 +2364,12 @@ function openQuoteModal(appId,qtId){
   itemsEl.innerHTML='';
   if(existQt?.items&&existQt.items.length){
     existQt.items.forEach(item=>{
-      const eq=equipment.find(e=>e.name===item.name||(item.model&&e.model===item.model));
+      // P2-G5: eqId 우선 매칭. 없으면 legacy name/model fallback.
+      const eq=equipment.find(e=>
+        (item.eqId && String(e.id)===String(item.eqId)) ||
+        e.name===item.name ||
+        (item.model && item.model!=='-' && e.model===item.model)
+      );
       itemsEl.insertAdjacentHTML('beforeend',_makeQItemRow(eq?.id,item.qty));
     });
   } else if(app?.equipment?.length){
@@ -2420,7 +2431,9 @@ function getQData(status){
     const eq=eqId?equipment.find(e=>String(e.id)===String(eqId)):null;
     if(!eq) return null;
     const qty=parseInt(row.querySelector('.q-qty')?.value||1)||1;
-    return {name:eq.name,model:eq.model||'',qty,unit:'SET',price:eq.price};
+    // P2-G5: eqId 영구 저장 — name/model 매칭에 의존하지 않게.
+    // genPDF·genEquipPDF·openQuoteModal 매칭에서 eqId 우선, name/model 은 legacy fallback
+    return {eqId:eq.id,name:eq.name,model:eq.model||'',qty,unit:'SET',price:eq.price};
   }).filter(Boolean);
   // 옵션 — 항목명이 비어있거나 단가/수량이 모두 0인 row 는 제외. 단위는 항상 'SET' 고정
   const options=[...document.querySelectorAll('#q-options .q-opt')].map(row=>{
