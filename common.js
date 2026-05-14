@@ -350,7 +350,12 @@ function groupQuotesByApp(quotes) {
 function quoteHash(q) {
   if (!q) return '';
   const items = (q.items || []).map(i => `${i.name}|${i.qty}|${i.price}`).join(';');
-  return [items, q.total||0, q.process||'', q.memo||''].join('::');
+  // P4-G9: options 도 hash 포함 — 옵션만 다른 v2 발급 시 PDF 재업로드 누락(stale 노출) 차단
+  const opts = (q.options || [])
+    .map(o => `${o.name||''}|${o.qty||0}|${o.price||0}`)
+    .sort()
+    .join(';');
+  return [items, opts, q.total||0, q.process||'', q.memo||''].join('::');
 }
 
 // ============================================================
