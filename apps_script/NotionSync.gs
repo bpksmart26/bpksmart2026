@@ -84,13 +84,18 @@ const QUOTE_FIELD_MAP = {
 // upsertUnified: 신청 + (선택)견적 → 통합정보 시트 upsert
 // 매칭 키: 사업자번호 (bizno) — 같은 사업자 재신청 시 row 교체
 // ─────────────────────────────────────────────────────────────
-function upsertUnified(app, quote) {
+function upsertUnified(app, quote, opts) {
   // P1-G2: bizno 매칭 + setValues 의 read-modify-write race 방지
   // doPost saveQt/updateQt hook (_safeSync 안) 에서 호출 — saveQuoteWithVersion lock 외부
   // 두 후크가 동시 진입하면 unified row 가 옛 데이터로 덮어쓰일 수 있음
-  const lock = LockService.getScriptLock();
-  try { lock.waitLock(10000); }
-  catch (e) { return { ok:false, reason:'lock_timeout', error:'unified 락 대기 timeout' }; }
+  // P3-G8: _reconcileAfterDelete 가 outer lock 들고 호출할 때 opts._alreadyLocked: true 로 nested 회피
+  const skipLock = !!(opts && opts._alreadyLocked);
+  let lock = null;
+  if (!skipLock) {
+    lock = LockService.getScriptLock();
+    try { lock.waitLock(10000); }
+    catch (e) { return { ok:false, reason:'lock_timeout', error:'unified 락 대기 timeout' }; }
+  }
   try {
     const sheet = getSheet(SN.UNIFIED);
     ensureHeader(sheet, UNIFIED_COLS);
@@ -122,8 +127,17 @@ function upsertUnified(app, quote) {
         if (quote[qk] !== undefined) merged[mk] = quote[qk];
       });
     } else {
-      // 견적 없음 (신규/재신청 동일) — 견적 컬럼 모두 빈 값으로 초기화
-      Object.values(QUOTE_FIELD_MAP).forEach(k => { merged[k] = ''; });
+      // P3-G8: 견적 인자 없음 (saveApp/updateApp 후크) — 기존 행 견적 컬럼 보존
+      // 이전 동작은 무조건 비웠음 → 재신청 시 latest 견적이 통합정보에서 사라지고 orphan 발생.
+      // 신규 행이면 어차피 빈 값으로 시작.
+      if (existingRow > 0) {
+        Object.values(QUOTE_FIELD_MAP).forEach(mk => {
+          const idx = UNIFIED_COLS.indexOf(mk);
+          if (idx >= 0) merged[mk] = data[existingRow - 1][idx];
+        });
+      } else {
+        Object.values(QUOTE_FIELD_MAP).forEach(mk => { merged[mk] = ''; });
+      }
     }
 
     const values = serializeRow(UNIFIED_COLS, UNIFIED_ARR, merged);
@@ -141,7 +155,7 @@ function upsertUnified(app, quote) {
       bizno: bizno
     };
   } finally {
-    try { lock.releaseLock(); } catch(e) {}
+    if (lock) { try { lock.releaseLock(); } catch(e) {} }
   }
 }
 
@@ -277,56 +291,65 @@ function _loadUnifiedByBizno(bizno) {
 function _reconcileAfterDelete(deletedIds) {
   if (!deletedIds || !deletedIds.length) return;
 
-  const apps = getRows(SN.APP, APP_COLS, APP_ARR);
-  const quotes = getRows(SN.QT, QT_COLS, QT_ARR, {total:'number',eqCount:'number'});
-  const unified = getSheet(SN.UNIFIED);
-  const data = unified.getDataRange().getValues();
-  const idIdx = UNIFIED_COLS.indexOf('id');
-  const biznoIdx = UNIFIED_COLS.indexOf('bizno');
+  // P3-G8: dedup 작업 중 동시 신청이 들어와 새 행이 함께 삭제되는 race 차단
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); }
+  catch (e) { Logger.log('[_reconcileAfterDelete] lock 대기 timeout — skip'); return; }
+  try {
+    const apps = getRows(SN.APP, APP_COLS, APP_ARR);
+    const quotes = getRows(SN.QT, QT_COLS, QT_ARR, {total:'number',eqCount:'number'});
+    const unified = getSheet(SN.UNIFIED);
+    const data = unified.getDataRange().getValues();
+    const idIdx = UNIFIED_COLS.indexOf('id');
+    const biznoIdx = UNIFIED_COLS.indexOf('bizno');
 
-  // 영향받은 사업자번호 수집 (통합정보에서 deletedIds와 매칭되는 row의 bizno)
-  const deletedIdSet = new Set(deletedIds.map(String));
-  const affectedBiznos = new Set();
-  for (let i = 1; i < data.length; i++) {
-    if (deletedIdSet.has(String(data[i][idIdx]))) {
-      const rowBizno = String(data[i][biznoIdx]);
-      if (rowBizno) affectedBiznos.add(rowBizno);
+    // 영향받은 사업자번호 수집 (통합정보에서 deletedIds와 매칭되는 row의 bizno)
+    const deletedIdSet = new Set(deletedIds.map(String));
+    const affectedBiznos = new Set();
+    for (let i = 1; i < data.length; i++) {
+      if (deletedIdSet.has(String(data[i][idIdx]))) {
+        const rowBizno = String(data[i][biznoIdx]);
+        if (rowBizno) affectedBiznos.add(rowBizno);
+      }
     }
-  }
 
-  affectedBiznos.forEach(bizno => {
-    // 잔여 신청 중 가장 최근 1건 (date 내림차순)
-    const remaining = apps.filter(a => String(a.bizno) === bizno)
-                          .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    affectedBiznos.forEach(bizno => {
+      // 잔여 신청 중 가장 최근 1건 (date 내림차순)
+      const remaining = apps.filter(a => String(a.bizno) === bizno)
+                            .sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
-    if (remaining.length === 0) {
-      // 통합정보 row 삭제 (아래에서 위로 순회해서 인덱스 안 깨지게)
-      const freshData = unified.getDataRange().getValues();
-      let deletedCount = 0;
-      for (let i = freshData.length - 1; i >= 1; i--) {
-        if (String(freshData[i][biznoIdx]) === bizno) {
-          unified.deleteRow(i + 1);
-          deletedCount++;
+      if (remaining.length === 0) {
+        // 통합정보 row 삭제 (아래에서 위로 순회해서 인덱스 안 깨지게)
+        const freshData = unified.getDataRange().getValues();
+        let deletedCount = 0;
+        for (let i = freshData.length - 1; i >= 1; i--) {
+          if (String(freshData[i][biznoIdx]) === bizno) {
+            unified.deleteRow(i + 1);
+            deletedCount++;
+          }
         }
+        if (deletedCount > 1) {
+          Logger.log('⚠️ 통합정보에 같은 bizno 중복 row ' + deletedCount + '건 발견 후 삭제 — 데이터 정합성 점검 필요 (bizno=' + bizno + ')');
+        } else if (deletedCount === 1) {
+          Logger.log('통합정보 row 삭제 (bizno=' + bizno + ')');
+        }
+        // 노션 페이지도 archive (휴지통 30일 보관)
+        try {
+          archiveNotionPage(bizno);
+        } catch (e) {
+          Logger.log('archiveNotionPage 실패 bizno=' + bizno + ': ' + e);
+        }
+      } else {
+        // 가장 최근 신청 + 그 신청의 isLatest=1 견적으로 갱신
+        const latestApp = remaining[0];
+        const latestQuote = quotes.filter(q => String(q.appId) === String(latestApp.id) && String(q.isLatest) === '1')[0];
+        // P3-G8: outer lock 보유 → nested lock 회피
+        upsertUnified(latestApp, latestQuote || null, { _alreadyLocked: true });
       }
-      if (deletedCount > 1) {
-        Logger.log('⚠️ 통합정보에 같은 bizno 중복 row ' + deletedCount + '건 발견 후 삭제 — 데이터 정합성 점검 필요 (bizno=' + bizno + ')');
-      } else if (deletedCount === 1) {
-        Logger.log('통합정보 row 삭제 (bizno=' + bizno + ')');
-      }
-      // 노션 페이지도 archive (휴지통 30일 보관)
-      try {
-        archiveNotionPage(bizno);
-      } catch (e) {
-        Logger.log('archiveNotionPage 실패 bizno=' + bizno + ': ' + e);
-      }
-    } else {
-      // 가장 최근 신청 + 그 신청의 isLatest=1 견적으로 갱신
-      const latestApp = remaining[0];
-      const latestQuote = quotes.filter(q => String(q.appId) === String(latestApp.id) && String(q.isLatest) === '1')[0];
-      upsertUnified(latestApp, latestQuote || null);
-    }
-  });
+    });
+  } finally {
+    try { lock.releaseLock(); } catch (e) {}
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
