@@ -1,0 +1,15 @@
+# clasp 가 push 할 때 제외할 파일 패턴 (minimatch glob)
+
+# .gs 가 우리 운영 컨벤션이므로 .js 는 자동 생성/임시 파일로 취급해 push 에서 제외
+**/*.js
+
+# mailer 는 별도 Apps Script 프로젝트(bpksmart26 계정) — 본 레포 추적용 사본만 보관
+# 메인 프로젝트(1G-nrb...) 에 push 되면 안 됨
+mailer/*
+mailer/**/*
+**/mailer/*
+**/mailer/**
+
+# 빌드/캐시
+**/node_modules/**
+**/.DS_Store
