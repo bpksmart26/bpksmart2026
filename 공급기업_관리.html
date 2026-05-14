@@ -2468,6 +2468,8 @@ async function saveQDraft(){
     syncQt(qt, isNew),
     _shouldUpgrade ? syncApp(app, false) : Promise.resolve()
   ]);
+  // P4-G10: 서버가 ID 충돌로 재발급한 경우 editQtId 도 동기화 — 후속 동작의 stale ID 참조 방지
+  if (isNew) editQtId = qt.id;
   showToast('견적서가 저장되었습니다.' + (_shouldUpgrade ? ' (신청 상태: 검토중)' : ''));
 }
 
