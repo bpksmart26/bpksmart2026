@@ -85,54 +85,64 @@ const QUOTE_FIELD_MAP = {
 // 매칭 키: 사업자번호 (bizno) — 같은 사업자 재신청 시 row 교체
 // ─────────────────────────────────────────────────────────────
 function upsertUnified(app, quote) {
-  const sheet = getSheet(SN.UNIFIED);
-  ensureHeader(sheet, UNIFIED_COLS);
+  // P1-G2: bizno 매칭 + setValues 의 read-modify-write race 방지
+  // doPost saveQt/updateQt hook (_safeSync 안) 에서 호출 — saveQuoteWithVersion lock 외부
+  // 두 후크가 동시 진입하면 unified row 가 옛 데이터로 덮어쓰일 수 있음
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); }
+  catch (e) { return { ok:false, reason:'lock_timeout', error:'unified 락 대기 timeout' }; }
+  try {
+    const sheet = getSheet(SN.UNIFIED);
+    ensureHeader(sheet, UNIFIED_COLS);
 
-  const bizno = String((app && app.bizno) || '').trim();
-  if (!bizno) {
-    Logger.log('upsertUnified: bizno 없음, skip — id=' + (app && app.id));
-    return { ok:false, reason:'no_bizno' };
-  }
+    const bizno = String((app && app.bizno) || '').trim();
+    if (!bizno) {
+      Logger.log('upsertUnified: bizno 없음, skip — id=' + (app && app.id));
+      return { ok:false, reason:'no_bizno' };
+    }
 
-  // 기존 행 검색 (bizno 매칭, -1 = 없음)
-  const data = sheet.getDataRange().getValues();
-  const biznoIdx = UNIFIED_COLS.indexOf('bizno');
-  let existingRow = -1;
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][biznoIdx]) === bizno) { existingRow = i + 1; break; }
-  }
+    // 기존 행 검색 (bizno 매칭, -1 = 없음)
+    const data = sheet.getDataRange().getValues();
+    const biznoIdx = UNIFIED_COLS.indexOf('bizno');
+    let existingRow = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][biznoIdx]) === bizno) { existingRow = i + 1; break; }
+    }
 
-  // merged row 구성
-  const merged = {};
-  // 신청 컬럼 복사 (UNIFIED_COLS에 있는 키만)
-  Object.keys(app || {}).forEach(k => {
-    if (UNIFIED_COLS.includes(k)) merged[k] = app[k];
-  });
-
-  if (quote) {
-    // 견적 → quote* prefix 매핑
-    Object.entries(QUOTE_FIELD_MAP).forEach(([qk, mk]) => {
-      if (quote[qk] !== undefined) merged[mk] = quote[qk];
+    // merged row 구성
+    const merged = {};
+    // 신청 컬럼 복사 (UNIFIED_COLS에 있는 키만)
+    Object.keys(app || {}).forEach(k => {
+      if (UNIFIED_COLS.includes(k)) merged[k] = app[k];
     });
-  } else {
-    // 견적 없음 (신규/재신청 동일) — 견적 컬럼 모두 빈 값으로 초기화
-    Object.values(QUOTE_FIELD_MAP).forEach(k => { merged[k] = ''; });
+
+    if (quote) {
+      // 견적 → quote* prefix 매핑
+      Object.entries(QUOTE_FIELD_MAP).forEach(([qk, mk]) => {
+        if (quote[qk] !== undefined) merged[mk] = quote[qk];
+      });
+    } else {
+      // 견적 없음 (신규/재신청 동일) — 견적 컬럼 모두 빈 값으로 초기화
+      Object.values(QUOTE_FIELD_MAP).forEach(k => { merged[k] = ''; });
+    }
+
+    const values = serializeRow(UNIFIED_COLS, UNIFIED_ARR, merged);
+    const targetRow = existingRow > 0 ? existingRow : sheet.getLastRow() + 1;
+    sheet.getRange(targetRow, 1, 1, values.length).setValues([values]);
+
+    // 날짜 컬럼 plain text 포맷 강제 (Sheets datetime 자동 변환 방지)
+    _enforceTextDate(sheet, targetRow, UNIFIED_COLS, merged);                  // 'date'
+    _enforceTextDate(sheet, targetRow, UNIFIED_COLS, merged, 'quoteDate');     // 'quoteDate'
+
+    return {
+      ok: true,
+      action: existingRow > 0 ? 'updated' : 'inserted',
+      row: targetRow,
+      bizno: bizno
+    };
+  } finally {
+    try { lock.releaseLock(); } catch(e) {}
   }
-
-  const values = serializeRow(UNIFIED_COLS, UNIFIED_ARR, merged);
-  const targetRow = existingRow > 0 ? existingRow : sheet.getLastRow() + 1;
-  sheet.getRange(targetRow, 1, 1, values.length).setValues([values]);
-
-  // 날짜 컬럼 plain text 포맷 강제 (Sheets datetime 자동 변환 방지)
-  _enforceTextDate(sheet, targetRow, UNIFIED_COLS, merged);                  // 'date'
-  _enforceTextDate(sheet, targetRow, UNIFIED_COLS, merged, 'quoteDate');     // 'quoteDate'
-
-  return {
-    ok: true,
-    action: existingRow > 0 ? 'updated' : 'inserted',
-    row: targetRow,
-    bizno: bizno
-  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -190,8 +200,30 @@ function _cleanup_test_unified() {
 
 // try-catch + Logger.log 묶음 — sync hook 표준 패턴
 // Task 11에서 pushToNotion 호출도 이 헬퍼로 추가됨
-function _safeSync(label, fn) {
-  try { fn(); } catch (e) { Logger.log(label + ' 실패: ' + e); }
+//
+// P1-G2:
+//  - queueOpt: { action, payload } 지정 시 실패 시 _sync_queue 에 적재
+//  - result: 응답 객체 — 실패 시 result.warnings 배열에 push 됨
+//    클라이언트가 result.ok 만 보지 않고 warnings 도 검사할 수 있게 함
+function _safeSync(label, fn, queueOpt, result) {
+  try {
+    fn();
+  } catch (e) {
+    Logger.log(label + ' 실패: ' + e);
+    var queued = false;
+    if (queueOpt && queueOpt.action) {
+      try {
+        _enqueueSync(queueOpt.action, queueOpt.payload || {}, e);
+        queued = true;
+      } catch (qe) {
+        Logger.log(label + ' 큐 적재 자체 실패: ' + qe);
+      }
+    }
+    if (result) {
+      result.warnings = result.warnings || [];
+      result.warnings.push({ label: label, error: String(e), queued: queued });
+    }
+  }
 }
 
 // 신청 시트에서 id로 신청 객체 1건 찾기
@@ -1412,6 +1444,18 @@ function _processSyncQueue() {
         case 'archiveNotionPage':
           // payload: { bizno }
           r = archiveNotionPage(payload.bizno);
+          break;
+        case 'upsertUnified':
+          // P1-G2: saveApp/saveQt 등의 _safeSync 가 실패 시 적재
+          // payload: { app?, quote?, appId? }
+          //   - app 직접 들고 있으면 그대로 (saveApp/updateApp 경로)
+          //   - app 없으면 appId 로 다시 찾음 (saveQt/updateQt 경로)
+          var app = payload.app || (payload.appId ? _findApp(payload.appId) : null);
+          if (!app) {
+            r = { ok: false, error: 'app not found (appId=' + (payload.appId || '') + ')' };
+          } else {
+            r = upsertUnified(app, payload.quote || null);
+          }
           break;
         default:
           Logger.log('알 수 없는 큐 action → 삭제: ' + action);

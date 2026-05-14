@@ -645,112 +645,128 @@ function _test_callMailer() {
 // 통합정보 1행 → 메일 발송 + 시트 업데이트
 // pollAndSend / sendGuideNow 둘 다 이 함수를 사용
 // ─────────────────────────────────────────────────────────────
-function sendGuideForRow(unifiedRow) {
-  const id = unifiedRow.id;
-  const nowKst = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm');
-
-  if (!unifiedRow.email) {
-    const err = '이메일 없음';
-    updateUnifiedRowFields(id, {
-      guide_sent_status: GUIDE_STATUS.FAILED,
-      guide_error: err,
-      guide_send_request: false
-    });
-    return { ok:false, error: err };
+function sendGuideForRow(unifiedRow, opts) {
+  // P1-G2: pollAndSend / sendGuideNow ≤100ms 동시 진입 시 중복 메일 발송 차단
+  // pollAndSend 는 자체 scriptLock 보유 → opts._alreadyLocked: true 로 nested lock 회피
+  // sendGuideNow / updateQt 후크 generateGuide 트리거 등은 옵션 미지정 → 함수 내부 lock 적용
+  const skipLock = !!(opts && opts._alreadyLocked);
+  let _guideLock = null;
+  if (!skipLock) {
+    _guideLock = LockService.getScriptLock();
+    try { _guideLock.waitLock(30000); }
+    catch (e) { return { ok:false, error:'발송 lock 대기 timeout — 잠시 후 다시 시도' }; }
   }
+  try {
+    const id = unifiedRow.id;
+    const nowKst = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm');
 
-  if (!unifiedRow.guide_html_url) {
-    const err = '가이드 HTML 없음 (generateGuide 미실행?)';
-    updateUnifiedRowFields(id, {
-      guide_sent_status: GUIDE_STATUS.FAILED,
-      guide_error: err,
-      guide_send_request: false
-    });
-    return { ok:false, error: err };
-  }
-
-  // 버전 기반 멱등성 — 이 가이드 버전이 이미 발송 완료된 경우 skip
-  // 시간창(5분)에 의존하지 않는 단일 진실: guide_sent_version === guide_version 이면 발송 완료
-  const curVer  = Number(unifiedRow.guide_version)      || 0;
-  const sentVer = Number(unifiedRow.guide_sent_version) || 0;
-  if (curVer > 0 && sentVer >= curVer && unifiedRow.guide_sent_status === GUIDE_STATUS.SENT) {
-    Logger.log('[sendGuideForRow] 버전 멱등성 skip — guide_version=' + curVer
-      + ' guide_sent_version=' + sentVer + ' id=' + id);
-    return { ok:true, skipped:'already sent for guide_version=' + curVer };
-  }
-
-  // 5분 이내 멱등성 — Make 재시도 / 동시 폴링 안전망 (버전 가드 보완)
-  if (unifiedRow.guide_sent_status === GUIDE_STATUS.SENT && unifiedRow.guide_sent_at) {
-    const sentAt = new Date(unifiedRow.guide_sent_at);
-    const ageMs = Date.now() - sentAt.getTime();
-    if (!isNaN(sentAt.getTime()) && ageMs >= 0 && ageMs < 5 * 60 * 1000) {
-      Logger.log('[sendGuideForRow] 5분 이내 이미 발송됨, skip id=' + id);
-      return { ok:true, skipped:'recently sent' };
+    if (!unifiedRow.email) {
+      const err = '이메일 없음';
+      updateUnifiedRowFields(id, {
+        guide_sent_status: GUIDE_STATUS.FAILED,
+        guide_error: err,
+        guide_send_request: false
+      });
+      return { ok:false, error: err };
     }
-  }
 
-  // TOCTOU 방어 — 발송 시도 전 guide_send_request 먼저 클리어
-  // 이 시점 이후 다른 트리거(syncFromNotion→pollAndSend)가 같은 행을 봐도 isRequested=false 로 skip
-  try {
-    updateUnifiedRowFields(id, { guide_send_request: false });
-  } catch (e) {
-    Logger.log('[sendGuideForRow] pre-clear 실패 (무시하고 계속): ' + e);
-  }
+    if (!unifiedRow.guide_html_url) {
+      const err = '가이드 HTML 없음 (generateGuide 미실행?)';
+      updateUnifiedRowFields(id, {
+        guide_sent_status: GUIDE_STATUS.FAILED,
+        guide_error: err,
+        guide_send_request: false
+      });
+      return { ok:false, error: err };
+    }
 
-  try {
-    // 1. HTML 본문 Drive에서 fetch
-    const htmlFileId = _extractDriveFileId(unifiedRow.guide_html_url);
-    const html = DriveApp.getFileById(htmlFileId).getBlob().getDataAsString('UTF-8');
+    // 버전 기반 멱등성 — 이 가이드 버전이 이미 발송 완료된 경우 skip
+    // 시간창(5분)에 의존하지 않는 단일 진실: guide_sent_version === guide_version 이면 발송 완료
+    // P1-G2 lock 보강 후: lock 안에서 시트 재조회로 멱등성 가드 강화
+    const freshRow = _loadUnifiedByBizno(unifiedRow.bizno) || unifiedRow;
+    const curVer  = Number(freshRow.guide_version)      || 0;
+    const sentVer = Number(freshRow.guide_sent_version) || 0;
+    if (curVer > 0 && sentVer >= curVer && freshRow.guide_sent_status === GUIDE_STATUS.SENT) {
+      Logger.log('[sendGuideForRow] 버전 멱등성 skip — guide_version=' + curVer
+        + ' guide_sent_version=' + sentVer + ' id=' + id);
+      return { ok:true, skipped:'already sent for guide_version=' + curVer };
+    }
 
-    // 2. 견적 PDF (있으면) 첨부
-    const attachments = [];
-    if (unifiedRow.pdfUrl) {
-      try {
-        const pdfFileId = _extractDriveFileId(unifiedRow.pdfUrl);
-        const pdfBlob = DriveApp.getFileById(pdfFileId).getBlob();
-        const pdfBytes = pdfBlob.getBytes();
-        if (pdfBytes.length > 20 * 1024 * 1024) {
-          Logger.log('[sendGuideForRow] PDF 20MB 초과, 첨부 생략 (크기:' + pdfBytes.length + ')');
-        } else {
-          attachments.push({
-            name: pdfBlob.getName() || '견적서.pdf',
-            base64: Utilities.base64Encode(pdfBytes),
-            mime: 'application/pdf'
-          });
-        }
-      } catch (e) {
-        Logger.log('[sendGuideForRow] PDF 첨부 실패 (메일은 계속): ' + e);
+    // 5분 이내 멱등성 — Make 재시도 / 동시 폴링 안전망 (버전 가드 보완)
+    if (freshRow.guide_sent_status === GUIDE_STATUS.SENT && freshRow.guide_sent_at) {
+      const sentAt = new Date(freshRow.guide_sent_at);
+      const ageMs = Date.now() - sentAt.getTime();
+      if (!isNaN(sentAt.getTime()) && ageMs >= 0 && ageMs < 5 * 60 * 1000) {
+        Logger.log('[sendGuideForRow] 5분 이내 이미 발송됨, skip id=' + id);
+        return { ok:true, skipped:'recently sent' };
       }
     }
 
-    // 3. Mailer 호출
-    const subject = '[BPK] 2026 스마트제조 지원사업 신청 가이드 — ' + (unifiedRow.company || '');
-    callMailer({
-      to: unifiedRow.email,
-      subject: subject,
-      html: html,
-      attachments: attachments
-    });
+    // TOCTOU 방어 — 발송 시도 전 guide_send_request 먼저 클리어
+    // 이 시점 이후 다른 트리거(syncFromNotion→pollAndSend)가 같은 행을 봐도 isRequested=false 로 skip
+    try {
+      updateUnifiedRowFields(id, { guide_send_request: false });
+    } catch (e) {
+      Logger.log('[sendGuideForRow] pre-clear 실패 (무시하고 계속): ' + e);
+    }
 
-    // 4. 시트 업데이트 — 성공
-    updateUnifiedRowFields(id, {
-      guide_sent_status:   GUIDE_STATUS.SENT,
-      guide_sent_at:       nowKst,
-      guide_send_request:  false,
-      guide_sent_version:  curVer,   // 버전 멱등성 키 기록
-      guide_error:         ''
-    });
-    return { ok:true };
+    try {
+      // 1. HTML 본문 Drive에서 fetch
+      const htmlFileId = _extractDriveFileId(unifiedRow.guide_html_url);
+      const html = DriveApp.getFileById(htmlFileId).getBlob().getDataAsString('UTF-8');
 
-  } catch (err) {
-    const errMsg = String(err && err.message || err);
-    Logger.log('[sendGuideForRow] 실패 id=' + id + ': ' + errMsg);
-    updateUnifiedRowFields(id, {
-      guide_sent_status:  GUIDE_STATUS.FAILED,
-      guide_error:        errMsg,
-      guide_send_request: false  // 실패해도 자동 재시도 안 함 — 사용자가 다시 체크해야 함
-    });
-    return { ok:false, error: errMsg };
+      // 2. 견적 PDF (있으면) 첨부
+      const attachments = [];
+      if (unifiedRow.pdfUrl) {
+        try {
+          const pdfFileId = _extractDriveFileId(unifiedRow.pdfUrl);
+          const pdfBlob = DriveApp.getFileById(pdfFileId).getBlob();
+          const pdfBytes = pdfBlob.getBytes();
+          if (pdfBytes.length > 20 * 1024 * 1024) {
+            Logger.log('[sendGuideForRow] PDF 20MB 초과, 첨부 생략 (크기:' + pdfBytes.length + ')');
+          } else {
+            attachments.push({
+              name: pdfBlob.getName() || '견적서.pdf',
+              base64: Utilities.base64Encode(pdfBytes),
+              mime: 'application/pdf'
+            });
+          }
+        } catch (e) {
+          Logger.log('[sendGuideForRow] PDF 첨부 실패 (메일은 계속): ' + e);
+        }
+      }
+
+      // 3. Mailer 호출
+      const subject = '[BPK] 2026 스마트제조 지원사업 신청 가이드 — ' + (unifiedRow.company || '');
+      callMailer({
+        to: unifiedRow.email,
+        subject: subject,
+        html: html,
+        attachments: attachments
+      });
+
+      // 4. 시트 업데이트 — 성공
+      updateUnifiedRowFields(id, {
+        guide_sent_status:   GUIDE_STATUS.SENT,
+        guide_sent_at:       nowKst,
+        guide_send_request:  false,
+        guide_sent_version:  curVer,   // 버전 멱등성 키 기록
+        guide_error:         ''
+      });
+      return { ok:true };
+
+    } catch (err) {
+      const errMsg = String(err && err.message || err);
+      Logger.log('[sendGuideForRow] 실패 id=' + id + ': ' + errMsg);
+      updateUnifiedRowFields(id, {
+        guide_sent_status:  GUIDE_STATUS.FAILED,
+        guide_error:        errMsg,
+        guide_send_request: false  // 실패해도 자동 재시도 안 함 — 사용자가 다시 체크해야 함
+      });
+      return { ok:false, error: errMsg };
+    }
+  } finally {
+    if (_guideLock) { try { _guideLock.releaseLock(); } catch (e) {} }
   }
 }
 
@@ -822,7 +838,8 @@ function pollAndSend() {
       }
 
       Logger.log('[pollAndSend] 발송 시작 id=' + row.id + ' company=' + row.company);
-      const r = sendGuideForRow(row);
+      // P1-G2: pollAndSend 가 이미 scriptLock 보유 → sendGuideForRow 내부 lock 재획득 회피
+      const r = sendGuideForRow(row, { _alreadyLocked: true });
       processed++;
       if (r.ok) succeeded++; else failed++;
 
