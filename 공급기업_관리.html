@@ -1188,8 +1188,35 @@ function saveEq(){ localStorage.setItem(SK.EQ,JSON.stringify(equipment)); }
 function saveApps(){ localStorage.setItem(SK.APP,JSON.stringify(applications)); }
 function saveQts(){ localStorage.setItem(SK.QT,JSON.stringify(quotes)); }
 
+// 견적 ID 생성 — 로컬 quotes 의 최고 번호 + 1.
+// (length+1 방식은 _backgroundRefresh 지연·삭제·다중 디바이스 상황에서 충돌 위험. 서버에도 이중 방어 있음)
+function _nextQuoteId(){
+  const PREFIX = 'QT-2026-';
+  const maxN = quotes.reduce((m, q) => {
+    const id = String(q && q.id || '');
+    if (!id.startsWith(PREFIX)) return m;
+    const n = parseInt(id.slice(PREFIX.length), 10);
+    return (Number.isFinite(n) && n > m) ? n : m;
+  }, 0);
+  return PREFIX + String(maxN + 1).padStart(3, '0');
+}
+
 async function syncApp(app,isNew){ saveApps(); if(API_ENABLED){ const r=await apiCall(isNew?'saveApp':'updateApp',app); if(!r||!r.ok) showToast('서버 동기화 실패(로컬 저장됨)','warn'); } }
-async function syncQt(qt,isNew){ saveQts(); if(API_ENABLED){ const r=await apiCall(isNew?'saveQt':'updateQt',qt); if(!r||!r.ok) showToast('서버 동기화 실패(로컬 저장됨)','warn'); } }
+async function syncQt(qt,isNew){
+  saveQts();
+  if(!API_ENABLED) return;
+  const r = await apiCall(isNew?'saveQt':'updateQt', qt);
+  if(!r || !r.ok){ showToast('서버 동기화 실패(로컬 저장됨)','warn'); return; }
+  // saveQuoteWithVersion 이 권위적으로 id/version 을 결정 → 서버 응답으로 로컬 qt 갱신
+  if (isNew) {
+    if (r.id && r.id !== qt.id) {
+      const oldId = qt.id; qt.id = r.id;
+      showToast(`견적 ID 충돌 해소: ${oldId} → ${r.id}`, 'warn');
+    }
+    if (r.version && Number(r.version) !== Number(qt.version)) qt.version = r.version;
+    saveQts();
+  }
+}
 async function syncEq(eq){ saveEq(); if(API_ENABLED){ const r=await apiCall('upsertEq',eq); if(!r||!r.ok) showToast('서버 동기화 실패(로컬 저장됨)','warn'); } }
 async function syncDeleteEq(id){ saveEq(); if(API_ENABLED) await apiCall('deleteEq',{id}); }
 
@@ -2408,7 +2435,7 @@ async function saveQDraft(){
   if(!d.company){alert('업체명을 입력해 주세요.');return;}
   let isNew=false,qt;
   if(editQtId){qt=quotes.find(x=>x.id===editQtId);if(qt) Object.assign(qt,d);}
-  else{const id='QT-2026-'+String(quotes.length+1).padStart(3,'0');qt={id,...d};quotes.push(qt);isNew=true;}
+  else{const id=_nextQuoteId();qt={id,...d};quotes.push(qt);isNew=true;}
 
   // 신청서 status 자동 갱신: 신청접수 → 검토중 (담당자가 견적서 작업 시작했음을 신청기업이 조회 시 확인 가능)
   const app = d.appId ? applications.find(x => x.id === d.appId) : null;
@@ -2439,8 +2466,12 @@ async function sendQuote(){
   const verNote = isReissue ? `\n\n이 신청에 대한 견적이 이미 ${maxV}건 있습니다.\n새 버전 v${newVersion} 으로 발급됩니다 (이전 버전은 보존).` : '';
   if(!confirm(`${d.company} - ${actionLabel} 진행하시겠습니까?\n확정 처리 후 PDF 가 생성·다운로드되며 Drive 에 저장됩니다.${verNote}`)) return;
 
+  // 모달 즉시 표시 — 이후 syncQt/PDF 생성 동안 사용자가 화면 이동하여 _backgroundRefresh 트리거하는 race 차단
+  showPdfProgress(0, 5, '견적서 저장 중...');
+
   // 항상 새 행 생성 — saveQuoteWithVersion 이 자동으로 isLatest 갱신
-  const id='QT-2026-'+String(quotes.length+1).padStart(3,'0');
+  // ID: 로컬 max+1. 서버에도 충돌 가드 있음 (saveQuoteWithVersion 이 확정 ID 응답)
+  const id = _nextQuoteId();
   const qt = { id, ...d, version: newVersion, isLatest: '1' };
   // 기존 isLatest 도 클라이언트 상태에서 미리 갱신 (즉시 UI 반영)
   existing.forEach(q => { q.isLatest = ''; });

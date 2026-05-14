@@ -482,9 +482,37 @@ function saveQuoteWithVersion(data) {
   try { lock.waitLock(10000); } catch (e) { return { ok:false, error:'동시 저장 충돌' }; }
   try {
     const all = sheet.getDataRange().getValues();
+    const idxId     = QT_COLS.indexOf('id');
     const idxAppId  = QT_COLS.indexOf('appId');
     const idxVer    = QT_COLS.indexOf('version');
     const idxLatest = QT_COLS.indexOf('isLatest');
+
+    // ── ID 충돌 가드 — 클라이언트가 보낸 id 가 이미 존재하면 시트 내 max+1 로 재발급
+    // (length+1 방식의 client id 가 _backgroundRefresh 지연·다중 디바이스에서 충돌 가능)
+    const existingIds = new Set();
+    let maxIdN = 0;
+    const ID_RE = /^(QT-\d+-)(\d+)$/;
+    let idPrefix = 'QT-2026-';
+    for (let i = 1; i < all.length; i++) {
+      const id = String(all[i][idxId] || '');
+      if (!id) continue;
+      existingIds.add(id);
+      const m = id.match(ID_RE);
+      if (m) {
+        idPrefix = m[1];
+        const n = parseInt(m[2], 10);
+        if (Number.isFinite(n) && n > maxIdN) maxIdN = n;
+      }
+    }
+    const clientId = String(data.id || '');
+    let idCollided = false;
+    if (!clientId || existingIds.has(clientId)) {
+      idCollided = !!clientId && existingIds.has(clientId);
+      data.id = idPrefix + String(maxIdN + 1).padStart(3, '0');
+      if (idCollided) Logger.log('[saveQuoteWithVersion] ID 충돌 → ' + clientId + ' → ' + data.id);
+    }
+
+    // 같은 appId 내 version / isLatest 정리
     let maxVer = 0;
     const previousLatestRows = [];
     for (let i = 1; i < all.length; i++) {
@@ -504,7 +532,89 @@ function saveQuoteWithVersion(data) {
     sheet.getRange(newRow, 1, 1, values.length).setValues([values]);
     _enforceTextDate(sheet, newRow, QT_COLS, data);
     SpreadsheetApp.flush();
-    return { ok:true, version: data.version, isLatest:'1' };
+    // 클라이언트가 최종 id/version 으로 로컬 상태 갱신할 수 있도록 응답에 포함
+    return { ok:true, id: data.id, version: data.version, isLatest:'1', idCollided: idCollided };
+  } finally {
+    try { lock.releaseLock(); } catch(e) {}
+  }
+}
+
+// ============================================================
+// 중복 견적 ID 진단·정리 — length+1 ID 충돌 픽스 잔재 데이터 클린업
+//
+// 사용:
+//   _repairDuplicateQuoteIds()      → dry-run. 변경 없이 보고서만 출력
+//   _repairDuplicateQuoteIds(true)  → 실제 정리. 중복된 ID 행 중 첫 행은
+//                                      유지하고 나머지 행에 새 고유 ID 부여
+//
+// 주의:
+//   - 첫 행(가장 위)을 원본으로 간주. 사용자 데이터가 이미 어느 쪽에
+//     모여있는지 모를 수 있으므로 dry-run 결과를 먼저 검토할 것
+//   - 행 자체는 삭제하지 않음 (id 만 변경) — PDF/Drive 링크와의 참조 유지
+// ============================================================
+function _repairDuplicateQuoteIds(applyChanges) {
+  const dryRun = !applyChanges;  // 기본 dry-run, true 전달 시 실제 적용
+  const sheet = getSheet(SN.QT);
+  const all = sheet.getDataRange().getValues();
+  if (all.length <= 1) { Logger.log('견적 데이터 없음'); return { ok:true, duplicates:[] }; }
+  const idxId = QT_COLS.indexOf('id');
+
+  // ID 별 행 인덱스 수집 + max 번호 파악
+  const byId = {};
+  let maxIdN = 0;
+  let idPrefix = 'QT-2026-';
+  const ID_RE = /^(QT-\d+-)(\d+)$/;
+  for (let i = 1; i < all.length; i++) {
+    const id = String(all[i][idxId] || '');
+    if (!id) continue;
+    if (!byId[id]) byId[id] = [];
+    byId[id].push(i + 1);  // 1-based row index
+    const m = id.match(ID_RE);
+    if (m) {
+      idPrefix = m[1];
+      const n = parseInt(m[2], 10);
+      if (Number.isFinite(n) && n > maxIdN) maxIdN = n;
+    }
+  }
+
+  const duplicates = Object.keys(byId).filter(id => byId[id].length > 1);
+  Logger.log('=== 견적 ID 중복 보고서 ===');
+  Logger.log('총 행: ' + (all.length - 1) + ' / 고유 ID: ' + Object.keys(byId).length + ' / 중복 ID: ' + duplicates.length);
+  if (!duplicates.length) {
+    Logger.log('중복 없음 ✓');
+    return { ok:true, duplicates:[] };
+  }
+
+  const changes = [];
+  duplicates.forEach(dupId => {
+    const rows = byId[dupId];
+    Logger.log('• ' + dupId + ' → 행 ' + rows.join(', '));
+    // 첫 행은 그대로, 나머지 행에 새 ID 발급
+    for (let k = 1; k < rows.length; k++) {
+      maxIdN++;
+      const newId = idPrefix + String(maxIdN).padStart(3, '0');
+      const rowIdx = rows[k];
+      const oldRow = all[rowIdx - 1];
+      const company = oldRow[QT_COLS.indexOf('company')] || '';
+      const appId   = oldRow[QT_COLS.indexOf('appId')]   || '';
+      Logger.log('    행 ' + rowIdx + ' (' + company + ' / ' + appId + ') → ' + newId);
+      changes.push({ row: rowIdx, oldId: dupId, newId: newId });
+    }
+  });
+
+  if (dryRun) {
+    Logger.log('(dry-run — 변경 없음. 실제 적용은 _repairDuplicateQuoteIds(false))');
+    return { ok:true, duplicates: duplicates, planned: changes };
+  }
+
+  // 실제 적용
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { ok:false, error:'동시 저장 충돌' }; }
+  try {
+    changes.forEach(c => sheet.getRange(c.row, idxId + 1).setValue(c.newId));
+    SpreadsheetApp.flush();
+    Logger.log('정리 완료 — ' + changes.length + '개 행 id 변경');
+    return { ok:true, repaired: changes.length, changes: changes };
   } finally {
     try { lock.releaseLock(); } catch(e) {}
   }
