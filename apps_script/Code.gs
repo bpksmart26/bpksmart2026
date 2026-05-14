@@ -969,61 +969,81 @@ function getOrCreateFolder(parent, name) {
 function getLatestQuotePdf(data) {
   const company = String(data.company || '').trim();
   const appId = String(data.appId || '').trim();
+  const bizno = String(data.bizno || '').trim();
+  const phone = String(data.phone || '').trim();
   if (!company) return { ok:false, error:'company 누락' };
 
-  // 폴더 탐색: BPK_Smart_Photos/견적서/{회사명}
+  // P3-G7: bizno + phone 인증 — 외부 무인증 IDOR 차단
+  // 정상 클라이언트(신청기업_장비신청.html)는 조회 단계에서 이미 bizno/phone 입력했으므로 그대로 동봉
+  if (!bizno || !phone) return { ok:false, error:'인증 정보 누락 (bizno, phone)' };
+  const apps = getRows(SN.APP, APP_COLS, APP_ARR);
+  const matchedApp = apps.find(function(a) {
+    if (String(a.bizno) !== bizno) return false;
+    if (String(a.phone) !== phone) return false;
+    if (appId && String(a.id) !== appId) return false;
+    return true;
+  });
+  if (!matchedApp) {
+    Logger.log('[getLatestQuotePdf] 인증 실패 — company=' + company + ' appId=' + appId + ' bizno=' + bizno);
+    return { ok:false, error:'인증 실패 — 회사/사업자번호/전화번호가 일치하지 않습니다' };
+  }
+
+  // P3-G7: 같은 bizno 의 모든 신청 ID — fallback 범위를 bizno 로 제한 (동명 회사 leak 차단)
+  const biznoAppIds = apps.filter(function(a) { return String(a.bizno) === bizno; }).map(function(a) { return String(a.id); });
+
+  // 폴더 탐색: BPK_Smart_Photos/견적서/
   const root = getOrCreateFolder(null, PHOTO_FOLDER);
   const subIter = root.getFoldersByName('견적서');
   if (!subIter.hasNext()) return { ok:false, error:'견적서 폴더 없음' };
   const sub = subIter.next();
   if (sub.isTrashed()) return { ok:false, error:'견적서 폴더가 휴지통에 있음' };
 
-  const companyName = sanitizeName(company);
-  const companyIter = sub.getFoldersByName(companyName);
-  if (!companyIter.hasNext()) return { ok:false, error:'회사 폴더 없음: ' + companyName };
+  // P3-G7: 새 폴더 패턴 '회사명_bizno숫자' 우선, legacy '회사명' fallback
+  const biznoDigits = bizno.replace(/[^0-9]/g, '');
+  const newFolderName = sanitizeName(company) + '_' + biznoDigits;
+  const legacyFolderName = sanitizeName(company);
   let companyFolder = null;
-  while (companyIter.hasNext()) {
-    const f = companyIter.next();
-    if (!f.isTrashed()) { companyFolder = f; break; }
+  const tryNames = [newFolderName, legacyFolderName];
+  for (let n = 0; n < tryNames.length && !companyFolder; n++) {
+    const it = sub.getFoldersByName(tryNames[n]);
+    while (it.hasNext()) {
+      const f = it.next();
+      if (!f.isTrashed()) { companyFolder = f; break; }
+    }
   }
-  if (!companyFolder) return { ok:false, error:'활성 회사 폴더 없음: ' + companyName };
+  if (!companyFolder) return { ok:false, error:'회사 폴더 없음: ' + newFolderName + ' / ' + legacyFolderName };
 
-  // 파일 리스트 수집 + 'BPK_견적서_' 필터 + appId 필터 (있으면)
-  const files = [];
+  // 파일 리스트 수집
+  const files = [];           // appId 정확 매칭
+  const biznoFiles = [];      // 같은 bizno 의 다른 appId 도 허용 (재신청 fallback)
+  const biznoAppIdSet = {};
+  biznoAppIds.forEach(function(id) { biznoAppIdSet[id] = true; });
   const fileIter = companyFolder.getFiles();
   while (fileIter.hasNext()) {
     const f = fileIter.next();
     if (f.isTrashed()) continue;
     const name = f.getName();
-    // 견적서만 (장비사양 제외)
     if (name.indexOf('BPK_견적서_') !== 0) continue;
-    if (appId && name.indexOf(appId) === -1) continue;
-    files.push({ id: f.getId(), name: name, createdAt: f.getDateCreated().getTime() });
+    const entry = { id: f.getId(), name: name, createdAt: f.getDateCreated().getTime() };
+    if (appId && name.indexOf(appId) !== -1) files.push(entry);
+    // bizno-scoped fallback: 파일명에 bizno 의 어느 appId 라도 포함
+    let belongsToBizno = false;
+    for (let k = 0; k < biznoAppIds.length; k++) {
+      if (name.indexOf(biznoAppIds[k]) !== -1) { belongsToBizno = true; break; }
+    }
+    if (belongsToBizno) biznoFiles.push(entry);
   }
 
-  // 회사 폴더 내 모든 견적서 PDF (appId 무관)
-  const allCompanyFiles = [];
-  const fileIter2 = companyFolder.getFiles();
-  while (fileIter2.hasNext()) {
-    const f = fileIter2.next();
-    if (f.isTrashed()) continue;
-    const name = f.getName();
-    if (name.indexOf('BPK_견적서_') !== 0) continue;
-    allCompanyFiles.push({ id: f.getId(), name: name, createdAt: f.getDateCreated().getTime() });
-  }
-
-  if (!files.length && !allCompanyFiles.length) return { ok:false, error:'견적서 PDF 파일 없음' };
+  if (!files.length && !biznoFiles.length) return { ok:false, error:'견적서 PDF 파일 없음' };
 
   // 정렬 (최신 우선)
-  files.sort((a, b) => b.createdAt - a.createdAt);
-  allCompanyFiles.sort((a, b) => b.createdAt - a.createdAt);
+  files.sort(function(a, b) { return b.createdAt - a.createdAt; });
+  biznoFiles.sort(function(a, b) { return b.createdAt - a.createdAt; });
 
-  // 보호 장치: 같은 회사 폴더에 더 최근 PDF 가 있으면 그것을 우선 사용
-  // (예: 고객이 변경 사항으로 재신청해 새 appId 가 생긴 경우 — 옛 appId 로 조회해도 최신 파일 받음)
-  const latest = (allCompanyFiles.length > 0 && (!files.length || allCompanyFiles[0].createdAt > files[0].createdAt))
-    ? allCompanyFiles[0]
+  // 보호 장치: 같은 bizno 안의 더 최근 PDF 가 있으면 그것 사용 (재신청 처리, 동명 회사 leak 없음)
+  const latest = (biznoFiles.length > 0 && (!files.length || biznoFiles[0].createdAt > files[0].createdAt))
+    ? biznoFiles[0]
     : files[0];
-  // 디버깅용 정보
   const fallbackUsed = files.length > 0 && latest.id !== files[0].id;
 
   const result = {
@@ -1091,7 +1111,13 @@ function _resolveTargetFolder(data) {
       return getOrCreateFolder(sub, sanitizeName(data.company || '미분류'));
     } else if (data.type === 'quote') {
       const sub = getOrCreateFolder(root, '견적서');
-      return getOrCreateFolder(sub, sanitizeName(data.company || '미분류'));
+      // P3-G7: bizno 있으면 '회사명_bizno숫자' 폴더 사용 (동명 회사 disambiguation)
+      // bizno 없으면 legacy '회사명' (구 호출자 호환)
+      const biznoDigits = String(data.bizno || '').replace(/[^0-9]/g, '');
+      const folderName = biznoDigits
+        ? sanitizeName(data.company || '미분류') + '_' + biznoDigits
+        : sanitizeName(data.company || '미분류');
+      return getOrCreateFolder(sub, folderName);
     }
     return root;
   } finally {

@@ -2405,7 +2405,12 @@ function _prefetchQuotePdf(app){
   if(_lookupPdfCache[app.id]) return;          // 이미 캐시
   if(_lookupPdfInflight[app.id]) return;        // 이미 fetch 중
   _lookupPdfInflight[app.id] = true;
-  apiCall('getLatestQuotePdf', { company: app.company, appId: app.id, includeBase64: true })
+  // P3-G7: bizno + phone 동봉 — 서버 IDOR 검증 통과용
+  apiCall('getLatestQuotePdf', {
+    company: app.company, appId: app.id,
+    bizno: app.bizno, phone: app.phone,
+    includeBase64: true
+  })
     .then(res => {
       if(res && res.ok && res.base64){
         _lookupPdfCache[app.id] = res;
@@ -2485,7 +2490,12 @@ async function downloadPDF(appId){
   if(API_ENABLED){
     showApiLoading('Drive에서 견적서 파일을 가져오는 중...');
     try{
-      const res = await apiCall('getLatestQuotePdf', { company: app.company, appId: appId, includeBase64: true });
+      // P3-G7: bizno + phone 동봉 — 서버 IDOR 검증 통과용
+      const res = await apiCall('getLatestQuotePdf', {
+        company: app.company, appId: appId,
+        bizno: app.bizno, phone: app.phone,
+        includeBase64: true
+      });
       hideApiLoading();
       if(res && res.ok && res.base64){
         _lookupPdfCache[appId] = res; // 다음 클릭 즉시 캐시
