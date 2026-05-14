@@ -1063,7 +1063,7 @@ input[type="range"]{flex:1;accent-color:var(--primary);cursor:pointer;height:6px
         <div id="total-wrap"></div>
         <div class="btn-row">
           <button class="btn btn-outline" onclick="goPage(3)">← 장비 재선택</button>
-          <button class="btn btn-success" onclick="goStep5()">✔ 신청 확정하기</button>
+          <button id="btn-submit-app" class="btn btn-success" onclick="goStep5()">✔ 신청 확정하기</button>
         </div>
       </div>
     </div>
@@ -2180,6 +2180,13 @@ function goStep4(){
 // 작은 저장 모달(1~3초)로 시각적 피드백.
 // ═══════════════════════════════════════════
 async function goStep5(){
+  // P5-G14: 더블 클릭 / 빠른 재탭 가드 + 버튼 즉시 disable
+  // (G6 멱등성 키가 서버측 중복 차단을 보장하지만, 클라이언트도 UX 보호 — 사용자가 두 번 누른 게 무시되지 않게 명시적 피드백)
+  if (window._submitInProgress) return;
+  window._submitInProgress = true;
+  const _submitBtn = document.getElementById('btn-submit-app');
+  if (_submitBtn) _submitBtn.disabled = true;
+  try {
   const _now=new Date();
   const _pad=n=>String(n).padStart(2,'0');
   const _yy=String(_now.getFullYear()).slice(-2);
@@ -2262,6 +2269,10 @@ async function goStep5(){
     _renderReceipt(`<small style="color:#059669;font-weight:700">✅ 접수 완료</small>`);
   }
   goPage(5);
+  } finally {
+    window._submitInProgress = false;
+    if (_submitBtn) _submitBtn.disabled = false;
+  }
 }
 
 // ═══════════════════════════════════════════
