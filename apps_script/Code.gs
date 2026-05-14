@@ -107,7 +107,7 @@ function doPost(e) {
       case 'auth':        result = checkAuth(data); break;
 
       case 'getEq':       result = { ok:true, data: getRows(SN.EQ,  EQ_COLS,  EQ_ARR,  {id:'number',price:'number'}) }; break;
-      case 'upsertEq':    result = upsertRow(SN.EQ,  EQ_COLS,  EQ_ARR,  data, 'id'); break;
+      case 'upsertEq':    result = upsertEqWithIdGuard(data); break;
       case 'deleteEq':    result = deleteRow(SN.EQ,  'id', data.id); break;
       case 'bulkSaveEq':  result = bulkSave(SN.EQ,   EQ_COLS,  EQ_ARR,  data); break;
 
@@ -323,11 +323,9 @@ function getRows(sheetName, cols, arrCols, numCols) {
         // P4-G9: 콤마 포함 숫자 안전 처리
         obj[col] = _parseMoney(val);
       } else if (val instanceof Date) {
-        // 기존에 Date 객체로 저장된 셀: 시간 정보 있으면 함께, 없으면 날짜만
-        const hasTime = val.getHours() !== 0 || val.getMinutes() !== 0 || val.getSeconds() !== 0;
-        obj[col] = hasTime
-          ? `${val.getFullYear()}-${pad(val.getMonth()+1)}-${pad(val.getDate())} ${pad(val.getHours())}:${pad(val.getMinutes())}`
-          : `${val.getFullYear()}-${pad(val.getMonth()+1)}-${pad(val.getDate())}`;
+        // P5-cleanup: 시간 portion 항상 포함 — 정확히 00:00:00 인 경우에도 정렬 일관성 유지
+        // (이전엔 자정이면 시간 정보 누락 → 같은 날 다른 시각의 행과 정렬이 어긋남)
+        obj[col] = `${val.getFullYear()}-${pad(val.getMonth()+1)}-${pad(val.getDate())} ${pad(val.getHours())}:${pad(val.getMinutes())}`;
       } else {
         obj[col] = (val !== undefined && val !== null) ? String(val) : '';
       }
@@ -423,6 +421,11 @@ function updateRow(sheetName, cols, arrCols, obj, keyCol) {
 // 일회성 마이그레이션: 견적 시트의 date 컬럼 전체를 text 포맷으로 + Date 객체를 'YYYY-MM-DD HH:MM' 문자열로 변환
 // Apps Script 에디터 함수 드롭다운에서 직접 실행 (▶️ 버튼)
 function migrateQtDateColumn() {
+  // P5-G13: 마이그레이션 도중 동시 신청·견적이 잘못 처리되는 race 차단
+  const _migLock = LockService.getDocumentLock();
+  try { _migLock.waitLock(30000); }
+  catch (e) { return Logger.log('migrateQtDateColumn lock 대기 timeout — 다른 작업 진행 중'); }
+  try {
   const sheet = getSheet(SN.QT);
   const dateIdx = QT_COLS.indexOf('date') + 1;  // 1-based
   if (dateIdx < 1) return Logger.log('date 컬럼 없음');
@@ -446,6 +449,9 @@ function migrateQtDateColumn() {
   });
   range.setValues(newValues);
   Logger.log('완료: ' + newValues.length + ' 행 정규화됨');
+  } finally {
+    try { _migLock.releaseLock(); } catch (e) {}
+  }
 }
 
 // ============================================================
@@ -453,6 +459,11 @@ function migrateQtDateColumn() {
 // 기존 신청 행 중 contentHash 가 비어있는 것을 채움
 // ============================================================
 function migrateAppContentHash() {
+  // P5-G13: 마이그레이션 도중 동시 신청 race 차단
+  const _migLock = LockService.getDocumentLock();
+  try { _migLock.waitLock(30000); }
+  catch (e) { return Logger.log('migrateAppContentHash lock 대기 timeout — 다른 작업 진행 중'); }
+  try {
   const sheet = getSheet(SN.APP);
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return Logger.log('데이터 행 없음');
@@ -475,6 +486,9 @@ function migrateAppContentHash() {
   }
   Logger.log('완료: ' + updated + ' 행에 contentHash 부여');
   return { updated };
+  } finally {
+    try { _migLock.releaseLock(); } catch (e) {}
+  }
 }
 
 // 신청 객체 → contentHash (16자 hex). 클라이언트 / 서버 모두 같은 알고리즘 사용
@@ -601,6 +615,21 @@ function saveQuoteWithVersion(data) {
 }
 
 // ============================================================
+// bizno 정규화 헬퍼 (P5-G12)
+// 비교/조인 키로 쓰이는 bizno 가 입력 형식 차이로 다른 키로 취급되는 문제 차단
+// "275-88-01197", "27588011 97", "27588011-97" 모두 같은 사업자번호로 매칭되도록.
+//
+// 정책: 숫자만 추출. 10자리면 NNN-NN-NNNNN 형식으로 재포맷. 아니면 숫자 그대로 반환.
+// ============================================================
+function _normalizeBizno(b) {
+  const digits = String(b || '').replace(/[^0-9]/g, '');
+  if (digits.length === 10) {
+    return digits.slice(0, 3) + '-' + digits.slice(3, 5) + '-' + digits.slice(5);
+  }
+  return digits;
+}
+
+// ============================================================
 // 금액 파싱 헬퍼 (P4-G9)
 // 콤마 포함 숫자 ("15,000,000") 자동 정규화 — Number() || 0 패턴의 silent zero 결함 해소.
 // 사용처: getRows / _loadUnifiedByBizno 의 numeric 컬럼 변환
@@ -644,13 +673,15 @@ function _idemCachePut(scope, key, value, ttlSec) {
 // ============================================================
 function saveAppWithIdGuard(data) {
   // P2-G6: idempotency cache hit → 이전 결과 즉시 반환 (5분 TTL)
-  // 같은 _idemKey 의 retry 는 시트 쓰기 한 번만 발생
   const idemKey = data && data._idemKey;
   const cached = _idemCacheGet('saveApp', idemKey);
   if (cached) {
     Logger.log('[saveAppWithIdGuard] idem cache hit: ' + idemKey + ' → id=' + cached.id);
     return cached;
   }
+
+  // P5-G12: bizno 정규화 — 입력 형식 차이로 조인 키 매칭 누락되는 문제 차단
+  if (data && data.bizno) data.bizno = _normalizeBizno(data.bizno);
 
   const sheet = getSheet(SN.APP);
   ensureHeader(sheet, APP_COLS);
@@ -718,6 +749,65 @@ function saveAppWithIdGuard(data) {
     const result = { ok:true, id: data.id, idCollided: idCollided };
     _idemCachePut('saveApp', idemKey, result, 300);
     return result;
+  } finally {
+    try { lock.releaseLock(); } catch(e) {}
+  }
+}
+
+// ============================================================
+// 장비 저장 + ID 충돌 가드 (P5-G11)
+// data._isNew=true: 신규 장비 — 클라이언트가 보낸 id 가 이미 시트에 있으면 max+1 로 재발급
+// data._isNew=false (또는 없음): 기존 장비 수정 — id 그대로 행 찾아 update
+// 클라이언트는 응답의 r.id 로 로컬 상태 갱신
+// ============================================================
+function upsertEqWithIdGuard(data) {
+  const sheet = getSheet(SN.EQ);
+  ensureHeader(sheet, EQ_COLS);
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { ok:false, error:'장비 저장 lock timeout' }; }
+  try {
+    const all = sheet.getDataRange().getValues();
+    const idIdx = EQ_COLS.indexOf('id');
+
+    // 기존 ID 수집
+    const existingIds = new Set();
+    let maxIdN = 0;
+    for (let i = 1; i < all.length; i++) {
+      const id = String(all[i][idIdx] || '');
+      if (!id) continue;
+      existingIds.add(id);
+      const n = parseInt(id, 10);
+      if (isFinite(n) && n > maxIdN) maxIdN = n;
+    }
+
+    const isNew = !!data._isNew;
+    const clientId = String(data.id || '');
+    let idCollided = false;
+
+    if (isNew) {
+      // 신규 — ID 충돌 검사 + 재발급
+      if (clientId === '' || existingIds.has(clientId)) {
+        idCollided = clientId !== '' && existingIds.has(clientId);
+        data.id = maxIdN + 1;
+        if (idCollided) Logger.log('[upsertEqWithIdGuard] ID 충돌 → ' + clientId + ' → ' + data.id);
+      }
+    }
+    // 수정 — id 그대로 사용
+
+    // 클라이언트 _isNew 플래그는 시트에 저장하지 않음 (serializeRow 는 EQ_COLS 기준이라 자동 제외)
+    // 행 찾기 (id 기준)
+    let targetRow = -1;
+    for (let i = 1; i < all.length; i++) {
+      if (String(all[i][idIdx]) === String(data.id)) { targetRow = i + 1; break; }
+    }
+    const action = targetRow > 0 ? 'updated' : 'inserted';
+    if (targetRow === -1) targetRow = sheet.getLastRow() + 1;
+
+    const values = serializeRow(EQ_COLS, EQ_ARR, data);
+    sheet.getRange(targetRow, 1, 1, values.length).setValues([values]);
+    SpreadsheetApp.flush();
+
+    return { ok:true, id: data.id, idCollided: idCollided, action: action };
   } finally {
     try { lock.releaseLock(); } catch(e) {}
   }
@@ -828,6 +918,11 @@ function deleteApps(data) {
 // 가장 최신만 isLatest=1, 나머지는 isLatest=''
 // ============================================================
 function migrateQuoteVersions() {
+  // P5-G13: 마이그레이션 도중 동시 견적 발급 race 차단
+  const _migLock = LockService.getDocumentLock();
+  try { _migLock.waitLock(30000); }
+  catch (e) { return Logger.log('migrateQuoteVersions lock 대기 timeout — 다른 작업 진행 중'); }
+  try {
   const sheet = getSheet(SN.QT);
   const data = sheet.getDataRange().getValues();
   if (data.length <= 1) return Logger.log('견적 데이터 없음');
@@ -867,6 +962,9 @@ function migrateQuoteVersions() {
 
   Logger.log('완료: ' + updated + ' 행에 version/isLatest 부여');
   return { updated };
+  } finally {
+    try { _migLock.releaseLock(); } catch (e) {}
+  }
 }
 
 function upsertRow(sheetName, cols, arrCols, obj, keyCol) {
@@ -1111,7 +1209,8 @@ function clearFolderCache() {
 }
 
 function sanitizeName(name) {
-  return String(name || '기타').replace(/[\\/:*?"<>|]/g, '_').trim() || '기타';
+  // P5-cleanup: trailing dot 제거 (Windows 호환성) + 기존 sanitize
+  return String(name || '기타').replace(/[\\/:*?"<>|]/g, '_').replace(/\.+$/, '').trim() || '기타';
 }
 
 // ============================================================
