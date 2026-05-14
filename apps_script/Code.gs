@@ -505,6 +505,15 @@ function _computeAppContentHash(obj) {
 // 없으면 → v1, isLatest=1
 // ============================================================
 function saveQuoteWithVersion(data) {
+  // P2-G6: idempotency cache hit → 이전 결과 즉시 반환 (5분 TTL)
+  // 견적 발급 더블 클릭 / 네트워크 실패 후 retry 시 중복 견적 행 생성 방지
+  const idemKey = data && data._idemKey;
+  const cached = _idemCacheGet('saveQt', idemKey);
+  if (cached) {
+    Logger.log('[saveQuoteWithVersion] idem cache hit: ' + idemKey + ' → id=' + cached.id + ' v=' + cached.version);
+    return cached;
+  }
+
   // P1-G4: appId 가 실재하는 신청을 가리키는지 사전 검증
   // 운영자가 client-side readonly 를 우회해 영수증번호를 수정하거나, 외부 호출로 임의 appId 를
   // 보낼 경우 orphan 견적 / 다른 신청자에 대한 견적 attach 를 차단
@@ -574,11 +583,33 @@ function saveQuoteWithVersion(data) {
     sheet.getRange(newRow, 1, 1, values.length).setValues([values]);
     _enforceTextDate(sheet, newRow, QT_COLS, data);
     SpreadsheetApp.flush();
-    // 클라이언트가 최종 id/version 으로 로컬 상태 갱신할 수 있도록 응답에 포함
-    return { ok:true, id: data.id, version: data.version, isLatest:'1', idCollided: idCollided };
+    // P2-G6: 멱등성 캐시 적재 + 클라이언트가 최종 id/version 으로 로컬 상태 갱신
+    const result = { ok:true, id: data.id, version: data.version, isLatest:'1', idCollided: idCollided };
+    _idemCachePut('saveQt', idemKey, result, 300);
+    return result;
   } finally {
     try { lock.releaseLock(); } catch(e) {}
   }
+}
+
+// ============================================================
+// 멱등성 캐시 헬퍼 (P2-G6)
+// CacheService.getScriptCache() = script project 단위 공유 캐시 (instance 간 공유 가능)
+// 같은 _idemKey 의 호출이 5분 안에 다시 들어오면 이전 결과를 그대로 반환
+// 더블 클릭 / 네트워크 실패 후 retry 시 중복 row · 중복 Drive 파일 방지
+// ============================================================
+function _idemCacheGet(scope, key) {
+  if (!key) return null;
+  try {
+    var v = CacheService.getScriptCache().get(scope + ':' + key);
+    return v ? JSON.parse(v) : null;
+  } catch (e) { return null; }
+}
+function _idemCachePut(scope, key, value, ttlSec) {
+  if (!key) return;
+  try {
+    CacheService.getScriptCache().put(scope + ':' + key, JSON.stringify(value), ttlSec || 300);
+  } catch (e) {}
 }
 
 // ============================================================
@@ -588,6 +619,15 @@ function saveQuoteWithVersion(data) {
 // 클라이언트는 응답의 r.id 로 영수증/로컬 상태를 갱신해야 함.
 // ============================================================
 function saveAppWithIdGuard(data) {
+  // P2-G6: idempotency cache hit → 이전 결과 즉시 반환 (5분 TTL)
+  // 같은 _idemKey 의 retry 는 시트 쓰기 한 번만 발생
+  const idemKey = data && data._idemKey;
+  const cached = _idemCacheGet('saveApp', idemKey);
+  if (cached) {
+    Logger.log('[saveAppWithIdGuard] idem cache hit: ' + idemKey + ' → id=' + cached.id);
+    return cached;
+  }
+
   const sheet = getSheet(SN.APP);
   ensureHeader(sheet, APP_COLS);
   const lock = LockService.getScriptLock();
@@ -650,7 +690,10 @@ function saveAppWithIdGuard(data) {
     _enforceTextDate(sheet, newRow, APP_COLS, data);
     SpreadsheetApp.flush();
 
-    return { ok:true, id: data.id, idCollided: idCollided };
+    // P2-G6: 멱등성 캐시 적재 → 같은 _idemKey 재시도 시 위 cache hit 으로 즉시 반환
+    const result = { ok:true, id: data.id, idCollided: idCollided };
+    _idemCachePut('saveApp', idemKey, result, 300);
+    return result;
   } finally {
     try { lock.releaseLock(); } catch(e) {}
   }
@@ -1057,6 +1100,15 @@ function _resolveTargetFolder(data) {
 }
 
 function uploadPhoto(data) {
+  // P2-G6: idempotency cache hit → 이전 Drive URL 즉시 반환 (5분 TTL)
+  // 같은 base64 재업로드 (retry / 더블 클릭) 시 Drive 중복 파일 생성 방지
+  const idemKey = data && data._idemKey;
+  const cached = _idemCacheGet('uploadPhoto', idemKey);
+  if (cached) {
+    Logger.log('[uploadPhoto] idem cache hit: ' + idemKey);
+    return cached;
+  }
+
   // 1) 폴더 결정 (lock 으로 직렬화 — 병렬 업로드 시 폴더 중복 생성 방지)
   const target = _resolveTargetFolder(data);
 
@@ -1067,7 +1119,9 @@ function uploadPhoto(data) {
   const file = target.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   const fileId = file.getId();
-  return { ok:true, url: 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w600' };
+  const result = { ok:true, url: 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w600' };
+  _idemCachePut('uploadPhoto', idemKey, result, 300);
+  return result;
 }
 
 // 1회성 마이그레이션: 같은 이름의 중복 회사 폴더를 첫 폴더로 통합 (Apps Script 에디터에서 직접 실행)

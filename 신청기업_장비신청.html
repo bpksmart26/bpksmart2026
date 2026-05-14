@@ -2224,9 +2224,12 @@ async function goStep5(){
   if(API_ENABLED){
     showSaveModal('💾 신청 정보를 저장하고 있습니다...');
     try {
-      const r = await apiCall('saveApp', app);
+      // P2-G6: idempotency 키 — 더블 클릭/네트워크 실패 후 재시도 시 동일 키 재사용
+      const _idemKey = _ensureIdempotencyKey('saveApp');
+      const r = await apiCall('saveApp', Object.assign({}, app, { _idemKey }));
       if (!r || !r.ok) {
         // P1-G1: 서버 lock timeout / 응답 실패 — 기존 fallback 과 동일 동작
+        // _idemKey 는 clear 안 함 → 재시도 시 같은 키로 서버가 멱등 처리
         hideSaveModal();
         const apps=JSON.parse(localStorage.getItem(SK.APP)||'[]');
         apps.push(app);
@@ -2239,6 +2242,8 @@ async function goStep5(){
           console.info('[saveApp] 접수번호 재발급:', app.id, '→', r.id);
           app.id = r.id;
         }
+        // P2-G6: 성공 후 키 삭제 → 다음 신청은 새 키
+        _clearIdempotencyKey('saveApp');
         hideSaveModal();
         _renderReceipt(`<small style="color:#059669;font-weight:700">✅ 접수 완료</small>`);
       }
