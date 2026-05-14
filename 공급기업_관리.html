@@ -2498,20 +2498,25 @@ async function genPDF(qtId){
     const jikin = await loadJikin();
 
     // 단계 2/5: 사진 로딩 — 장비 + 신청 제품 + 신청 설치장소 (모두 한 번에 병렬)
-    const eqPhotoUrls      = eqInfoList.map(eq => (eq.photos && eq.photos[0]) || null);
+    // 장비당 등록된 사진을 모두 PDF에 싣는다 — 평탄화하여 batch fetch 후 장비별로 재그룹
+    const eqPhotoUrlsPerEq = eqInfoList.map(eq => (eq.photos || []).filter(Boolean));
+    const flatEqUrls       = eqPhotoUrlsPerEq.flat();
     const productPhotoUrls = (a.product_photos || []).filter(Boolean);
     const spacePhotoUrls   = (a.space_photos   || []).filter(Boolean);
-    const totalPhotoCount = eqPhotoUrls.filter(Boolean).length + productPhotoUrls.length + spacePhotoUrls.length;
+    const totalPhotoCount = flatEqUrls.length + productPhotoUrls.length + spacePhotoUrls.length;
     showPdfProgress(2, 5, '사진 로딩 중... (' + totalPhotoCount + '장)');
-    const [eqPhotos, productPhotos, spacePhotos] = await Promise.all([
-      resolvePhotosBatch(eqPhotoUrls),
+    const [flatEqPhotos, productPhotos, spacePhotos] = await Promise.all([
+      resolvePhotosBatch(flatEqUrls),
       resolvePhotosBatch(productPhotoUrls),
       resolvePhotosBatch(spacePhotoUrls)
     ]);
+    // 평탄 결과를 장비별 배열로 재조립
+    let _eqIdx = 0;
+    const eqPhotos = eqPhotoUrlsPerEq.map(urls => urls.map(() => flatEqPhotos[_eqIdx++]));
 
-    // 누락 사진 사용자 확인
+    // 누락 사진 사용자 확인 (모든 장비 사진 + 신청 사진)
     const missing =
-      eqPhotos.filter((p,i)      => eqPhotoUrls[i]      && !p).length +
+      flatEqPhotos.filter((p,i)  => flatEqUrls[i]       && !p).length +
       productPhotos.filter((p,i) => productPhotoUrls[i] && !p).length +
       spacePhotos.filter((p,i)   => spacePhotoUrls[i]   && !p).length;
     if (missing > 0) {
@@ -2909,12 +2914,15 @@ async function genEquipPDF(qtId){
   try {
     showApiLoading('PDF 폰트 준비 중...');
     await ensurePdfFonts();
-    // 사진 사전조회
-    const photoUrls = eqList.map(eq => (eq.photos && eq.photos[0]) || null);
-    showApiLoading('사진 로딩 중... (' + photoUrls.filter(Boolean).length + '장)');
-    const photos = await resolvePhotosBatch(photoUrls);
+    // 사진 사전조회 — 장비별 등록된 모든 사진을 평탄화 batch fetch 후 재그룹
+    const photoUrlsPerEq = eqList.map(eq => (eq.photos || []).filter(Boolean));
+    const flatUrls       = photoUrlsPerEq.flat();
+    showApiLoading('사진 로딩 중... (' + flatUrls.length + '장)');
+    const flatPhotos = await resolvePhotosBatch(flatUrls);
+    let _eqIdx = 0;
+    const photos = photoUrlsPerEq.map(urls => urls.map(() => flatPhotos[_eqIdx++]));
     // 누락 confirm
-    const _missing = photos.filter((p,i) => photoUrls[i] && !p).length;
+    const _missing = flatPhotos.filter((p,i) => flatUrls[i] && !p).length;
     if (_missing > 0) {
       hideApiLoading();
       const ok = confirm(`사진 ${_missing}장이 로드되지 않았습니다.\n빈칸 상태로 PDF를 생성할까요?`);

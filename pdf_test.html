@@ -38,7 +38,8 @@
   <div class="row">
     <button id="btn-quote" onclick="testQuotePdf()">견적서 PDF 생성 (1 페이지)</button>
     <button id="btn-full" onclick="testFullPdf()" class="secondary">견적서 + 장비사양 (사진 없음)</button>
-    <button id="btn-photo-auto" onclick="testWithAutoPhoto()" class="secondary">견적서 + 장비사양 (Picsum 자동 사진)</button>
+    <button id="btn-photo-auto" onclick="testWithAutoPhoto()" class="secondary">견적서 + 장비사양 (Picsum 자동 사진 1장)</button>
+    <button id="btn-multi-auto" onclick="testWithMultiPhoto()" class="secondary">장비당 4장 그리드 검증 (Picsum)</button>
   </div>
   <div class="row">
     <input type="file" id="user-photo" accept="image/*" multiple style="font-size:13px"/>
@@ -201,7 +202,7 @@ function _fileAsBase64(file){
 
 async function testWithAutoPhoto(){
   _clearLog();
-  for(const id of ['btn-quote','btn-full','btn-photo-auto','btn-photo-user']) document.getElementById(id).disabled = true;
+  for(const id of ['btn-quote','btn-full','btn-photo-auto','btn-multi-auto','btn-photo-user']) document.getElementById(id).disabled = true;
   try {
     _log('1) 폰트 로드 중...', 'info');
     await ensurePdfFonts();
@@ -219,7 +220,37 @@ async function testWithAutoPhoto(){
     _log('✗ 실패: ' + e.message, 'err');
     console.error(e);
   } finally {
-    for(const id of ['btn-quote','btn-full','btn-photo-auto','btn-photo-user']) document.getElementById(id).disabled = false;
+    for(const id of ['btn-quote','btn-full','btn-photo-auto','btn-multi-auto','btn-photo-user']) document.getElementById(id).disabled = false;
+  }
+}
+
+// ── 장비당 4장 그리드(옵션 C) 검증 — 실제 운영의 다중사진 케이스 ──
+async function testWithMultiPhoto(){
+  _clearLog();
+  for(const id of ['btn-quote','btn-full','btn-photo-auto','btn-multi-auto','btn-photo-user']) document.getElementById(id).disabled = true;
+  try {
+    _log('1) 폰트 로드 중...', 'info');
+    await ensurePdfFonts();
+    _log('   폰트 로드 완료', 'ok');
+    // 장비1=4장(2x2 그리드), 장비2=5장(2x2 그리드 + 추가사진 페이지) — 둘 다 검증
+    const COUNTS = [4, 5];
+    const totalCount = COUNTS.reduce((s,n) => s+n, 0);
+    _log('2) Picsum 사진 ' + totalCount + '장 (장비1: 4장 / 장비2: 5장) fetch 중...', 'info');
+    const photos = await Promise.all(
+      COUNTS.map((n, eqI) => Promise.all(
+        Array.from({length:n}, (_, k) => _fetchAsBase64('https://picsum.photos/800/600?random=' + (Date.now() + eqI*100 + k)))
+      ))
+    );
+    _log('   사진 로드 완료', 'ok');
+    _log('3) PDF 빌드 중...', 'info');
+    const pdf = await buildQuotePdf(SAMPLE_QUOTE_BASE, SAMPLE_APP, SAMPLE_EQ_LIST, photos, null);
+    pdf.save('test_견적서_장비사양_다중사진.pdf');
+    _log('   ✓ 완료. 장비1 사양서 페이지에 2x2 그리드(4장), 장비2는 2x2 그리드(4장) + 추가사진 페이지(1장) 가 나오는지 확인해 주세요.', 'ok');
+  } catch(e) {
+    _log('✗ 실패: ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    for(const id of ['btn-quote','btn-full','btn-photo-auto','btn-multi-auto','btn-photo-user']) document.getElementById(id).disabled = false;
   }
 }
 

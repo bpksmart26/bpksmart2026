@@ -305,8 +305,13 @@ function drawFooter(pdf) {
 
 // ════════════════════════════════════════════════════════════════════
 // 장비 사양서 페이지 (eqInfoList 의 각 장비당 1페이지)
+//   photoDataUrls: string | string[] | null/undefined 모두 허용
+//     - 1장 → full-width hero (기존 디자인 보존)
+//     - 2~4장 → 2x2 그리드 + 스펙표
+//     - 5장 이상 → 첫 4장만 사양서 페이지에 그리고, 나머지는 호출자가
+//                  drawEquipExtraPhotoPages 로 추가 페이지에 그림
 // ════════════════════════════════════════════════════════════════════
-function drawEquipPage(pdf, eq, photoDataUrl, qHeader) {
+function drawEquipPage(pdf, eq, photoDataUrls, qHeader) {
   // 헤더 — 좌측 (장비명 + 모델), 우측 (회사 정보)
   pdf.setFont('NanumGothic','normal'); pdf.setFontSize(7.5); _setText(pdf, COLOR_TEXT_MUTED);
   pdf.text('장비 사양서 · ' + (qHeader.id||'') + ' · ' + (qHeader.company||''), M_LEFT, M_TOP + 2);
@@ -324,17 +329,39 @@ function drawEquipPage(pdf, eq, photoDataUrl, qHeader) {
   _setDraw(pdf, [29,78,216]); pdf.setLineWidth(1.2);
   pdf.line(M_LEFT, M_TOP + 22, PAGE_W - M_RIGHT, M_TOP + 22);
 
-  // 사진 영역 — 있으면 큰 박스로 첨부, 없으면 빈 영역
+  // 사진 영역 — 입력 정규화 (단일/배열 둘 다 허용)
   let y = M_TOP + 28;
-  const photoH = 95;
-  if (photoDataUrl) {
+  const photos = Array.isArray(photoDataUrls)
+    ? photoDataUrls.filter(Boolean)
+    : (photoDataUrls ? [photoDataUrls] : []);
+
+  if (photos.length === 1) {
+    // 1장 — 기존 full-width hero (95mm) 보존
+    const heroH = 95;
     try {
-      pdf.addImage(photoDataUrl, 'JPEG', M_LEFT, y, CONTENT_W, photoH);
+      pdf.addImage(photos[0], 'JPEG', M_LEFT, y, CONTENT_W, heroH);
     } catch(e) {
-      try { pdf.addImage(photoDataUrl, 'PNG', M_LEFT, y, CONTENT_W, photoH); } catch(e2){}
+      try { pdf.addImage(photos[0], 'PNG', M_LEFT, y, CONTENT_W, heroH); } catch(e2){}
     }
-    y += photoH + 14;   // 6 → 14 (사진과 사양 타이틀 간격 확보)
+    y += heroH + 14;   // 사진 ↔ 사양 타이틀 간격
+  } else if (photos.length >= 2) {
+    // 2~4장 — 사양서 페이지에 2x2 그리드. 5장 이상이면 첫 4장만 여기.
+    const gridPhotos = photos.slice(0, 4);
+    const cellW = (CONTENT_W - 6) / 2;     // ≈ 84mm
+    const cellH = 63;                       // 4:3 ≈ 63mm
+    const gap   = 6;
+    const rows  = Math.ceil(gridPhotos.length / 2);
+    for (let i = 0; i < gridPhotos.length; i++) {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const px  = M_LEFT + col * (cellW + gap);
+      const py  = y + row * (cellH + gap);
+      try { pdf.addImage(gridPhotos[i], 'JPEG', px, py, cellW, cellH, undefined, 'FAST'); }
+      catch(e) { try { pdf.addImage(gridPhotos[i], 'PNG', px, py, cellW, cellH, undefined, 'FAST'); } catch(e2){} }
+    }
+    y += rows * cellH + (rows - 1) * gap + 14;
   }
+  // 사진 0장이면 사진 영역 생략 — 사양표를 바로 그림
 
   // 사양 표 — 글머리 동그라미 + 라벨
   pdf.setFont('NanumGothic','bold'); pdf.setFontSize(10.5); _setText(pdf, [29,78,216]);
@@ -371,6 +398,57 @@ function drawEquipPage(pdf, eq, photoDataUrl, qHeader) {
   drawFooter(pdf);
 }
 
+// ── 장비 추가 사진 페이지 (5장 이상일 때, 5~N 번째 사진을 4장씩 페이지에) ──
+function drawEquipExtraPhotoPages(pdf, eq, photos, qHeader) {
+  const PER_PAGE = 4;
+  const totalPages = Math.ceil(photos.length / PER_PAGE);
+  for (let p = 0; p < totalPages; p++) {
+    pdf.addPage();
+    const chunk = photos.slice(p * PER_PAGE, (p + 1) * PER_PAGE);
+    _drawEquipExtraPhotoPage(pdf, eq, chunk, qHeader, p + 1, totalPages);
+  }
+}
+
+function _drawEquipExtraPhotoPage(pdf, eq, chunk, qHeader, pageNum, totalPages) {
+  // 헤더 — 사양서 페이지와 동일 양식이되 "(추가 사진 N/N)" 라벨
+  pdf.setFont('NanumGothic','normal'); pdf.setFontSize(7.5); _setText(pdf, COLOR_TEXT_MUTED);
+  pdf.text('장비 사양서 · ' + (qHeader.id||'') + ' · ' + (qHeader.company||''), M_LEFT, M_TOP + 2);
+  pdf.setFont('NanumGothic','bold'); pdf.setFontSize(16); _setText(pdf, COLOR_TEXT_DARK);
+  const label = (eq.name || '-') + ` (추가 사진 ${pageNum}/${totalPages})`;
+  pdf.text(label, M_LEFT, M_TOP + 10);
+  if (eq.model && eq.model !== '-') {
+    pdf.setFont('NanumGothic','normal'); pdf.setFontSize(10); _setText(pdf, [55,65,81]);
+    pdf.text(eq.model, M_LEFT, M_TOP + 16);
+  }
+  pdf.setFont('NanumGothic','normal'); pdf.setFontSize(8); _setText(pdf, [148,163,184]);
+  pdf.text('(주)비피케이', PAGE_W - M_RIGHT, M_TOP + 6, { align: 'right' });
+  pdf.text('TEL (053)716-7600', PAGE_W - M_RIGHT, M_TOP + 11, { align: 'right' });
+  _setDraw(pdf, [29,78,216]); pdf.setLineWidth(1.2);
+  pdf.line(M_LEFT, M_TOP + 22, PAGE_W - M_RIGHT, M_TOP + 22);
+
+  // 2x2 grid — 신청사진 페이지와 동일한 규격 (84×63mm)
+  const photoW = (CONTENT_W - 6) / 2;
+  const photoH = photoW * 0.75;
+  const gap    = 6;
+  const startY = M_TOP + 28;
+  for (let i = 0; i < chunk.length; i++) {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = M_LEFT + col * (photoW + gap);
+    const y = startY + row * (photoH + gap);
+    try { pdf.addImage(chunk[i], 'JPEG', x, y, photoW, photoH, undefined, 'FAST'); }
+    catch(e) { try { pdf.addImage(chunk[i], 'PNG', x, y, photoW, photoH, undefined, 'FAST'); } catch(e2){} }
+  }
+  drawFooter(pdf);
+}
+
+// ── 헬퍼: 장비별 사진 배열 정규화 (단일 dataUrl도 허용해 하위호환 유지) ──
+function _normalizeEqPhotos(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (value) return [value];
+  return [];
+}
+
 // ════════════════════════════════════════════════════════════════════
 // 메인 진입점 — 견적서 + 장비사양서 + 신청 사진 모든 페이지 빌드
 // ════════════════════════════════════════════════════════════════════
@@ -383,10 +461,13 @@ async function buildQuotePdf(q, a, eqInfoList, eqPhotos, jikinDataUrl, productPh
   // 1페이지: 견적서
   drawQuotePage(pdf, q, a || {}, jikinDataUrl);
 
-  // 2페이지~: 장비별 사양서
+  // 2페이지~: 장비별 사양서 (+ 사진 5장 이상이면 추가 페이지)
   (eqInfoList || []).forEach((eq, i) => {
     pdf.addPage();
-    drawEquipPage(pdf, eq, eqPhotos ? eqPhotos[i] : null, { id: q.id, company: q.company });
+    const allPhotos = _normalizeEqPhotos(eqPhotos ? eqPhotos[i] : null);
+    drawEquipPage(pdf, eq, allPhotos, { id: q.id, company: q.company });
+    const extra = allPhotos.slice(4);
+    if (extra.length) drawEquipExtraPhotoPages(pdf, eq, extra, { id: q.id, company: q.company });
   });
 
   // 신청 사진 페이지 — 제품 사진 / 설치 장소 사진 (있을 때만, 페이지당 4장 grid)
@@ -448,6 +529,7 @@ function _drawSubmissionPhotoPage(pdf, chunk, title, qHeader, pageNum, totalPage
 }
 
 // ── 장비사양서 단독 PDF (genEquipPDF 용) ──
+//   photos: per-equipment 사진 배열의 배열 (단일 dataUrl도 하위호환 허용)
 async function buildEquipPdf(q, eqList, photos) {
   await ensurePdfFonts();
   const { jsPDF } = window.jspdf;
@@ -455,7 +537,10 @@ async function buildEquipPdf(q, eqList, photos) {
   registerPdfFonts(pdf);
   (eqList || []).forEach((eq, i) => {
     if (i > 0) pdf.addPage();
-    drawEquipPage(pdf, eq, photos ? photos[i] : null, { id: q.id, company: q.company });
+    const allPhotos = _normalizeEqPhotos(photos ? photos[i] : null);
+    drawEquipPage(pdf, eq, allPhotos, { id: q.id, company: q.company });
+    const extra = allPhotos.slice(4);
+    if (extra.length) drawEquipExtraPhotoPages(pdf, eq, extra, { id: q.id, company: q.company });
   });
   return pdf;
 }
