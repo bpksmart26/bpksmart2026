@@ -114,26 +114,35 @@ function doPost(e) {
       case 'getApps':     result = { ok:true, data: getRows(SN.APP, APP_COLS, APP_ARR) }; break;
       case 'saveApp':
         Logger.log('[saveApp] entered. id=' + data.id + ', bizno=' + data.bizno + ', company=' + data.company);
-        result = appendRow(SN.APP,  APP_COLS, APP_ARR, data);
-        _safeSync('upsertUnified after saveApp', function() {
-          var r = upsertUnified(data);
-          Logger.log('[saveApp] upsertUnified result: ' + JSON.stringify(r));
-        });
-        _safeSync('pushToNotion after saveApp', function() {
-          var row = _loadUnifiedByBizno(data.bizno);
-          if (row) {
-            var r = pushToNotion(row);
-            Logger.log('[saveApp] pushToNotion result: ' + JSON.stringify(r));
-          }
-        });
+        // P1-G1: 클라이언트 random ID 충돌 가드 + 시트 쓰기를 한 lock 안에서 atomic 하게
+        result = saveAppWithIdGuard(data);
+        if (result && result.ok) {
+          // P1-G2: 후크 실패 시 _sync_queue 적재 + result.warnings 누적
+          _safeSync('upsertUnified after saveApp', function() {
+            var r = upsertUnified(data);
+            Logger.log('[saveApp] upsertUnified result: ' + JSON.stringify(r));
+          }, { action: 'upsertUnified', payload: { app: data } }, result);
+          _safeSync('pushToNotion after saveApp', function() {
+            var row = _loadUnifiedByBizno(data.bizno);
+            if (row) {
+              var r = pushToNotion(row);
+              Logger.log('[saveApp] pushToNotion result: ' + JSON.stringify(r));
+            }
+          }, { action: 'pushToNotion', payload: { bizno: data.bizno } }, result);
+        }
         break;
       case 'updateApp':
         result = updateRow(SN.APP,  APP_COLS, APP_ARR, data, 'id');
-        _safeSync('upsertUnified after updateApp', function() { upsertUnified(data); });
-        _safeSync('pushToNotion after updateApp', function() {
-          var row = _loadUnifiedByBizno(data.bizno);
-          if (row) pushToNotion(row);
-        });
+        if (result && result.ok) {
+          // P1-G2: 후크 실패 시 _sync_queue 적재 + result.warnings 누적
+          _safeSync('upsertUnified after updateApp', function() {
+            upsertUnified(data);
+          }, { action: 'upsertUnified', payload: { app: data } }, result);
+          _safeSync('pushToNotion after updateApp', function() {
+            var row = _loadUnifiedByBizno(data.bizno);
+            if (row) pushToNotion(row);
+          }, { action: 'pushToNotion', payload: { bizno: data.bizno } }, result);
+        }
         break;
 
       case 'getQts':      result = { ok:true, data: getRows(SN.QT,  QT_COLS,  QT_ARR,  {total:'number',eqCount:'number'}) }; break;
@@ -141,39 +150,45 @@ function doPost(e) {
         Logger.log('[saveQt] entered. appId=' + data.appId + ', items=' + ((data.items||[]).length) + ', total=' + data.total);
         result = saveQuoteWithVersion(data);
         Logger.log('[saveQt] saveQuoteWithVersion done: ' + JSON.stringify(result));
-        _safeSync('upsertUnified after saveQt', function() {
-          var app = _findApp(data.appId);
-          Logger.log('[saveQt] _findApp(' + data.appId + ') → ' + (app ? 'found bizno=' + app.bizno : 'NULL'));
-          if (app) {
-            var r = upsertUnified(app, data);
-            Logger.log('[saveQt] upsertUnified result: ' + JSON.stringify(r));
-          }
-        });
-        _safeSync('pushToNotion after saveQt', function() {
-          var app = _findApp(data.appId);
-          if (app) {
-            var row = _loadUnifiedByBizno(app.bizno);
-            Logger.log('[saveQt] _loadUnifiedByBizno(' + app.bizno + ') → ' + (row ? 'found id=' + row.id : 'NULL'));
-            if (row) {
-              var r = pushToNotion(row);
-              Logger.log('[saveQt] pushToNotion result: ' + JSON.stringify(r));
+        if (result && result.ok) {
+          // P1-G2: 후크 실패 시 _sync_queue 적재 + result.warnings 누적
+          _safeSync('upsertUnified after saveQt', function() {
+            var app = _findApp(data.appId);
+            Logger.log('[saveQt] _findApp(' + data.appId + ') → ' + (app ? 'found bizno=' + app.bizno : 'NULL'));
+            if (app) {
+              var r = upsertUnified(app, data);
+              Logger.log('[saveQt] upsertUnified result: ' + JSON.stringify(r));
             }
-          }
-        });
+          }, { action: 'upsertUnified', payload: { appId: data.appId, quote: data } }, result);
+          _safeSync('pushToNotion after saveQt', function() {
+            var app = _findApp(data.appId);
+            if (app) {
+              var row = _loadUnifiedByBizno(app.bizno);
+              Logger.log('[saveQt] _loadUnifiedByBizno(' + app.bizno + ') → ' + (row ? 'found id=' + row.id : 'NULL'));
+              if (row) {
+                var r = pushToNotion(row);
+                Logger.log('[saveQt] pushToNotion result: ' + JSON.stringify(r));
+              }
+            }
+          }, null, result);
+        }
         break;
       case 'updateQt':
         result = updateRow(SN.QT,   QT_COLS,  QT_ARR,  data, 'id');
-        _safeSync('upsertUnified after updateQt', function() {
-          var app = _findApp(data.appId);
-          if (app) upsertUnified(app, data);
-        });
-        _safeSync('pushToNotion after updateQt', function() {
-          var app = _findApp(data.appId);
-          if (app) {
-            var row = _loadUnifiedByBizno(app.bizno);
-            if (row) pushToNotion(row);
-          }
-        });
+        if (result && result.ok) {
+          // P1-G2: 후크 실패 시 _sync_queue 적재 + result.warnings 누적
+          _safeSync('upsertUnified after updateQt', function() {
+            var app = _findApp(data.appId);
+            if (app) upsertUnified(app, data);
+          }, { action: 'upsertUnified', payload: { appId: data.appId, quote: data } }, result);
+          _safeSync('pushToNotion after updateQt', function() {
+            var app = _findApp(data.appId);
+            if (app) {
+              var row = _loadUnifiedByBizno(app.bizno);
+              if (row) pushToNotion(row);
+            }
+          }, null, result);
+        }
         _safeSync('generateGuide after updateQt', function() {
           // PDF가 Drive에 저장된 직후에만 가이드 생성 트리거
           // (임시저장 saveQDraft 등 pdfUrl 없는 updateQt는 skip)
@@ -200,7 +215,7 @@ function doPost(e) {
             var freshRow = _loadUnifiedByBizno(app.bizno);
             if (freshRow) pushToNotion(freshRow);
           }
-        });
+        }, null, result);
         break;
       case 'deleteApps':
         result = deleteApps(data);
@@ -353,34 +368,48 @@ function _enforceTextDate(sheet, rowIdx, cols, obj, colName) {
 }
 
 function appendRow(sheetName, cols, arrCols, obj) {
-  const sheet = getSheet(sheetName);
-  ensureHeader(sheet, cols);
-  const values = serializeRow(cols, arrCols, obj);
-  const newRow = sheet.getLastRow() + 1;
-  // 먼저 setValues 로 행 전체 작성 (appendRow 는 자동 파싱 가능성 있음)
-  sheet.getRange(newRow, 1, 1, values.length).setValues([values]);
-  // date 셀은 text 포맷 + 값 재작성으로 시간 보존 강제
-  _enforceTextDate(sheet, newRow, cols, obj);
-  return { ok:true };
+  // P1-G1: 동시 append 시 getLastRow()+1 race 방지
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { ok:false, error:'시트 락 대기 timeout — 잠시 후 다시 시도해 주세요' }; }
+  try {
+    const sheet = getSheet(sheetName);
+    ensureHeader(sheet, cols);
+    const values = serializeRow(cols, arrCols, obj);
+    const newRow = sheet.getLastRow() + 1;
+    // 먼저 setValues 로 행 전체 작성 (appendRow 는 자동 파싱 가능성 있음)
+    sheet.getRange(newRow, 1, 1, values.length).setValues([values]);
+    // date 셀은 text 포맷 + 값 재작성으로 시간 보존 강제
+    _enforceTextDate(sheet, newRow, cols, obj);
+    return { ok:true };
+  } finally {
+    try { lock.releaseLock(); } catch(e) {}
+  }
 }
 
 function updateRow(sheetName, cols, arrCols, obj, keyCol) {
-  const sheet  = getSheet(sheetName);
-  const data   = sheet.getDataRange().getValues();
-  const keyIdx = cols.indexOf(keyCol);
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][keyIdx]) === String(obj[keyCol])) {
-      sheet.getRange(i+1, 1, 1, cols.length).setValues([serializeRow(cols, arrCols, obj)]);
-      _enforceTextDate(sheet, i + 1, cols, obj);
-      return { ok:true };
+  // P1-G1: 행 찾기와 setValues 사이의 race 방지
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { ok:false, error:'시트 락 대기 timeout — 잠시 후 다시 시도해 주세요' }; }
+  try {
+    const sheet  = getSheet(sheetName);
+    const data   = sheet.getDataRange().getValues();
+    const keyIdx = cols.indexOf(keyCol);
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][keyIdx]) === String(obj[keyCol])) {
+        sheet.getRange(i+1, 1, 1, cols.length).setValues([serializeRow(cols, arrCols, obj)]);
+        _enforceTextDate(sheet, i + 1, cols, obj);
+        return { ok:true };
+      }
     }
+    // 없으면 추가
+    const values = serializeRow(cols, arrCols, obj);
+    const newRow = sheet.getLastRow() + 1;
+    sheet.getRange(newRow, 1, 1, values.length).setValues([values]);
+    _enforceTextDate(sheet, newRow, cols, obj);
+    return { ok:true, action:'inserted' };
+  } finally {
+    try { lock.releaseLock(); } catch(e) {}
   }
-  // 없으면 추가
-  const values = serializeRow(cols, arrCols, obj);
-  const newRow = sheet.getLastRow() + 1;
-  sheet.getRange(newRow, 1, 1, values.length).setValues([values]);
-  _enforceTextDate(sheet, newRow, cols, obj);
-  return { ok:true, action:'inserted' };
 }
 
 // 일회성 마이그레이션: 견적 시트의 date 컬럼 전체를 text 포맷으로 + Date 객체를 'YYYY-MM-DD HH:MM' 문자열로 변환
@@ -476,6 +505,19 @@ function _computeAppContentHash(obj) {
 // 없으면 → v1, isLatest=1
 // ============================================================
 function saveQuoteWithVersion(data) {
+  // P1-G4: appId 가 실재하는 신청을 가리키는지 사전 검증
+  // 운영자가 client-side readonly 를 우회해 영수증번호를 수정하거나, 외부 호출로 임의 appId 를
+  // 보낼 경우 orphan 견적 / 다른 신청자에 대한 견적 attach 를 차단
+  // updateQt 는 이 검증을 적용하지 않음 — 기존 orphan 견적의 PDF URL 갱신 등 후속 수정 허용
+  if (!data || !data.appId) {
+    return { ok:false, error:'영수증번호(appId)가 누락되었습니다' };
+  }
+  const targetApp = _findApp(data.appId);
+  if (!targetApp) {
+    Logger.log('[saveQuoteWithVersion] 거부 — appId 없음: ' + data.appId);
+    return { ok:false, error:'해당 신청을 찾을 수 없습니다 (영수증번호=' + data.appId + '). 신청 등록 여부를 확인해 주세요.' };
+  }
+
   const sheet = getSheet(SN.QT);
   ensureHeader(sheet, QT_COLS);
   const lock = LockService.getScriptLock();
@@ -534,6 +576,81 @@ function saveQuoteWithVersion(data) {
     SpreadsheetApp.flush();
     // 클라이언트가 최종 id/version 으로 로컬 상태 갱신할 수 있도록 응답에 포함
     return { ok:true, id: data.id, version: data.version, isLatest:'1', idCollided: idCollided };
+  } finally {
+    try { lock.releaseLock(); } catch(e) {}
+  }
+}
+
+// ============================================================
+// 신청 저장 + ID 충돌 가드 (P1-G1)
+// 클라이언트가 보낸 NO-YYMMDD-XXXX 가 이미 시트에 존재하면 같은 prefix 안에서
+// 다른 random seq 를 재발급. 100회 random 시도 실패 시 max+1 sequential fallback.
+// 클라이언트는 응답의 r.id 로 영수증/로컬 상태를 갱신해야 함.
+// ============================================================
+function saveAppWithIdGuard(data) {
+  const sheet = getSheet(SN.APP);
+  ensureHeader(sheet, APP_COLS);
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { ok:false, error:'동시 저장 충돌 — 잠시 후 다시 시도해 주세요' }; }
+  try {
+    const all = sheet.getDataRange().getValues();
+    const idxId = APP_COLS.indexOf('id');
+
+    // 기존 신청 ID 전부 수집
+    const existingIds = new Set();
+    for (let i = 1; i < all.length; i++) {
+      const id = String(all[i][idxId] || '');
+      if (id) existingIds.add(id);
+    }
+
+    // ── ID 충돌 가드
+    // 클라이언트 ID 가 비어있거나 이미 존재하면 같은 날(prefix) 안에서 충돌 안 나는 ID 재발급
+    const clientId = String(data.id || '');
+    let idCollided = false;
+    if (!clientId || existingIds.has(clientId)) {
+      idCollided = !!clientId && existingIds.has(clientId);
+      // prefix 추출: NO-YYMMDD- 형태. 클라이언트 ID 없으면 오늘 날짜로 생성
+      const m = clientId.match(/^(NO-\d{6}-)/);
+      let prefix;
+      if (m) {
+        prefix = m[1];
+      } else {
+        const tz = Session.getScriptTimeZone() || 'Asia/Seoul';
+        prefix = 'NO-' + Utilities.formatDate(new Date(), tz, 'yyMMdd') + '-';
+      }
+
+      // 100회 random 시도 (9000 슬롯 대비 collision 확률 충분히 낮음)
+      let candidate = null;
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const seq = String(1000 + Math.floor(Math.random() * 9000));
+        const c = prefix + seq;
+        if (!existingIds.has(c)) { candidate = c; break; }
+      }
+      // fallback: 같은 prefix 안 max+1 (4자리 sequential)
+      if (!candidate) {
+        let max = 0;
+        existingIds.forEach(function(id) {
+          if (id.indexOf(prefix) === 0) {
+            const n = parseInt(id.slice(prefix.length), 10);
+            if (isFinite(n) && n > max) max = n;
+          }
+        });
+        candidate = prefix + String(max + 1).padStart(4, '0');
+      }
+
+      if (idCollided) Logger.log('[saveAppWithIdGuard] ID 충돌 → ' + clientId + ' → ' + candidate);
+      else Logger.log('[saveAppWithIdGuard] ID 미지정 → ' + candidate);
+      data.id = candidate;
+    }
+
+    // 행 작성 (appendRow 와 동일 패턴, 같은 lock 안에서 inline)
+    const values = serializeRow(APP_COLS, APP_ARR, data);
+    const newRow = sheet.getLastRow() + 1;
+    sheet.getRange(newRow, 1, 1, values.length).setValues([values]);
+    _enforceTextDate(sheet, newRow, APP_COLS, data);
+    SpreadsheetApp.flush();
+
+    return { ok:true, id: data.id, idCollided: idCollided };
   } finally {
     try { lock.releaseLock(); } catch(e) {}
   }
@@ -686,18 +803,26 @@ function migrateQuoteVersions() {
 }
 
 function upsertRow(sheetName, cols, arrCols, obj, keyCol) {
-  const sheet  = getSheet(sheetName);
-  ensureHeader(sheet, cols);
-  const data   = sheet.getDataRange().getValues();
-  const keyIdx = cols.indexOf(keyCol);
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][keyIdx]) === String(obj[keyCol])) {
-      sheet.getRange(i+1, 1, 1, cols.length).setValues([serializeRow(cols, arrCols, obj)]);
-      return { ok:true, action:'updated' };
+  // P1-G1: keyCol 매칭과 setValues/appendRow 사이의 race 방지
+  // 두 디바이스에서 동일 keyCol 값으로 동시 upsert 시 silent overwrite 차단
+  const lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return { ok:false, error:'시트 락 대기 timeout — 잠시 후 다시 시도해 주세요' }; }
+  try {
+    const sheet  = getSheet(sheetName);
+    ensureHeader(sheet, cols);
+    const data   = sheet.getDataRange().getValues();
+    const keyIdx = cols.indexOf(keyCol);
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][keyIdx]) === String(obj[keyCol])) {
+        sheet.getRange(i+1, 1, 1, cols.length).setValues([serializeRow(cols, arrCols, obj)]);
+        return { ok:true, action:'updated' };
+      }
     }
+    sheet.appendRow(serializeRow(cols, arrCols, obj));
+    return { ok:true, action:'inserted' };
+  } finally {
+    try { lock.releaseLock(); } catch(e) {}
   }
-  sheet.appendRow(serializeRow(cols, arrCols, obj));
-  return { ok:true, action:'inserted' };
 }
 
 function deleteRow(sheetName, keyCol, keyVal) {
