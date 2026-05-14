@@ -320,7 +320,8 @@ function getRows(sheetName, cols, arrCols, numCols) {
       if (arrCols && arrCols.includes(col)) {
         try { obj[col] = JSON.parse(val || '[]'); } catch(e) { obj[col] = []; }
       } else if (numCols && numCols[col] === 'number') {
-        obj[col] = Number(val) || 0;
+        // P4-G9: 콤마 포함 숫자 안전 처리
+        obj[col] = _parseMoney(val);
       } else if (val instanceof Date) {
         // 기존에 Date 객체로 저장된 셀: 시간 정보 있으면 함께, 없으면 날짜만
         const hasTime = val.getHours() !== 0 || val.getMinutes() !== 0 || val.getSeconds() !== 0;
@@ -347,7 +348,14 @@ function serializeRow(cols, arrCols, obj) {
       if (!v || (Array.isArray(v) && v.length === 0)) return '';
       return JSON.stringify(v);
     }
-    return (obj[col] !== undefined && obj[col] !== null) ? obj[col] : '';
+    const raw = obj[col];
+    if (raw === undefined || raw === null) return '';
+    // P4-G9: 수식 인젝션 방지 — '=', '+', '@' 로 시작하는 문자열은 ' prefix 로 plain text 강제
+    // (음수 '-' 는 제외해 정상 음수 입력은 그대로 보존)
+    if (typeof raw === 'string' && raw.length > 0 && /^[=+@]/.test(raw)) {
+      return "'" + raw;
+    }
+    return raw;
   });
 }
 
@@ -590,6 +598,22 @@ function saveQuoteWithVersion(data) {
   } finally {
     try { lock.releaseLock(); } catch(e) {}
   }
+}
+
+// ============================================================
+// 금액 파싱 헬퍼 (P4-G9)
+// 콤마 포함 숫자 ("15,000,000") 자동 정규화 — Number() || 0 패턴의 silent zero 결함 해소.
+// 사용처: getRows / _loadUnifiedByBizno 의 numeric 컬럼 변환
+// 정책: 콤마만 strip, 그 외 비정상 입력은 0 으로 (이전 동작과 호환)
+// ============================================================
+function _parseMoney(v) {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number') return isFinite(v) ? v : 0;
+  // 콤마만 제거 (유로 점 단위는 한국 운영 시 가능성 낮으므로 보존 = 0 으로 떨어짐)
+  const cleaned = String(v).replace(/,/g, '').trim();
+  if (cleaned === '') return 0;
+  const n = Number(cleaned);
+  return isFinite(n) ? n : 0;
 }
 
 // ============================================================

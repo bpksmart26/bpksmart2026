@@ -262,7 +262,8 @@ function _loadUnifiedByBizno(bizno) {
           try { obj[col] = JSON.parse(v || '[]'); } catch(e) { obj[col] = []; }
         } else if (UNIFIED_NUM[col] === 'number') {
           // 빈 셀은 빈 문자열로 보존 (0과 구분 — 노션에 null로 가도록)
-          obj[col] = (v === '' || v == null) ? '' : (Number(v) || 0);
+          // P4-G9: 콤마 포함 숫자 안전 처리 (_parseMoney 는 Code.gs 정의 — 같은 프로젝트 전역)
+          obj[col] = (v === '' || v == null) ? '' : _parseMoney(v);
         } else if (UNIFIED_BOOL[col] === 'boolean') {
           // boolean 컬럼은 boolean 으로 보존 — 시트 체크박스 / 노션 checkbox sync 일관성
           // (이전: String(v) 로 변환되어 "false" 가 _toNotionValue 의 !!val 에서 truthy 가 되던 버그)
