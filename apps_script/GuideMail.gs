@@ -693,10 +693,16 @@ function sendGuideForRow(unifiedRow, opts) {
     }
 
     // 5분 이내 멱등성 — Make 재시도 / 동시 폴링 안전망 (버전 가드 보완)
+    // P5-cleanup: 'yyyy-MM-dd HH:mm' 형식을 Asia/Seoul 명시 파싱 — runtime timezone 차이로 인한 ±9h skew 방지
     if (freshRow.guide_sent_status === GUIDE_STATUS.SENT && freshRow.guide_sent_at) {
-      const sentAt = new Date(freshRow.guide_sent_at);
-      const ageMs = Date.now() - sentAt.getTime();
-      if (!isNaN(sentAt.getTime()) && ageMs >= 0 && ageMs < 5 * 60 * 1000) {
+      let sentMs = NaN;
+      try {
+        sentMs = Utilities.parseDate(String(freshRow.guide_sent_at), 'Asia/Seoul', 'yyyy-MM-dd HH:mm').getTime();
+      } catch (e) {
+        sentMs = new Date(freshRow.guide_sent_at).getTime();  // legacy fallback
+      }
+      const ageMs = Date.now() - sentMs;
+      if (!isNaN(sentMs) && ageMs >= 0 && ageMs < 5 * 60 * 1000) {
         Logger.log('[sendGuideForRow] 5분 이내 이미 발송됨, skip id=' + id);
         return { ok:true, skipped:'recently sent' };
       }
