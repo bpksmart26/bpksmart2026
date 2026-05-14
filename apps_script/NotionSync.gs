@@ -100,18 +100,21 @@ function upsertUnified(app, quote, opts) {
     const sheet = getSheet(SN.UNIFIED);
     ensureHeader(sheet, UNIFIED_COLS);
 
-    const bizno = String((app && app.bizno) || '').trim();
+    // P5-G12: bizno 정규화 — 입력 + 비교 + 저장 모두 정규화된 형식
+    const bizno = _normalizeBizno((app && app.bizno) || '');
     if (!bizno) {
       Logger.log('upsertUnified: bizno 없음, skip — id=' + (app && app.id));
       return { ok:false, reason:'no_bizno' };
     }
+    // app 의 bizno 도 정규화된 값으로 갱신 (이후 merged 에 복사될 때 정규화 형식으로 저장)
+    if (app) app.bizno = bizno;
 
-    // 기존 행 검색 (bizno 매칭, -1 = 없음)
+    // 기존 행 검색 (bizno 양쪽 정규화 매칭)
     const data = sheet.getDataRange().getValues();
     const biznoIdx = UNIFIED_COLS.indexOf('bizno');
     let existingRow = -1;
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][biznoIdx]) === bizno) { existingRow = i + 1; break; }
+      if (_normalizeBizno(data[i][biznoIdx]) === bizno) { existingRow = i + 1; break; }
     }
 
     // merged row 구성
@@ -253,8 +256,10 @@ function _loadUnifiedByBizno(bizno) {
   const sheet = getSheet(SN.UNIFIED);
   const data = sheet.getDataRange().getValues();
   const biznoIdx = UNIFIED_COLS.indexOf('bizno');
+  // P5-G12: 양쪽 정규화 비교 — 입력 형식 차이로 매칭 누락 차단
+  const normBizno = _normalizeBizno(bizno);
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][biznoIdx]) === String(bizno)) {
+    if (_normalizeBizno(data[i][biznoIdx]) === normBizno) {
       const obj = {};
       UNIFIED_COLS.forEach(function(col, j) {
         const v = data[i][j];
@@ -305,18 +310,19 @@ function _reconcileAfterDelete(deletedIds) {
     const biznoIdx = UNIFIED_COLS.indexOf('bizno');
 
     // 영향받은 사업자번호 수집 (통합정보에서 deletedIds와 매칭되는 row의 bizno)
+    // P5-G12: bizno 정규화 형식으로 set 에 적재 → 이후 비교도 정규화 양쪽
     const deletedIdSet = new Set(deletedIds.map(String));
     const affectedBiznos = new Set();
     for (let i = 1; i < data.length; i++) {
       if (deletedIdSet.has(String(data[i][idIdx]))) {
-        const rowBizno = String(data[i][biznoIdx]);
+        const rowBizno = _normalizeBizno(data[i][biznoIdx]);
         if (rowBizno) affectedBiznos.add(rowBizno);
       }
     }
 
     affectedBiznos.forEach(bizno => {
-      // 잔여 신청 중 가장 최근 1건 (date 내림차순)
-      const remaining = apps.filter(a => String(a.bizno) === bizno)
+      // 잔여 신청 중 가장 최근 1건 (date 내림차순) — bizno 양쪽 정규화 비교
+      const remaining = apps.filter(a => _normalizeBizno(a.bizno) === bizno)
                             .sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
       if (remaining.length === 0) {
@@ -324,7 +330,7 @@ function _reconcileAfterDelete(deletedIds) {
         const freshData = unified.getDataRange().getValues();
         let deletedCount = 0;
         for (let i = freshData.length - 1; i >= 1; i--) {
-          if (String(freshData[i][biznoIdx]) === bizno) {
+          if (_normalizeBizno(freshData[i][biznoIdx]) === bizno) {
             unified.deleteRow(i + 1);
             deletedCount++;
           }
@@ -359,36 +365,45 @@ function _reconcileAfterDelete(deletedIds) {
 // Apps Script 에디터에서 함수 드롭다운으로 실행
 // ─────────────────────────────────────────────────────────────
 function rebuildUnified() {
-  const apps = getRows(SN.APP, APP_COLS, APP_ARR);
-  const quotes = getRows(SN.QT, QT_COLS, QT_ARR, {total:'number',eqCount:'number'});
+  // P5-G13: rebuild 도중 동시 신청·견적이 마지막에 통합정보에서 누락되는 race 차단
+  const _migLock = LockService.getDocumentLock();
+  try { _migLock.waitLock(30000); }
+  catch (e) { Logger.log('rebuildUnified lock 대기 timeout — 다른 작업 진행 중'); return { ok:false, error:'lock_timeout' }; }
+  try {
+    const apps = getRows(SN.APP, APP_COLS, APP_ARR);
+    const quotes = getRows(SN.QT, QT_COLS, QT_ARR, {total:'number',eqCount:'number'});
 
-  // 사업자번호별 가장 최근 신청 1건만 선별 (date 기준 내림차순)
-  const byBizno = {};
-  apps.forEach(a => {
-    const bizno = String(a.bizno || '').trim();
-    if (!bizno) return;
-    if (!byBizno[bizno] || String(a.date) > String(byBizno[bizno].date)) {
-      byBizno[bizno] = a;
-    }
-  });
+    // 사업자번호별 가장 최근 신청 1건만 선별 (date 기준 내림차순)
+    // P5-G12: bizno 정규화 후 그룹핑
+    const byBizno = {};
+    apps.forEach(a => {
+      const bizno = _normalizeBizno(a.bizno);
+      if (!bizno) return;
+      if (!byBizno[bizno] || String(a.date) > String(byBizno[bizno].date)) {
+        byBizno[bizno] = a;
+      }
+    });
 
-  // 통합정보 시트 데이터 영역 초기화 (헤더는 보존)
-  const sheet = getSheet(SN.UNIFIED);
-  ensureHeader(sheet, UNIFIED_COLS);
-  const last = sheet.getLastRow();
-  if (last > 1) sheet.getRange(2, 1, last - 1, UNIFIED_COLS.length).clearContent();
+    // 통합정보 시트 데이터 영역 초기화 (헤더는 보존)
+    const sheet = getSheet(SN.UNIFIED);
+    ensureHeader(sheet, UNIFIED_COLS);
+    const last = sheet.getLastRow();
+    if (last > 1) sheet.getRange(2, 1, last - 1, UNIFIED_COLS.length).clearContent();
 
-  // 각 사업자에 대해 upsertUnified — 가장 최근 신청 + 그 신청의 isLatest=1 견적
-  let count = 0;
-  Object.keys(byBizno).forEach(bizno => {
-    const app = byBizno[bizno];
-    const latestQuote = quotes.filter(q => String(q.appId) === String(app.id) && String(q.isLatest) === '1')[0];
-    upsertUnified(app, latestQuote || null);
-    count++;
-  });
+    // 각 사업자에 대해 upsertUnified — outer lock 보유 → nested 회피
+    let count = 0;
+    Object.keys(byBizno).forEach(bizno => {
+      const app = byBizno[bizno];
+      const latestQuote = quotes.filter(q => String(q.appId) === String(app.id) && String(q.isLatest) === '1')[0];
+      upsertUnified(app, latestQuote || null, { _alreadyLocked: true });
+      count++;
+    });
 
-  Logger.log('rebuildUnified 완료: ' + count + ' 건');
-  return { ok:true, count:count };
+    Logger.log('rebuildUnified 완료: ' + count + ' 건');
+    return { ok:true, count:count };
+  } finally {
+    try { _migLock.releaseLock(); } catch (e) {}
+  }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1414,7 +1429,8 @@ function _enqueueSync(action, payload, error) {
     const sheet = getSheet(SN.QUEUE);
     ensureHeader(sheet, QUEUE_COLS);
 
-    const id = 'q' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    // P5-cleanup: 충돌 가능성 0 의 UUID 사용 (이전: Date.now() + 4자 random)
+    const id = 'q' + Utilities.getUuid();
     const row = [
       id,
       action,
