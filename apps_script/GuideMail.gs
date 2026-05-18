@@ -7,7 +7,8 @@
 const GUIDE_STATUS = {
   PENDING: '대기중',
   SENT:    '발송완료',
-  FAILED:  '발송실패'
+  FAILED:  '발송실패',
+  BLOCKED: 'PDF누락'   // 두 PDF 중 하나 없음 — 재발급 시 자동 복구
 };
 
 // PropertiesService 키 (Phase 0.4에서 셋업)
@@ -562,7 +563,7 @@ function generateGuide(unifiedRow) {
       guide_generated_at:  nowKst,
       guide_html_url:      saved.url,
       guide_version:       newVersion,
-      guide_send_request:  false,
+      guide_send_request:  true,   // [D] 자동 발송 — pollAndSend 가 5분 내 픽업
       guide_sent_at:       '',
       guide_sent_status:   GUIDE_STATUS.PENDING,
       guide_error:         ''
@@ -739,6 +740,26 @@ function sendGuideForRow(unifiedRow, opts) {
           }
         } catch (e) {
           Logger.log('[sendGuideForRow] PDF 첨부 실패 (메일은 계속): ' + e);
+        }
+      }
+
+      // [E] 장비사양서 PDF (있으면) 첨부
+      if (unifiedRow.equipPdfUrl) {
+        try {
+          const equipFileId = _extractDriveFileId(unifiedRow.equipPdfUrl);
+          const equipBlob = DriveApp.getFileById(equipFileId).getBlob();
+          const equipBytes = equipBlob.getBytes();
+          if (equipBytes.length > 20 * 1024 * 1024) {
+            Logger.log('[sendGuideForRow] 장비PDF 20MB 초과, 첨부 생략 (크기:' + equipBytes.length + ')');
+          } else {
+            attachments.push({
+              name: equipBlob.getName() || '장비사양서.pdf',
+              base64: Utilities.base64Encode(equipBytes),
+              mime: 'application/pdf'
+            });
+          }
+        } catch (e) {
+          Logger.log('[sendGuideForRow] 장비PDF 첨부 실패 (메일은 계속): ' + e);
         }
       }
 

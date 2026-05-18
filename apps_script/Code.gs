@@ -190,17 +190,14 @@ function doPost(e) {
           }, null, result);
         }
         _safeSync('generateGuide after updateQt', function() {
-          // PDF가 Drive에 저장된 직후에만 가이드 생성 트리거
-          // (임시저장 saveQDraft 등 pdfUrl 없는 updateQt는 skip)
-          if (!data.pdfUrl) return;
+          // [C] 두 PDF 중 하나라도 없는 updateQt(임시저장 등)는 빠르게 skip
+          if (!data.pdfUrl && !data.equipPdfUrl) return;
           var app = _findApp(data.appId);
           if (!app) return;
           var row = _loadUnifiedByBizno(app.bizno);
           if (!row) return;
 
           // 멱등성 — 같은 견적 버전에 대해 중복 실행 방지
-          // sendQuote가 genPDF + genEquipPDF를 차례로 호출 → updateQt 2번 발동.
-          // 두 번째는 같은 quote.version에 대한 호출이므로 skip.
           var quoteVersion = parseInt(data.version, 10) || 0;
           var guideVersion = parseInt(row.guide_version, 10) || 0;
           if (quoteVersion > 0 && quoteVersion <= guideVersion) {
@@ -208,7 +205,27 @@ function doPost(e) {
             return;
           }
 
-          Logger.log('[updateQt] generateGuide row id=' + row.id + ', quoteVer=' + quoteVersion + ', guideVer=' + guideVersion + ', pdfUrl=' + data.pdfUrl);
+          // [C] 두 PDF가 통합시트에 모두 있을 때만 generateGuide 실행
+          // genPDF 1차 syncQt → row.equipPdfUrl 없음 → skip (대기)
+          // genEquipPDF 2차 syncQt → 둘 다 있음 → 실행
+          if (!row.pdfUrl || !row.equipPdfUrl) {
+            // [Layer 2] 견적PDF는 있는데 장비PDF만 없는 경우 → BLOCKED 상태 시트에 기록
+            if (row.pdfUrl && !row.equipPdfUrl) {
+              Logger.log('[updateQt] generateGuide BLOCKED — 장비사양PDF 없음 id=' + row.id);
+              var missing = [];
+              if (!row.pdfUrl) missing.push('견적서PDF');
+              if (!row.equipPdfUrl) missing.push('장비사양PDF');
+              updateUnifiedRowFields(row.id, {
+                guide_sent_status: GUIDE_STATUS.BLOCKED,
+                guide_error: missing.join(', ') + ' 없음 — 장비사양서 재발급 시 자동 복구됩니다'
+              });
+              var notionRow = _loadUnifiedByBizno(app.bizno);
+              if (notionRow) pushToNotion(notionRow);
+            }
+            return;
+          }
+
+          Logger.log('[updateQt] generateGuide row id=' + row.id + ', quoteVer=' + quoteVersion + ', guideVer=' + guideVersion);
           var r = generateGuide(row);
           Logger.log('[updateQt] generateGuide result: ' + JSON.stringify(r));
           if (r.ok) {

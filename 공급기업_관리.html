@@ -2180,7 +2180,7 @@ function _renderQuoteRow(g){
     <td><span class="mono" style="font-size:11px">${q.appId||'-'}</span></td>
     <td><span class="price-text">${(q.total||0).toLocaleString('ko-KR')}원</span></td>
     <td style="text-align:center">${q.eqCount||0}개</td>
-    <td><span class="badge ${sm[q.status]}"><svg class="ic-sm"><use href="#${ic[q.status]||'i-edit'}"/></svg> ${q.status}</span></td>
+    <td><span class="badge ${sm[q.status]}"><svg class="ic-sm"><use href="#${ic[q.status]||'i-edit'}"/></svg> ${q.status}</span>${q.pdfUrl && !q.equipPdfUrl ? `<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fde68a;margin-left:4px;font-size:10px" title="장비사양서 PDF 없음 — 장비사양서를 발급하면 메일이 자동 발송됩니다">⚠ 메일대기</span>` : ''}</td>
     <td><span class="mono" style="font-size:11px">${q.date}</span></td>
     <td onclick="event.stopPropagation()" style="white-space:nowrap">
       <button class="btn btn-sm btn-outline" onclick="openQuoteModal('${q.appId}','${q.id}')" title="견적서 수정 — 저장 시 v${v+1} 으로 재발급"><svg class="ic-sm"><use href="#i-edit"/></svg> 수정</button>
@@ -2507,7 +2507,10 @@ async function sendQuote(){
 
   // PDF 생성 동안 _backgroundRefresh 가 quotes 배열을 교체하지 못하게 잠금
   // (60초 autopoll·visibilitychange 도 이 플래그로 막힘 — 모달이 못 막는 JS 타이머 경로 방어)
+  // [B] 탭 닫기·새로고침 시 브라우저 확인 다이얼로그 — 모든 PDF+Drive 완료 후 해제
+  const _pdfBeforeUnload = e => { e.preventDefault(); e.returnValue = ''; };
   _pdfInProgress = true;
+  window.addEventListener('beforeunload', _pdfBeforeUnload);
   try {
     // 항상 새 행 생성 — saveQuoteWithVersion 이 자동으로 isLatest 갱신
     // ID: 로컬 max+1. 서버에도 충돌 가드 있음 (saveQuoteWithVersion 이 확정 ID 응답)
@@ -2525,7 +2528,7 @@ async function sendQuote(){
     showToast(`${d.company} 견적서 v${newVersion} 확정 — PDF 생성 중...`);
 
     // 즉시 PDF 생성 (다운로드 + Drive 업로드). 사용자가 별도 [PDF] 버튼을 누를 필요 없음
-    // 견적서 PDF 먼저, 그 다음 장비사양서 PDF (사용자가 「장비」 버튼 삭제했으므로 자동 호출)
+    // 견적서 PDF 먼저, 그 다음 장비사양서 PDF
     // qt 객체를 직접 전달 — genPDF/genEquipPDF 내부의 quotes.find 우회 (race 면역)
     try {
       await genPDF(qt);
@@ -2534,15 +2537,59 @@ async function sendQuote(){
       showToast(`견적서 PDF 발급 실패: ${(e&&e.message)||'알 수 없는 오류'}`,'error');
       return;  // 견적서 실패 시 장비사양서 시도 안 함
     }
+    // [A] genEquipPDF 완료(Drive 업로드 포함)까지 대기 후 성공 여부 확인
+    let equipPdfOk = false;
     try {
       await genEquipPDF(qt);
+      equipPdfOk = !!qt.equipPdfUrl;
     } catch(e) {
       console.error('[sendQuote] genEquipPDF 실패', e);
-      showToast(`장비사양서 PDF 발급 실패: ${(e&&e.message)||'알 수 없는 오류'}`,'error');
     }
+    // [Layer 1] 두 PDF 결과를 요약한 팝업 표시
+    _showSendQuoteResult(qt, equipPdfOk);
   } finally {
+    window.removeEventListener('beforeunload', _pdfBeforeUnload);
     _pdfInProgress = false;
   }
+}
+
+// [Layer 1] 견적서 발급 완료 결과 팝업 — 두 PDF 성공·실패 요약 + 메일 발송 예정 안내
+function _showSendQuoteResult(qt, equipPdfOk) {
+  let el = document.getElementById('pdf-result-modal');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'pdf-result-modal';
+    el.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99998;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);font-family:Pretendard,sans-serif';
+    document.body.appendChild(el);
+  }
+  const quotePdfRow = `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #f1f5f9">
+    <span style="font-size:20px;flex-shrink:0">✅</span>
+    <div><div style="font-size:13px;font-weight:600;color:#0f172a">견적서 PDF</div><div style="font-size:12px;color:#64748b;margin-top:2px">Drive 저장 완료</div></div>
+  </div>`;
+  const equipRow = equipPdfOk
+    ? `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #f1f5f9">
+        <span style="font-size:20px;flex-shrink:0">✅</span>
+        <div><div style="font-size:13px;font-weight:600;color:#0f172a">장비사양서 PDF</div><div style="font-size:12px;color:#64748b;margin-top:2px">Drive 저장 완료</div></div>
+      </div>`
+    : `<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #f1f5f9">
+        <span style="font-size:20px;flex-shrink:0">❌</span>
+        <div><div style="font-size:13px;font-weight:600;color:#dc2626">장비사양서 PDF</div><div style="font-size:12px;color:#64748b;margin-top:2px">Drive 저장 실패 — 메일이 자동 발송되지 않습니다</div></div>
+      </div>`;
+  const mailNote = equipPdfOk
+    ? `<div style="margin-top:14px;padding:11px 14px;background:#ecfdf5;border-radius:8px;font-size:13px;color:#065f46;font-weight:500">📬 가이드 메일이 최대 5분 내 자동 발송됩니다</div>`
+    : `<div style="margin-top:14px;padding:11px 14px;background:#fef3c7;border-radius:8px;font-size:13px;color:#92400e;font-weight:500">⚠ 장비사양서 PDF가 없어 메일 발송이 보류됩니다.<br><span style="font-weight:400">아래 버튼으로 재시도하면 자동 발송됩니다.</span></div>`;
+  const footer = equipPdfOk
+    ? `<button onclick="document.getElementById('pdf-result-modal').style.display='none'" style="padding:10px 24px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;font-family:inherit">확인</button>`
+    : `<button onclick="document.getElementById('pdf-result-modal').style.display='none'" style="padding:10px 18px;background:#fff;color:#374151;border:1px solid #d1d5db;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;font-family:inherit;margin-right:8px">닫기</button>
+       <button onclick="document.getElementById('pdf-result-modal').style.display='none';genEquipPDF('${qt.id}')" style="padding:10px 18px;background:#d97706;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;font-family:inherit">장비사양서 다시 시도</button>`;
+  el.innerHTML = `
+    <div style="background:#fff;border-radius:14px;padding:28px 32px;min-width:360px;max-width:460px;box-shadow:0 24px 64px rgba(0,0,0,.25)">
+      <div style="font-size:11px;color:#64748b;letter-spacing:2px;font-weight:700;margin-bottom:6px">BPK SMART 2026</div>
+      <div style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:18px">${qt.company} — v${qt.version||1} 발급 완료</div>
+      ${quotePdfRow}${equipRow}${mailNote}
+      <div style="margin-top:18px;display:flex;justify-content:flex-end">${footer}</div>
+    </div>`;
+  el.style.display = 'flex';
 }
 
 // ═══════════════════════════════════════════
@@ -3041,22 +3088,22 @@ async function genEquipPDF(qtOrId){
       if (q.equipPdfUrl && q.equipPdfHash === _ehash) {
         showToast('Drive 백업 (이전 PDF 재사용)');
       } else {
+        // [A] fire-and-forget 제거 — Drive 업로드+syncQt 완료까지 await
+        // sendQuote 가 두 PDF 모두 완료된 후 _showSendQuoteResult 를 호출할 수 있게 함
         _markPdfUploading(q.id, 'equip');
-        (async () => {
-          try {
-            const pdfUri = pdf.output('datauristring');
-            // P3-G7: bizno 동봉 — 동명 회사 disambiguation + IDOR 차단을 위한 폴더 분리
-            const _eqBizno = (applications.find(x => x.id === q.appId) || {}).bizno || '';
-            const url = await apiUploadPhoto(pdfUri, equipFileName, {type:'quote', company:q.company, bizno: _eqBizno});
-            if (url && url.startsWith('http')) {
-              q.equipPdfUrl = url; q.equipPdfHash = _ehash;
-              await syncQt(q, false);
-              showToast('장비사양 Drive 백업 완료');
-              renderQuotes();
-            }
-          } catch(e) { console.warn('장비사양 PDF Drive 저장 실패', e); }
-          finally { _markPdfUploaded(q.id, 'equip'); }
-        })();
+        try {
+          const pdfUri = pdf.output('datauristring');
+          // P3-G7: bizno 동봉 — 동명 회사 disambiguation + IDOR 차단을 위한 폴더 분리
+          const _eqBizno = (applications.find(x => x.id === q.appId) || {}).bizno || '';
+          const url = await apiUploadPhoto(pdfUri, equipFileName, {type:'quote', company:q.company, bizno: _eqBizno});
+          if (url && url.startsWith('http')) {
+            q.equipPdfUrl = url; q.equipPdfHash = _ehash;
+            await syncQt(q, false);
+            showToast('장비사양 Drive 백업 완료');
+            renderQuotes();
+          }
+        } catch(e) { console.warn('장비사양 PDF Drive 저장 실패', e); }
+        finally { _markPdfUploaded(q.id, 'equip'); }
       }
     }
   } catch(e) {
