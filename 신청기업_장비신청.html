@@ -1509,8 +1509,9 @@ async function goStep3(){
   if(API_ENABLED && _totalPhotos > 0){
     const result = await _uploadPhotosWithModal(formData.company || '');
     if(result.ok){
-      formData.space_photos   = result.spaceUrls;
-      formData.product_photos = result.productUrls;
+      // base64 fallback(업로드 실패)은 서버에 보내지 않음 — Drive URL만 저장
+      formData.space_photos   = result.spaceUrls.filter(u => !u.startsWith('data:'));
+      formData.product_photos = result.productUrls.filter(u => !u.startsWith('data:'));
     } else if(result.skipped){
       // 사진 없이 진행
       formData.space_photos = [];
@@ -2252,7 +2253,12 @@ async function goStep5(){
         // P2-G6: 성공 후 키 삭제 → 다음 신청은 새 키
         _clearIdempotencyKey('saveApp');
         hideSaveModal();
-        _renderReceipt(`<small style="color:#059669;font-weight:700">✅ 접수 완료</small>`);
+        if (r.warnings && r.warnings.length > 0) {
+          console.warn('[saveApp] 서버 경고:', JSON.stringify(r.warnings));
+          _renderReceipt(`<small style="color:#059669;font-weight:700">✅ 접수 완료</small><br><small style="color:#d97706;font-weight:600">⚠️ 일부 처리가 지연되고 있습니다. 담당자에게 자동 전달됩니다.</small>`);
+        } else {
+          _renderReceipt(`<small style="color:#059669;font-weight:700">✅ 접수 완료</small>`);
+        }
       }
     } catch(e) {
       hideSaveModal();
@@ -2495,7 +2501,7 @@ async function downloadPDF(appId){
     showToast('신청 정보를 찾지 못했습니다. 다시 조회해 주세요.', 'error');
     return;
   }
-  const quote=quotesAll.find(q=>q.appId===appId);
+  const quote=quotesAll.filter(q=>q.appId===appId).sort((a,b)=>(b.version||0)-(a.version||0))[0];
 
   // ── Drive 의 공급기업 발급 PDF 원본을 base64로 받아 다운로드
   if(API_ENABLED){

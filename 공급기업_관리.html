@@ -1002,6 +1002,7 @@ const SEC_MAP={applications:{el:'sec-applications',title:'신청 업체 관리'}
 // STATE
 // ═══════════════════════════════════════════
 let equipment=[],applications=[],quotes=[];
+let _refreshRetryScheduled = false;
 // PDF 생성 중에는 _backgroundRefresh 가 quotes 배열을 교체하지 못하도록 게이트.
 // sendQuote 가 set → finally 에서 unset. autopoll/visibilitychange race 차단.
 let _pdfInProgress = false;
@@ -1124,6 +1125,11 @@ async function _backgroundRefresh(){
     }
   }catch(err){
     console.warn('백그라운드 데이터 갱신 실패, localStorage 유지', err);
+    if (!_refreshRetryScheduled) {
+      _refreshRetryScheduled = true;
+      showToast('데이터 갱신 실패. 30초 후 재시도합니다.', 'warn');
+      setTimeout(() => { _refreshRetryScheduled = false; _backgroundRefresh(); }, 30000);
+    }
   }finally{
     _setSyncing(false);
   }
