@@ -25,6 +25,9 @@ const GUIDE_PROP_KEYS = {
 const GUIDE_TEMPLATE_CACHE_KEY = 'guide_template_html_v1';
 const GUIDE_TEMPLATE_CACHE_SEC = 300;
 
+// 사업신청 메뉴얼 — 항상 첨부되는 고정 Drive 파일 ID
+const MANUAL_DRIVE_FILE_ID = '1IkDhoJW3joslgTmpsw8rIwlzsRv0vtrN';
+
 function _guideProp(key) {
   return PropertiesService.getScriptProperties().getProperty(key);
 }
@@ -52,6 +55,12 @@ function getDriveTemplate() {
 
   cache.put(GUIDE_TEMPLATE_CACHE_KEY, html, GUIDE_TEMPLATE_CACHE_SEC);
   return html;
+}
+
+// 템플릿 파일 교체 후 캐시 클리어 — GAS 에디터에서 직접 실행
+function _clearTemplateCache() {
+  CacheService.getScriptCache().remove(GUIDE_TEMPLATE_CACHE_KEY);
+  Logger.log('템플릿 캐시 클리어 완료: ' + GUIDE_TEMPLATE_CACHE_KEY);
 }
 
 // 테스트용 — 에디터에서 실행
@@ -763,6 +772,23 @@ function sendGuideForRow(unifiedRow, opts) {
         }
       }
 
+      // 사업신청 메뉴얼 — 항상 첨부 (고정 파일) [TODO: 재작성 필요, 일시 비활성화]
+      // try {
+      //   const manualBlob = DriveApp.getFileById(MANUAL_DRIVE_FILE_ID).getBlob();
+      //   const manualBytes = manualBlob.getBytes();
+      //   if (manualBytes.length > 20 * 1024 * 1024) {
+      //     Logger.log('[sendGuideForRow] 메뉴얼 20MB 초과, 첨부 생략');
+      //   } else {
+      //     attachments.push({
+      //       name: '사업신청 메뉴얼.pdf',
+      //       base64: Utilities.base64Encode(manualBytes),
+      //       mime: 'application/pdf'
+      //     });
+      //   }
+      // } catch (e) {
+      //   Logger.log('[sendGuideForRow] 메뉴얼 첨부 실패 (메일은 계속): ' + e);
+      // }
+
       // 3. Mailer 호출
       const subject = '[BPK] 2026 스마트제조 지원사업 신청 가이드 — ' + (unifiedRow.company || '');
       callMailer({
@@ -841,6 +867,7 @@ function pollAndSend() {
       const isRequested = (reqVal === true || String(reqVal).toLowerCase() === 'true');
       if (!isRequested) continue;
       if (statusVal === GUIDE_STATUS.SENT) continue;
+      if (statusVal === GUIDE_STATUS.BLOCKED) continue; // PDF 누락 — 장비사양서 재발급 대기 중
 
       // row 객체 구성
       const row = {};
