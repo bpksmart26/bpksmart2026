@@ -81,6 +81,28 @@ const QUOTE_FIELD_MAP = {
 };
 
 // ─────────────────────────────────────────────────────────────
+// _sheetLog: 실행로그 시트에 타임스탬프+태그+메시지 기록 (노션 동기화 가시화용)
+// ─────────────────────────────────────────────────────────────
+function _sheetLog(tag, msg) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName('실행로그');
+    if (!sh) {
+      sh = ss.insertSheet('실행로그');
+      sh.appendRow(['시각', '태그', '메시지']);
+      sh.setFrozenRows(1);
+    }
+    var now = Utilities.formatDate(new Date(), 'Asia/Seoul', 'MM-dd HH:mm:ss');
+    sh.appendRow([now, tag, String(msg)]);
+    // 2000행 초과 시 오래된 행 삭제 (헤더 제외)
+    var last = sh.getLastRow();
+    if (last > 2001) sh.deleteRows(2, last - 2001);
+  } catch (e) {
+    Logger.log('[_sheetLog] 기록 실패: ' + e);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // upsertUnified: 신청 + (선택)견적 → 통합정보 시트 upsert
 // 매칭 키: 사업자번호 (bizno) — 같은 사업자 재신청 시 row 교체
 // ─────────────────────────────────────────────────────────────
@@ -142,6 +164,22 @@ function upsertUnified(app, quote, opts) {
         Object.values(QUOTE_FIELD_MAP).forEach(mk => { merged[mk] = ''; });
       }
     }
+
+    // guide 컬럼 보존 — app/quote 어디에도 없고 GuideMail.gs 만 기록하므로
+    // upsertUnified 가 덮어쓰면 가이드 발송 이력이 소실됨
+    const GUIDE_PRESERVE = [
+      'guide_script','guide_generated_at','guide_html_url','guide_version',
+      'guide_send_request','guide_sent_at','guide_sent_status','guide_error',
+      'guide_sent_version'
+    ];
+    if (existingRow > 0) {
+      GUIDE_PRESERVE.forEach(function(col) {
+        var idx = UNIFIED_COLS.indexOf(col);
+        if (idx >= 0) merged[col] = data[existingRow - 1][idx];
+      });
+    }
+
+    _sheetLog('upsertUnified', bizno + ' → existingRow=' + existingRow + ' totalRows=' + data.length + ' action=' + (existingRow > 0 ? 'UPDATE' : 'INSERT'));
 
     const values = serializeRow(UNIFIED_COLS, UNIFIED_ARR, merged);
     const targetRow = existingRow > 0 ? existingRow : sheet.getLastRow() + 1;
@@ -226,7 +264,7 @@ function _safeSync(label, fn, queueOpt, result) {
   try {
     fn();
   } catch (e) {
-    Logger.log(label + ' 실패: ' + e);
+    _sheetLog('_safeSync', label + ' 실패: ' + e);
     var queued = false;
     if (queueOpt && queueOpt.action) {
       try {
@@ -407,6 +445,108 @@ function rebuildUnified() {
 }
 
 // ─────────────────────────────────────────────────────────────
+// rebuildContentHash: 신청시트에서 contentHash 비어있는 행 재계산
+// common.js appContentHash 와 동일 로직 (V8 JS 공용)
+// Apps Script 에디터에서 수동 실행
+// ─────────────────────────────────────────────────────────────
+function rebuildContentHash() {
+  function _sortJoin(v) { return Array.isArray(v) ? v.slice().sort().join(',') : (v || ''); }
+  function _computeHash(app) {
+    if (!app) return '';
+    var parts = [
+      app.bizno || '', app.pname || '', app.texture || '',
+      _sortJoin(app.processes), _sortJoin(app.pkgtypes),
+      app.qty || '', app.speed || '', app.problem_type || '',
+      _sortJoin(app.problem_points), _sortJoin((app.equipment || []).map(String)),
+      _sortJoin(app.electric), app.air_yn || '', app.air_flow || '',
+      app.space_w || '', app.space_h || '', app.memo || ''
+    ].join('|');
+    // _md5_16 (common.js 와 동일 구현 — GAS V8 호환)
+    function rh(n){var s='',j;for(j=0;j<=3;j++)s+=((n>>(j*8+4))&0x0F).toString(16)+((n>>(j*8))&0x0F).toString(16);return s;}
+    function ad(x,y){var lsw=(x&0xFFFF)+(y&0xFFFF),msw=(x>>16)+(y>>16)+(lsw>>16);return(msw<<16)|(lsw&0xFFFF);}
+    function rl(n,c){return(n<<c)|(n>>>(32-c));}
+    function cm(q,a,b,x,s,t){return ad(rl(ad(ad(a,q),ad(x,t)),s),b);}
+    function ff(a,b,c,d,x,s,t){return cm((b&c)|((~b)&d),a,b,x,s,t);}
+    function gg(a,b,c,d,x,s,t){return cm((b&d)|(c&(~d)),a,b,x,s,t);}
+    function hh(a,b,c,d,x,s,t){return cm(b^c^d,a,b,x,s,t);}
+    function ii(a,b,c,d,x,s,t){return cm(c^(b|(~d)),a,b,x,s,t);}
+    function ct(s){var n=((s.length+8)>>6)+1,a=new Array(n*16);for(var i=0;i<n*16;i++)a[i]=0;for(var i=0;i<s.length;i++)a[i>>2]|=s.charCodeAt(i)<<((i%4)*8);a[s.length>>2]|=0x80<<((s.length%4)*8);a[n*16-2]=s.length*8;return a;}
+    var str = parts;
+    var x=ct(unescape(encodeURIComponent(str)));var a=1732584193,b=-271733879,c=-1732584194,d=271733878;
+    for(var i=0;i<x.length;i+=16){var oa=a,ob=b,oc=c,od=d;
+      a=ff(a,b,c,d,x[i+0],7,-680876936);d=ff(d,a,b,c,x[i+1],12,-389564586);c=ff(c,d,a,b,x[i+2],17,606105819);b=ff(b,c,d,a,x[i+3],22,-1044525330);
+      a=ff(a,b,c,d,x[i+4],7,-176418897);d=ff(d,a,b,c,x[i+5],12,1200080426);c=ff(c,d,a,b,x[i+6],17,-1473231341);b=ff(b,c,d,a,x[i+7],22,-45705983);
+      a=ff(a,b,c,d,x[i+8],7,1770035416);d=ff(d,a,b,c,x[i+9],12,-1958414417);c=ff(c,d,a,b,x[i+10],17,-42063);b=ff(b,c,d,a,x[i+11],22,-1990404162);
+      a=ff(a,b,c,d,x[i+12],7,1804603682);d=ff(d,a,b,c,x[i+13],12,-40341101);c=ff(c,d,a,b,x[i+14],17,-1502002290);b=ff(b,c,d,a,x[i+15],22,1236535329);
+      a=gg(a,b,c,d,x[i+1],5,-165796510);d=gg(d,a,b,c,x[i+6],9,-1069501632);c=gg(c,d,a,b,x[i+11],14,643717713);b=gg(b,c,d,a,x[i+0],20,-373897302);
+      a=gg(a,b,c,d,x[i+5],5,-701558691);d=gg(d,a,b,c,x[i+10],9,38016083);c=gg(c,d,a,b,x[i+15],14,-660478335);b=gg(b,c,d,a,x[i+4],20,-405537848);
+      a=gg(a,b,c,d,x[i+9],5,568446438);d=gg(d,a,b,c,x[i+14],9,-1019803690);c=gg(c,d,a,b,x[i+3],14,-187363961);b=gg(b,c,d,a,x[i+8],20,1163531501);
+      a=gg(a,b,c,d,x[i+13],5,-1444681467);d=gg(d,a,b,c,x[i+2],9,-51403784);c=gg(c,d,a,b,x[i+7],14,1735328473);b=gg(b,c,d,a,x[i+12],20,-1926607734);
+      a=hh(a,b,c,d,x[i+5],4,-378558);d=hh(d,a,b,c,x[i+8],11,-2022574463);c=hh(c,d,a,b,x[i+11],16,1839030562);b=hh(b,c,d,a,x[i+14],23,-35309556);
+      a=hh(a,b,c,d,x[i+1],4,-1530992060);d=hh(d,a,b,c,x[i+4],11,1272893353);c=hh(c,d,a,b,x[i+7],16,-155497632);b=hh(b,c,d,a,x[i+10],23,-1094730640);
+      a=hh(a,b,c,d,x[i+13],4,681279174);d=hh(d,a,b,c,x[i+0],11,-358537222);c=hh(c,d,a,b,x[i+3],16,-722521979);b=hh(b,c,d,a,x[i+6],23,76029189);
+      a=hh(a,b,c,d,x[i+9],4,-640364487);d=hh(d,a,b,c,x[i+12],11,-421815835);c=hh(c,d,a,b,x[i+15],16,530742520);b=hh(b,c,d,a,x[i+2],23,-995338651);
+      a=ii(a,b,c,d,x[i+0],6,-198630844);d=ii(d,a,b,c,x[i+7],10,1126891415);c=ii(c,d,a,b,x[i+14],15,-1416354905);b=ii(b,c,d,a,x[i+5],21,-57434055);
+      a=ii(a,b,c,d,x[i+12],6,1700485571);d=ii(d,a,b,c,x[i+3],10,-1894986606);c=ii(c,d,a,b,x[i+10],15,-1051523);b=ii(b,c,d,a,x[i+1],21,-2054922799);
+      a=ii(a,b,c,d,x[i+8],6,1873313359);d=ii(d,a,b,c,x[i+15],10,-30611744);c=ii(c,d,a,b,x[i+6],15,-1560198380);b=ii(b,c,d,a,x[i+13],21,1309151649);
+      a=ii(a,b,c,d,x[i+4],6,-145523070);d=ii(d,a,b,c,x[i+11],10,-1120210379);c=ii(c,d,a,b,x[i+2],15,718787259);b=ii(b,c,d,a,x[i+9],21,-343485551);
+      a=ad(a,oa);b=ad(b,ob);c=ad(c,oc);d=ad(d,od);}
+    return (rh(a)+rh(b)+rh(c)+rh(d)).slice(0, 16);
+  }
+
+  var sheet = getSheet(SN.APP);
+  var data = sheet.getDataRange().getValues();
+  if (data.length <= 1) { Logger.log('rebuildContentHash: 데이터 없음'); return 'no data'; }
+
+  var hashColIdx = APP_COLS.indexOf('contentHash');
+  if (hashColIdx < 0) { Logger.log('rebuildContentHash: contentHash 컬럼 없음'); return 'column not found'; }
+
+  var updated = 0;
+  for (var r = 1; r < data.length; r++) {
+    var row = data[r];
+    if (row[hashColIdx] && String(row[hashColIdx]).trim()) continue;
+    var app = {};
+    APP_COLS.forEach(function(col, i) {
+      var val = row[i];
+      if (APP_ARR.indexOf(col) >= 0) {
+        try { app[col] = JSON.parse(val || '[]'); } catch(e) { app[col] = []; }
+      } else {
+        app[col] = (val !== undefined && val !== null) ? String(val) : '';
+      }
+    });
+    var hash = _computeHash(app);
+    if (hash) {
+      sheet.getRange(r + 1, hashColIdx + 1).setValue(hash);
+      updated++;
+    }
+  }
+  Logger.log('rebuildContentHash 완료: ' + updated + '건 갱신');
+  return 'updated: ' + updated;
+}
+
+// ─────────────────────────────────────────────────────────────
+// setupSyncQueueTrigger: _sync_queue 를 30분마다 자동 처리하는 트리거 등록
+// Apps Script 에디터에서 1회 수동 실행 필요
+// ─────────────────────────────────────────────────────────────
+function setupSyncQueueTrigger() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'runSyncQueue') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('runSyncQueue').timeBased().everyMinutes(30).create();
+  Logger.log('setupSyncQueueTrigger 완료: runSyncQueue 30분 간격 트리거 등록');
+  return 'OK';
+}
+
+function runSyncQueue() {
+  try {
+    var r = _processSyncQueue();
+    Logger.log('[runSyncQueue] ' + JSON.stringify(r));
+  } catch (e) {
+    Logger.log('[runSyncQueue] 실패: ' + e);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
 // 매핑 정합성 체크 — Apps Script 에디터에서 실행
 // ─────────────────────────────────────────────────────────────
 function _test_notionMap() {
@@ -487,7 +627,7 @@ function notionFetch(method, path, payload, _retry) {
     return notionFetch(method, path, payload, true);
   }
 
-  Logger.log('Notion API 실패 ' + code + ' ' + path + ' — ' + body.slice(0, 500));
+  _sheetLog('notionFetch', 'Notion API 실패 ' + code + ' ' + path + ' — ' + body.slice(0, 200));
   return { ok: false, code: code, error: body };
 }
 
@@ -912,7 +1052,7 @@ function pushToNotion(unifiedRow) {
   }
 
   if (!r.ok) {
-    Logger.log('pushToNotion 실패 bizno=' + bizno + ' code=' + r.code);
+    _sheetLog('pushToNotion', '실패 bizno=' + bizno + ' code=' + r.code + ' error=' + String(r.error).slice(0,200));
     // 큐 적재 — Task 16에서 _enqueueSync 정의됨, 그 전엔 typeof 체크로 noop
     if (typeof _enqueueSync === 'function') {
       _enqueueSync('pushToNotion', { bizno: bizno, unifiedRow: unifiedRow }, r.error);
@@ -924,6 +1064,7 @@ function pushToNotion(unifiedRow) {
   PropertiesService.getScriptProperties()
     .setProperty('hash_' + bizno, _bidirectionalHash(unifiedRow));
 
+  _sheetLog('pushToNotion', (existing ? '업데이트' : '생성') + ' 완료 bizno=' + bizno);
   return {
     ok: true,
     pageId: r.data.id,
@@ -1230,6 +1371,18 @@ function _test_fromNotionPage() {
 
 // ─────────────────────────────────────────────────────────────
 // syncFromNotion: 노션 → 시트 양방향 동기화 (5분 Time Trigger + 즉시 버튼)
+// ─────────────────────────────────────────────────────────────
+// pushUnifiedByBizno: 사업자번호로 통합정보 1행을 노션에 강제 push
+// Apps Script 에디터에서 bizno 값을 바꿔 수동 실행
+// ─────────────────────────────────────────────────────────────
+function pushUnifiedByBizno() {
+  var bizno = '여기에_사업자번호_입력';  // 예: '123-45-67890'
+  var row = _loadUnifiedByBizno(bizno);
+  if (!row) { Logger.log('row not found: ' + bizno); return; }
+  var r = pushToNotion(row);
+  Logger.log(JSON.stringify(r));
+}
+
 // last_edited_time > LAST_SYNC_AT 인 페이지만 처리
 // 양방향 4 필드만 시트로 반영, 단방향은 매번 시트값으로 push (되돌리기 정책 B)
 // ─────────────────────────────────────────────────────────────

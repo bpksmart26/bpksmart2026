@@ -95,7 +95,7 @@ function getSheet(name) {
 // ============================================================
 function doPost(e) {
   // 먼저 시트 자동 초기화 (최초 1회)
-  try { autoInitSheets(); } catch(err) {}
+  try { autoInitSheets(); } catch(err) { Logger.log('[doPost] autoInitSheets 실패: ' + err); }
 
   try {
     const payload = JSON.parse(e.postData.contents);
@@ -1192,7 +1192,7 @@ function getLatestQuotePdf(data) {
     downloadUrl: 'https://drive.google.com/uc?export=download&id=' + latest.id,
     viewUrl: 'https://drive.google.com/file/d/' + latest.id + '/view',
     totalMatched: files.length,
-    totalCompanyFiles: allCompanyFiles.length,
+    totalCompanyFiles: biznoFiles.length,
     fallbackToCompanyLatest: fallbackUsed
   };
 
