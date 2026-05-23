@@ -13,7 +13,10 @@ const ADMIN_ID       = 'bpkadmin';
 const ADMIN_PW       = 'BPK2026!';   // 반드시 변경하세요
 const PHOTO_FOLDER   = 'BPK_Smart_Photos';
 
-const SN = { EQ:'장비', APP:'신청', QT:'견적', CFG:'설정', UNIFIED:'통합정보', QUEUE:'_sync_queue' };
+const SN = { EQ:'장비', APP:'신청', QT:'견적', CFG:'설정', UNIFIED:'통합정보', QUEUE:'_sync_queue', AQ:'신청용견적' };
+
+// 신청용견적 시트 컬럼 — 업체당 1행, 상세는 items_json에 압축
+const AQ_COLS = ['company','totalAdj','totalSubsidy','totalSelfPay','items_json','confirmedAt'];
 
 const EQ_COLS  = ['id','name','model','price','category','desc','status',
                   'photos','photos_pkg','videos','tags','tag_texture','tag_pkg',
@@ -260,6 +263,10 @@ function doPost(e) {
         Logger.log('[syncNotionNow] result: ' + JSON.stringify(result));
         break;
 
+      case 'getAppQuotes':  result = getAppQuotes(); break;
+      case 'saveAppQuote':  result = saveAppQuote(data); break;
+      case 'sendAppQuoteMail': result = sendAppQuoteMail(data); break;
+
       default: result = { ok:false, error:'Unknown action: ' + action };
     }
     return out(result);
@@ -298,7 +305,7 @@ function autoInitSheets() {
   // 기존 시트 (장비/신청/견적) + 신규 (통합정보/_sync_queue)
   [
     [SN.EQ, EQ_COLS], [SN.APP, APP_COLS], [SN.QT, QT_COLS],
-    [SN.UNIFIED, UNIFIED_COLS], [SN.QUEUE, QUEUE_COLS]
+    [SN.UNIFIED, UNIFIED_COLS], [SN.QUEUE, QUEUE_COLS], [SN.AQ, AQ_COLS]
   ].forEach(([name, cols]) => {
     const sheet = getSheet(name);
     if (sheet.getLastRow() === 0) {
@@ -1399,4 +1406,123 @@ function getPhotosBase64Bulk(data) {
     }
   });
   return { ok:true, data: out };
+}
+
+// ============================================================
+// 신청용견적 관리 (신규 — 기존 시트 무수정)
+// ============================================================
+
+// 신청용견적 시트 전체 조회 — 업체당 1행
+function getAppQuotes() {
+  try {
+    const sheet = getSpreadsheet().getSheetByName(SN.AQ);
+    if (!sheet || sheet.getLastRow() <= 1) return { ok:true, data:[] };
+    const rows = sheet.getDataRange().getValues();
+    const header = rows[0];
+    const data = rows.slice(1).map(function(row) {
+      var obj = {};
+      header.forEach(function(col, i) {
+        var val = row[i];
+        if (col === 'items_json') {
+          try { obj[col] = JSON.parse(val || '[]'); } catch(e) { obj[col] = []; }
+        } else if (col === 'totalAdj' || col === 'totalSubsidy' || col === 'totalSelfPay') {
+          obj[col] = Number(val) || 0;
+        } else {
+          obj[col] = (val !== undefined && val !== null) ? String(val) : '';
+        }
+      });
+      return obj;
+    });
+    return { ok:true, data:data };
+  } catch(e) {
+    return { ok:false, error: e.toString() };
+  }
+}
+
+// 업체 확정 시 신청용견적 시트에 업체당 1행으로 기록 (덮어쓰기)
+// data.company: 업체명
+// data.rows: [{ name, model, origPrice, optionPrice, adjPrice, subsidyAmt, selfPayAmt }]
+function saveAppQuote(data) {
+  try {
+    var company = String(data.company || '').trim();
+    if (!company) return { ok:false, error:'company 누락' };
+    var rows = Array.isArray(data.rows) ? data.rows : [];
+    if (rows.length === 0) return { ok:false, error:'rows 누락' };
+
+    var sheet = getSpreadsheet().getSheetByName(SN.AQ);
+    if (!sheet) {
+      sheet = getSpreadsheet().insertSheet(SN.AQ);
+      sheet.appendRow(AQ_COLS);
+    }
+
+    var now = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss');
+
+    // 합계 계산
+    var totalAdj      = rows.reduce(function(s,r){ return s + (Number(r.adjPrice)||0); }, 0);
+    var totalSubsidy  = rows.reduce(function(s,r){ return s + (Number(r.subsidyAmt)||0); }, 0);
+    var totalSelfPay  = rows.reduce(function(s,r){ return s + (Number(r.selfPayAmt)||0); }, 0);
+
+    // 기존 행 삭제 (같은 업체명)
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      var compCol = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (var i = compCol.length - 1; i >= 0; i--) {
+        if (String(compCol[i][0]).trim() === company) {
+          sheet.deleteRow(i + 2);
+        }
+      }
+    }
+
+    // 업체당 1행 append
+    sheet.appendRow([
+      company,
+      totalAdj,
+      totalSubsidy,
+      totalSelfPay,
+      JSON.stringify(rows),
+      now
+    ]);
+
+    return { ok:true };
+  } catch(e) {
+    return { ok:false, error: e.toString() };
+  }
+}
+
+// 신청용견적 확정 메일 발송
+// data.to: 수신 이메일
+// data.company: 업체명
+// data.html: 메일 본문 HTML
+function sendAppQuoteMail(data) {
+  try {
+    var to      = String(data.to || '').trim();
+    var company = String(data.company || '').trim();
+    var html    = String(data.html || '');
+    if (!to)      return { ok:false, error:'to 누락' };
+    if (!company) return { ok:false, error:'company 누락' };
+
+    var attachments = [];
+
+    // 사업신청 메뉴얼 PDF 첨부
+    try {
+      var manualBlob  = DriveApp.getFileById(MANUAL_DRIVE_FILE_ID).getBlob();
+      var manualBytes = manualBlob.getBytes();
+      if (manualBytes.length <= 20 * 1024 * 1024) {
+        attachments.push({
+          name:   '사업신청 메뉴얼.pdf',
+          base64: Utilities.base64Encode(manualBytes),
+          mime:   'application/pdf'
+        });
+      }
+    } catch(e) {
+      Logger.log('[sendAppQuoteMail] 메뉴얼 첨부 실패 (메일은 계속): ' + e);
+    }
+
+    var subject = '[BPK] 2026 스마트제조 지원사업 신청용 견적 — ' + company;
+    callMailer({ to:to, subject:subject, html:html, attachments:attachments });
+
+    return { ok:true };
+  } catch(e) {
+    return { ok:false, error: e.toString() };
+  }
 }

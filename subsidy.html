@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>신청용견적 관리 — BPK Smart 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary:#1d4ed8; --primary-l:#eff6ff; --primary-d:#1e3a8a;
+  --g50:#f8fafc; --g100:#f1f5f9; --g200:#e2e8f0; --g300:#cbd5e1;
+  --g400:#94a3b8; --g500:#64748b; --g600:#475569; --g700:#334155;
+  --g800:#1e293b; --g900:#0f172a;
+  --green:#16a34a; --green-l:#f0fdf4; --green-b:#bbf7d0;
+  --red:#dc2626; --red-l:#fef2f2; --red-b:#fecaca;
+  --orange:#ea580c; --orange-l:#fff7ed; --orange-b:#fed7aa;
+  --sidebar-w:240px; --topbar-h:52px;
+  --r:10px; --r-sm:7px;
+  --sh:0 1px 3px rgba(15,23,42,.08); --sh-md:0 4px 16px rgba(15,23,42,.13);
+}
+body { font-family:'Pretendard',-apple-system,sans-serif; background:var(--g50); color:var(--g800); height:100vh; overflow:hidden; }
+
+/* ── 상단바 ── */
+.topbar {
+  position:fixed; top:0; left:0; right:0; height:var(--topbar-h); z-index:100;
+  background:#fff; border-bottom:1.5px solid var(--g200);
+  display:flex; align-items:center; padding:0 18px; gap:12px; box-shadow:var(--sh);
+}
+.topbar-logo { font-size:13px; font-weight:800; color:var(--primary); }
+.topbar-sep  { width:1px; height:16px; background:var(--g200); }
+.topbar-title{ font-size:13px; font-weight:600; color:var(--g700); }
+.topbar-right{ margin-left:auto; display:flex; align-items:center; gap:8px; }
+.topbar-ts   { font-size:11px; color:var(--g400); font-family:'JetBrains Mono',monospace; }
+.new-badge   {
+  display:none; align-items:center; gap:4px; padding:3px 9px; border-radius:20px;
+  background:#fef3c7; color:#92400e; border:1px solid #fde68a;
+  font-size:11px; font-weight:700; cursor:pointer;
+  animation:pulse 1.5s ease-in-out infinite;
+}
+.new-badge.show { display:inline-flex; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.65} }
+.reload-btn {
+  display:inline-flex; align-items:center; gap:4px; padding:5px 11px; border-radius:var(--r-sm);
+  border:1.5px solid var(--g200); background:#fff; font-size:12px; font-weight:600;
+  color:var(--g600); cursor:pointer; transition:all .15s; font-family:'Pretendard',sans-serif;
+}
+.reload-btn:hover { background:var(--g50); border-color:var(--g400); }
+
+/* ── 레이아웃 ── */
+.layout {
+  display:flex; height:calc(100vh - var(--topbar-h)); margin-top:var(--topbar-h);
+}
+
+/* ── 사이드바 ── */
+.sidebar {
+  width:var(--sidebar-w); flex-shrink:0; background:#fff;
+  border-right:1.5px solid var(--g200); overflow-y:auto;
+}
+.sb-section { padding:8px 8px 4px; }
+.sb-section-hdr {
+  display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:6px;
+  font-size:10px; font-weight:700; letter-spacing:.7px; margin-bottom:3px;
+}
+.sb-section-hdr.todo { color:var(--orange); background:var(--orange-l); }
+.sb-section-hdr.done { color:var(--green);  background:var(--green-l); }
+.sb-count { margin-left:auto; font-size:10px; font-weight:700; background:rgba(0,0,0,.1); border-radius:10px; padding:1px 6px; }
+.sb-item {
+  display:flex; align-items:center; gap:7px; padding:9px 10px; border-radius:7px;
+  cursor:pointer; font-size:13px; font-weight:500; color:var(--g600); transition:all .12s;
+}
+.sb-item:hover { background:var(--g50); }
+.sb-item.active { background:var(--primary-l); color:var(--primary); font-weight:700; }
+.sb-item.done-item .sb-dot { background:var(--green); }
+.sb-dot { width:6px; height:6px; border-radius:50%; background:var(--g300); flex-shrink:0; }
+.sb-item.active .sb-dot { background:var(--primary); }
+.sb-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sb-tag  { font-size:9px; font-weight:700; flex-shrink:0; color:var(--g400); }
+.sb-empty{ padding:12px; font-size:11px; color:var(--g400); text-align:center; }
+
+/* ── 메인 ── */
+.main { flex:1; overflow-y:auto; padding:32px 40px 80px; }
+.main-inner { max-width:960px; margin:0 auto; }
+.empty-state {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:60vh; gap:12px; color:var(--g400);
+}
+.empty-state .icon { font-size:44px; }
+.empty-state .txt  { font-size:15px; font-weight:600; }
+.empty-state .sub  { font-size:13px; }
+
+/* ── 패널 ── */
+.company-panel { display:none; }
+.company-panel.show { display:block; }
+
+.panel-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:24px; gap:12px; flex-wrap:wrap;
+}
+.panel-company { font-size:20px; font-weight:800; color:var(--g900); }
+.panel-status  {
+  display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px;
+  font-size:12px; font-weight:700;
+}
+.panel-status.todo { background:var(--orange-l); color:var(--orange); border:1px solid var(--orange-b); }
+.panel-status.done { background:var(--green-l);  color:var(--green);  border:1px solid var(--green-b); }
+
+/* ── 2단 그리드 (장비 | 옵션) ── */
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+@media (max-width:760px) { .two-col { grid-template-columns:1fr; } }
+
+.panel-card {
+  background:#fff; border:1px solid var(--g200); border-radius:var(--r);
+  box-shadow:var(--sh); overflow:hidden;
+}
+.card-hdr {
+  padding:11px 15px; background:var(--g50); border-bottom:1px solid var(--g200);
+  font-size:13px; font-weight:700; color:var(--g700); letter-spacing:.3px;
+  display:flex; align-items:center; gap:6px;
+}
+
+/* ── 테이블 ── */
+.ctbl { width:100%; border-collapse:collapse; font-size:13px; }
+.ctbl th {
+  padding:9px 13px; background:var(--g50); border-bottom:1.5px solid var(--g200);
+  font-size:11px; font-weight:700; color:var(--g500); letter-spacing:.3px;
+  text-align:left; white-space:nowrap;
+}
+.ctbl td { padding:11px 13px; border-bottom:1px solid var(--g100); vertical-align:middle; }
+.ctbl tr:last-child td { border-bottom:none; }
+.ctbl tr:hover td { background:var(--g50); }
+.ctbl .r { text-align:right; }
+.ctbl .c { text-align:center; }
+.mono { font-family:'JetBrains Mono',monospace; }
+.fw6  { font-weight:600; }
+.fw7  { font-weight:700; }
+.c-primary { color:var(--primary); }
+.c-green   { color:var(--green); }
+.c-orange  { color:var(--orange); }
+.c-muted   { color:var(--g400); }
+
+.item-name  { font-weight:600; color:var(--g900); font-size:13px; }
+.item-model { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--g400); margin-top:2px; }
+.adj-cell   { font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--primary); font-size:13px; }
+
+/* 옵션 합산 배지 */
+.opt-plus {
+  display:inline-block; font-size:10px; font-weight:700;
+  background:var(--primary-l); color:var(--primary); border:1px solid #bfdbfe;
+  border-radius:4px; padding:1px 6px; margin-left:5px; white-space:nowrap;
+}
+
+/* 합계 행 */
+.tbl-total td {
+  background:var(--g50); border-top:1.5px solid var(--g200) !important;
+  font-weight:700; padding:10px 13px;
+}
+
+/* 전체 합계 바 */
+.grand-total-bar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 22px; background:var(--primary-l); border-radius:var(--r);
+  border:1.5px solid #bfdbfe; margin-bottom:20px; gap:10px; flex-wrap:wrap;
+}
+.grand-total-label { font-size:13px; font-weight:700; color:var(--primary-d); }
+.grand-total-value { font-size:20px; font-weight:800; color:var(--primary); font-family:'JetBrains Mono',monospace; }
+.grand-total-detail { font-size:12px; color:var(--primary); opacity:.7; margin-top:2px; }
+
+/* 옵션 행 상태 */
+.opt-row.matched td { opacity:.5; }
+.opt-row.matched .opt-name { text-decoration:line-through; }
+.matched-badge {
+  display:inline-flex; align-items:center; gap:2px; font-size:11px; font-weight:700;
+  color:var(--green); background:var(--green-l); border:1px solid var(--green-b);
+  border-radius:4px; padding:1px 7px; white-space:nowrap;
+}
+
+/* 드롭다운 */
+.match-sel {
+  width:100%; padding:5px 8px; border-radius:6px; border:1px solid var(--g200);
+  font-family:'Pretendard',sans-serif; font-size:12px; color:var(--g700);
+  background:#fff; cursor:pointer; outline:none; transition:border-color .15s;
+}
+.match-sel:focus  { border-color:var(--primary); }
+.match-sel:disabled { background:var(--g100); color:var(--g400); cursor:default; }
+
+.unmatch-btn {
+  width:20px; height:20px; border-radius:50%; border:none;
+  background:var(--red-l); color:var(--red); font-size:12px; font-weight:700;
+  cursor:pointer; display:inline-flex; align-items:center; justify-content:center;
+  transition:all .15s; flex-shrink:0;
+}
+.unmatch-btn:hover { background:var(--red); color:#fff; }
+
+/* ── 보조금 섹션 ── */
+.subsidy-card {
+  background:#fff; border:1px solid var(--g200); border-radius:var(--r);
+  box-shadow:var(--sh); overflow:hidden; margin-bottom:14px;
+}
+.subsidy-hdr {
+  padding:9px 13px; background:var(--g50); border-bottom:1px solid var(--g200);
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;
+}
+.subsidy-hdr-title { font-size:13px; font-weight:700; color:var(--g700); }
+.subsidy-inputs { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.inp-group {
+  display:flex; align-items:center; gap:5px;
+  font-size:12px; font-weight:600; color:var(--g500);
+}
+.subsidy-inp {
+  width:110px; padding:5px 9px; border-radius:6px; border:1.5px solid var(--g200);
+  font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600;
+  color:var(--g800); text-align:right; outline:none; transition:border-color .15s;
+}
+.subsidy-inp:focus { border-color:var(--primary); }
+
+.subsidy-summary {
+  display:grid; grid-template-columns:repeat(3,1fr);
+  border-top:1.5px solid var(--g200); background:var(--g50);
+}
+.sum-item {
+  padding:12px 16px; text-align:center;
+  border-right:1px solid var(--g200);
+}
+.sum-item:last-child { border-right:none; }
+.sum-label { font-size:11px; font-weight:600; color:var(--g500); margin-bottom:4px; }
+.sum-value { font-size:16px; font-weight:800; font-family:'JetBrains Mono',monospace; }
+
+/* ── 확정 버튼 영역 ── */
+.confirm-area {
+  display:flex; justify-content:flex-end; align-items:center; gap:10px;
+  padding-top:14px; border-top:1.5px solid var(--g200); margin-top:4px;
+}
+.btn {
+  display:inline-flex; align-items:center; gap:6px; padding:9px 20px;
+  border-radius:var(--r); font-family:'Pretendard',sans-serif; font-size:13px; font-weight:700;
+  cursor:pointer; border:none; transition:all .15s;
+}
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-primary:hover { background:var(--primary-d); }
+.btn-primary:disabled { background:var(--g300); cursor:default; }
+.btn-gray { background:var(--g100); color:var(--g700); }
+.btn-gray:hover { background:var(--g200); }
+
+/* ── 모달 ── */
+.modal-ov {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.4);
+  z-index:500; align-items:center; justify-content:center; padding:16px;
+}
+.modal-ov.show { display:flex; }
+.modal {
+  background:#fff; border-radius:12px; box-shadow:var(--sh-md);
+  width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
+}
+.modal-hdr {
+  padding:18px 22px 12px; border-bottom:1px solid var(--g100);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.modal-title { font-size:15px; font-weight:800; color:var(--g900); }
+.modal-close {
+  width:30px; height:30px; border-radius:7px; border:none;
+  background:var(--g100); color:var(--g500); cursor:pointer;
+  font-size:15px; display:flex; align-items:center; justify-content:center;
+}
+.modal-body { padding:16px 22px; }
+.modal-foot { padding:12px 22px; border-top:1px solid var(--g100); display:flex; gap:8px; justify-content:flex-end; }
+
+/* ── 스피너 ── */
+.spinner {
+  width:28px; height:28px; border:3px solid var(--g200);
+  border-top-color:var(--primary); border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── 토스트 ── */
+.toast-wrap {
+  position:fixed; bottom:20px; right:20px; z-index:600;
+  display:flex; flex-direction:column; gap:6px; pointer-events:none;
+}
+.toast {
+  padding:10px 16px; border-radius:8px; font-size:12px; font-weight:600;
+  box-shadow:var(--sh-md); pointer-events:auto; max-width:300px;
+  animation:slideIn .2s ease;
+}
+@keyframes slideIn { from{transform:translateY(8px);opacity:0} to{transform:translateY(0);opacity:1} }
+.toast.success { background:#fff; border-left:4px solid var(--green); color:var(--g800); }
+.toast.error   { background:#fff; border-left:4px solid var(--red);   color:var(--g800); }
+.toast.info    { background:#fff; border-left:4px solid var(--primary);color:var(--g800); }
+
+.hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<!-- 상단바 -->
+<div class="topbar">
+  <div class="topbar-logo">BPK Smart 2026</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-title">신청용견적 관리</div>
+  <div class="topbar-right">
+    <span class="new-badge" id="new-badge" onclick="scrollToNew()">🔔 신규 <span id="new-count">0</span>건</span>
+    <span class="topbar-ts" id="ts">—</span>
+    <button class="reload-btn" onclick="loadAll()">↻ 새로고침</button>
+  </div>
+</div>
+
+<!-- 레이아웃 -->
+<div class="layout">
+  <!-- 사이드바 -->
+  <div class="sidebar" id="sidebar">
+    <div id="sb-loading" style="padding:36px 0;display:flex;align-items:center;justify-content:center;">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- 메인 -->
+  <div class="main" id="main">
+    <div class="main-inner">
+      <div class="empty-state" id="empty-state">
+        <div class="icon">📋</div>
+        <div class="txt">왼쪽 업체를 선택하세요</div>
+        <div class="sub">신청용 견적을 작성하고 확정할 수 있습니다</div>
+      </div>
+      <div class="company-panel" id="company-panel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 확정 모달 -->
+<div class="modal-ov" id="confirm-modal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title" id="modal-title">견적 확정</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot">
+      <button class="btn btn-gray" onclick="closeModal()">취소</button>
+      <button class="btn btn-primary" id="modal-ok-btn" onclick="doConfirm()">확정 &amp; 메일 발송</button>
+    </div>
+  </div>
+</div>
+
+<!-- 토스트 -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+// ══════════════════════════════════════════════
+// 상태
+// ══════════════════════════════════════════════
+let _apps       = [];
+let _qts        = [];
+let _appQuotes  = [];
+let _companies  = [];
+let _matching   = {};   // { company: { optIdx: itemIdx | null } }
+let _selected   = null;
+let _prevCompSet = new Set();
+let _pollTimer  = null;
+let _subsidy    = { nat: 36000000, self: 12000000 };
+
+// ══════════════════════════════════════════════
+// 로드
+// ══════════════════════════════════════════════
+async function loadAll() {
+  setSbLoading(true);
+  try {
+    const [rA, rQ, rAQ] = await Promise.all([
+      apiCall('getApps',      {}),
+      apiCall('getQts',       {}),
+      apiCall('getAppQuotes', {})
+    ]);
+    if (!rA.ok) throw new Error('신청 조회 실패: ' + (rA.error||''));
+    if (!rQ.ok) throw new Error('견적 조회 실패: ' + (rQ.error||''));
+    _apps      = rA.data  || [];
+    _qts       = rQ.data  || [];
+    _appQuotes = rAQ.ok ? (rAQ.data || []) : [];
+    _companies = buildCompanies();
+    detectNew();
+    renderSidebar();
+    document.getElementById('ts').textContent = new Date().toLocaleTimeString('ko-KR');
+    if (_selected) {
+      const c = _companies.find(x => x.company === _selected);
+      if (c) renderPanel(c);
+    }
+  } catch(e) { toast('로드 실패: ' + e.message, 'error'); }
+  setSbLoading(false);
+}
+
+function buildCompanies() {
+  const qtMap = {};
+  _qts.forEach(qt => {
+    const c = qt.company || '(미입력)';
+    const p = qtMap[c];
+    const lat = String(qt.isLatest).toUpperCase() === 'TRUE';
+    const plat= p && String(p.isLatest).toUpperCase() === 'TRUE';
+    if (!p || (lat&&!plat) || (!plat&&!lat&&(Number(qt.version)||0)>(Number(p.version)||0)))
+      qtMap[c] = qt;
+  });
+  const doneMap = {};
+  _appQuotes.forEach(r => { doneMap[r.company] = true; });
+  const all = new Set([..._apps.map(a=>a.company||'(미입력)'), ...Object.keys(qtMap)]);
+  return Array.from(all).sort().map(company => ({
+    company, qt: qtMap[company]||null, done: !!doneMap[company],
+    email: (_apps.find(a=>(a.company||'(미입력)')===company)||{}).email||''
+  }));
+}
+
+function detectNew() {
+  if (_prevCompSet.size === 0) { _companies.forEach(c=>_prevCompSet.add(c.company)); return; }
+  const n = _companies.filter(c=>!_prevCompSet.has(c.company));
+  if (n.length) {
+    document.getElementById('new-count').textContent = n.length;
+    document.getElementById('new-badge').classList.add('show');
+    n.forEach(c=>_prevCompSet.add(c.company));
+  }
+}
+function scrollToNew() {
+  document.getElementById('new-badge').classList.remove('show');
+  const el = document.querySelector('.sb-item.new-item');
+  if (el) { el.scrollIntoView({behavior:'smooth',block:'center'}); el.click(); }
+}
+
+// ══════════════════════════════════════════════
+// 사이드바
+// ══════════════════════════════════════════════
+function setSbLoading(on) {
+  document.getElementById('sb-loading').style.display = on ? 'flex' : 'none';
+}
+
+function renderSidebar() {
+  const todo = _companies.filter(c=>!c.done);
+  const done = _companies.filter(c=> c.done);
+  document.getElementById('sidebar').innerHTML = `
+    <div id="sb-loading" style="display:none"></div>
+    <div class="sb-section">
+      <div class="sb-section-hdr todo">⬜ 미완료<span class="sb-count">${todo.length}</span></div>
+      ${todo.length===0?'<div class="sb-empty">없음</div>':''}
+      ${todo.map(c=>sbItem(c)).join('')}
+    </div>
+    <div class="sb-section" style="margin-top:6px">
+      <div class="sb-section-hdr done">✅ 완료<span class="sb-count">${done.length}</span></div>
+      ${done.length===0?'<div class="sb-empty">없음</div>':''}
+      ${done.map(c=>sbItem(c)).join('')}
+    </div>`;
+}
+
+function sbItem(c) {
+  const active = c.company===_selected?' active':'';
+  const dCls   = c.done?' done-item':'';
+  return `<div class="sb-item${active}${dCls}" onclick="selectCompany('${esc(c.company)}')">
+    <div class="sb-dot"></div>
+    <div class="sb-name" title="${esc(c.company)}">${esc(c.company)}</div>
+    <span class="sb-tag">${c.done?'✓':c.qt?'':'미견적'}</span>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════
+// 업체 선택
+// ══════════════════════════════════════════════
+function selectCompany(company) {
+  _selected = company;
+  renderSidebar();
+  const comp = _companies.find(c=>c.company===company);
+  if (!comp) return;
+  if (!_matching[company]) {
+    _matching[company] = {};
+    (comp.qt?.options||[]).forEach((_,i)=>{ _matching[company][i]=null; });
+  }
+  document.getElementById('empty-state').classList.add('hidden');
+  const panel = document.getElementById('company-panel');
+  panel.classList.add('show');
+  renderPanel(comp);
+}
+
+// ══════════════════════════════════════════════
+// 패널 렌더링
+// ══════════════════════════════════════════════
+function renderPanel(comp) {
+  const {company, qt, done, email} = comp;
+  const items   = qt?.items   || [];
+  const options = qt?.options || [];
+  const mtch    = _matching[company] || {};
+
+  // 옵션 → 장비 합산
+  const optSum = {};
+  items.forEach((_,i)=>{ optSum[i]=0; });
+  Object.entries(mtch).forEach(([oi,ii])=>{
+    if (ii!==null && ii!==undefined) {
+      const op = options[Number(oi)];
+      if (op) optSum[Number(ii)] = (optSum[Number(ii)]||0) + (Number(op.price)||0);
+    }
+  });
+
+  const subsRows = calcSubsidy(items, optSum);
+
+  // 합계 계산 (매칭 여부 무관 고정값)
+  const itemsTotal   = items.reduce((s,it)=>s+(Number(it.price)||0)*(Number(it.qty)||1), 0);
+  const optionsTotal = options.reduce((s,op)=>s+(Number(op.price)||0), 0);
+  const grandTotal   = itemsTotal + optionsTotal;
+
+  document.getElementById('company-panel').innerHTML = `
+    <!-- 헤더 (확정 버튼 없음) -->
+    <div class="panel-hdr">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="panel-company">${esc(company)}</div>
+        <span class="panel-status ${done?'done':'todo'}">${done?'✅ 확정완료':'⬜ 미확정'}</span>
+      </div>
+    </div>
+
+    ${!qt ? `<div style="padding:24px;background:var(--g50);border-radius:var(--r);font-size:14px;color:var(--g400);text-align:center">
+      📋 등록된 견적이 없습니다</div>` : `
+
+    <!-- 장비 | 옵션 2단 -->
+    <div class="two-col">
+      <!-- 장비 항목 -->
+      <div class="panel-card">
+        <div class="card-hdr">📦 장비 항목</div>
+        <table class="ctbl">
+          <thead><tr>
+            <th>명칭</th><th class="c">수량</th><th class="r">단가</th><th class="r">조정금액</th>
+          </tr></thead>
+          <tbody>
+            ${items.map((it,i)=>{
+              const orig = (Number(it.price)||0)*(Number(it.qty)||1);
+              const adj  = orig + (optSum[i]||0);
+              return `<tr>
+                <td>
+                  <div class="item-name">${esc(it.name||'-')}</div>
+                  ${it.model&&it.model!=='-'?`<div class="item-model">${esc(it.model)}</div>`:''}
+                </td>
+                <td class="c mono c-muted">${it.qty||1}</td>
+                <td class="r mono" style="font-size:12px">${wonK(it.price)}</td>
+                <td class="r">
+                  <span class="adj-cell">${wonK(adj)}</span>
+                  ${optSum[i]>0?`<span class="opt-plus">+${wonK(optSum[i])}</span>`:''}
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 옵션 & 매칭 -->
+      <div class="panel-card">
+        <div class="card-hdr">⚙️ 옵션 매칭</div>
+        ${options.length===0
+          ? `<div style="padding:20px;font-size:13px;color:var(--g400);text-align:center">옵션 없음</div>`
+          : `<table class="ctbl">
+            <thead><tr><th>옵션명</th><th class="r">금액</th><th>매칭 장비</th><th></th></tr></thead>
+            <tbody>
+              ${options.map((op,oi)=>{
+                const mi = mtch[oi];
+                const isM = mi!==null && mi!==undefined;
+                return `<tr class="opt-row${isM?' matched':''}" id="orow-${oi}">
+                  <td>
+                    <span class="opt-name">${esc(op.name||'-')}</span><br>
+                    ${isM?`<span class="matched-badge">✓ ${esc(items[mi]?.name||'?')}</span>`:''}
+                  </td>
+                  <td class="r mono fw6" style="white-space:nowrap">${wonK(op.price)}</td>
+                  <td>
+                    <select class="match-sel" id="msel-${oi}"
+                      onchange="onMatch('${esc(company)}',${oi},this.value)"
+                      ${isM?'disabled':''}>
+                      <option value="">— 선택 —</option>
+                      ${items.map((it,ii)=>`<option value="${ii}" ${mi===ii?'selected':''}>${esc(it.name||'-')}</option>`).join('')}
+                    </select>
+                  </td>
+                  <td>${isM?`<button class="unmatch-btn" onclick="onUnmatch('${esc(company)}',${oi})">×</button>`:''}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`
+        }
+      </div>
+    </div>
+
+    <!-- 전체 합계 바 (두 카드 아래) -->
+    <div class="grand-total-bar">
+      <div>
+        <div class="grand-total-label">전체 금액 합계 (장비 + 옵션)</div>
+        <div class="grand-total-detail">장비 ${wonK(itemsTotal)} + 옵션 ${wonK(optionsTotal)}</div>
+      </div>
+      <div class="grand-total-value">${wonK(grandTotal)}</div>
+    </div>
+
+    <!-- 보조금 계산 -->
+    <div class="subsidy-card">
+      <div class="subsidy-hdr">
+        <div class="subsidy-hdr-title">💰 국고보조금 · 자부담 배분</div>
+        <div class="subsidy-inputs">
+          <div class="inp-group">국고
+            <input class="subsidy-inp" id="inp-nat" type="text"
+              value="${fmtNum(_subsidy.nat)}"
+              onchange="onSubsidyChg('${esc(company)}')">원
+          </div>
+          <div class="inp-group">자부담
+            <input class="subsidy-inp" id="inp-self" type="text"
+              value="${fmtNum(_subsidy.self)}"
+              onchange="onSubsidyChg('${esc(company)}')">원
+          </div>
+        </div>
+      </div>
+      <div id="subsidy-body">${renderSubsidy(subsRows)}</div>
+    </div>
+
+    <!-- 확정 버튼 -->
+    <div class="confirm-area">
+      <span style="font-size:12px;color:var(--g400)">사업신청 메뉴얼.pdf 자동 첨부</span>
+      <button class="btn ${done?'btn-gray':'btn-primary'}" style="padding:11px 28px;font-size:14px;"
+        onclick="openModal('${esc(company)}')">
+        ${done?'↻ 재확정':'✅ 확정 &amp; 메일 발송'}
+      </button>
+    </div>
+    `}
+  `;
+}
+
+// ══════════════════════════════════════════════
+// 매칭
+// ══════════════════════════════════════════════
+function onMatch(company, oi, val) {
+  if (!val) return;
+  if (!_matching[company]) _matching[company]={};
+  _matching[company][oi] = Number(val);
+  reRender(company);
+}
+function onUnmatch(company, oi) {
+  if (_matching[company]) _matching[company][oi] = null;
+  reRender(company);
+}
+function reRender(company) {
+  const comp = _companies.find(c=>c.company===company);
+  if (comp) renderPanel(comp);
+}
+
+// ══════════════════════════════════════════════
+// 보조금 계산
+// ══════════════════════════════════════════════
+function calcSubsidy(items, optSum) {
+  const rows = items.map((it,i)=>{
+    const orig   = (Number(it.price)||0)*(Number(it.qty)||1);
+    const optAmt = optSum[i]||0;
+    return { name:it.name||'-', model:it.model||'', orig, optAmt, adj:orig+optAmt, origIdx:i };
+  });
+  rows.sort((a,b)=>b.adj-a.adj);
+  let rem = _subsidy.nat;
+  rows.forEach(r=>{ r.subsidy=Math.min(rem,r.adj); r.selfPay=r.adj-r.subsidy; rem-=r.subsidy; });
+  return rows;
+}
+
+function renderSubsidy(rows) {
+  if (!rows.length) return '<div style="padding:14px;text-align:center;font-size:12px;color:var(--g400)">장비 없음</div>';
+  const tAdj  = rows.reduce((s,r)=>s+r.adj,     0);
+  const tSub  = rows.reduce((s,r)=>s+r.subsidy, 0);
+  const tSelf = rows.reduce((s,r)=>s+r.selfPay, 0);
+  return `
+    <table class="ctbl">
+      <thead><tr>
+        <th>명칭</th>
+        <th class="r">원가</th><th class="r">옵션</th><th class="r">조정금액</th>
+        <th class="r c-green">국고보조금</th>
+        <th class="r c-orange">현금자부담</th>
+        <th class="r c-primary">합계</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r=>`<tr>
+          <td><div class="fw6" style="font-size:12px">${esc(r.name)}</div>
+            ${r.model&&r.model!=='-'?`<div class="item-model">${esc(r.model)}</div>`:''}</td>
+          <td class="r mono" style="font-size:11px">${wonK(r.orig)}</td>
+          <td class="r mono" style="font-size:11px;color:${r.optAmt>0?'var(--primary)':'var(--g300)'}">${r.optAmt>0?wonK(r.optAmt):'-'}</td>
+          <td class="r mono fw7">${wonK(r.adj)}</td>
+          <td class="r mono fw7 c-green">${r.subsidy>0?wonK(r.subsidy):'-'}</td>
+          <td class="r mono fw7 c-orange">${r.selfPay>0?wonK(r.selfPay):'-'}</td>
+          <td class="r mono fw7 c-primary">${wonK(r.adj)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="subsidy-summary">
+      <div class="sum-item"><div class="sum-label">총 조정금액</div><div class="sum-value c-primary">${wonK(tAdj)}</div></div>
+      <div class="sum-item"><div class="sum-label">총 국고보조금</div><div class="sum-value c-green">${wonK(tSub)}</div></div>
+      <div class="sum-item"><div class="sum-label">총 현금자부담</div><div class="sum-value c-orange">${wonK(tSelf)}</div></div>
+    </div>`;
+}
+
+function onSubsidyChg(company) {
+  const n = parseMoney(document.getElementById('inp-nat')?.value||'');
+  const s = parseMoney(document.getElementById('inp-self')?.value||'');
+  if (n>=0) _subsidy.nat  = n;
+  if (s>=0) _subsidy.self = s;
+  const comp = _companies.find(c=>c.company===company);
+  if (!comp||!comp.qt) return;
+  const items  = comp.qt.items||[];
+  const mtch   = _matching[company]||{};
+  const opts   = comp.qt.options||[];
+  const optSum = {};
+  items.forEach((_,i)=>{ optSum[i]=0; });
+  Object.entries(mtch).forEach(([oi,ii])=>{
+    if (ii!==null&&ii!==undefined){ const op=opts[Number(oi)]; if(op) optSum[Number(ii)]=(optSum[Number(ii)]||0)+(Number(op.price)||0); }
+  });
+  document.getElementById('subsidy-body').innerHTML = renderSubsidy(calcSubsidy(items,optSum));
+}
+
+// ══════════════════════════════════════════════
+// 확정 모달
+// ══════════════════════════════════════════════
+function openModal(company) {
+  const comp = _companies.find(c=>c.company===company);
+  if (!comp||!comp.qt) { toast('견적이 없습니다','error'); return; }
+  const items=comp.qt.items||[], opts=comp.qt.options||[], mtch=_matching[company]||{};
+  const optSum={}, optPerItem={};
+  items.forEach((_,i)=>{ optSum[i]=0; optPerItem[i]=[]; });
+  Object.entries(mtch).forEach(([oi,ii])=>{
+    if(ii!==null&&ii!==undefined){const op=opts[Number(oi)];if(op){optSum[Number(ii)]+=(Number(op.price)||0);optPerItem[Number(ii)].push(op);}}
+  });
+  const rows = calcSubsidy(items,optSum);
+  document.getElementById('modal-title').textContent = `견적 확정 — ${company}`;
+  document.getElementById('modal-body').innerHTML = `
+    <p style="font-size:12px;color:var(--g600);margin-bottom:14px">
+      <strong>${esc(company)}</strong> 신청용 견적을 확정하고<br>
+      <strong>${esc(comp.email||'(이메일 없음)')}</strong>으로 메일 발송합니다.
+    </p>
+    <table class="ctbl" style="font-size:11px">
+      <thead><tr><th>명칭</th><th class="r">조정금액</th><th class="r c-green">국고</th><th class="r c-orange">자부담</th></tr></thead>
+      <tbody>
+        ${rows.map(r=>`<tr>
+          <td class="fw6">${esc(r.name)}</td>
+          <td class="r mono">${wonK(r.adj)}</td>
+          <td class="r mono c-green">${r.subsidy>0?wonK(r.subsidy):'-'}</td>
+          <td class="r mono c-orange">${r.selfPay>0?wonK(r.selfPay):'-'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    ${!comp.email?`<p style="margin-top:10px;font-size:11px;color:var(--red);background:var(--red-l);padding:7px 10px;border-radius:6px">⚠️ 이메일 없음 — 메일 미발송</p>`:''}
+    <p style="margin-top:10px;font-size:11px;color:var(--g400)">사업신청 메뉴얼.pdf 자동 첨부</p>`;
+  document.getElementById('modal-ok-btn').dataset.company = company;
+  document.getElementById('confirm-modal').classList.add('show');
+}
+function closeModal() { document.getElementById('confirm-modal').classList.remove('show'); }
+
+async function doConfirm() {
+  const company = document.getElementById('modal-ok-btn').dataset.company;
+  const comp = _companies.find(c=>c.company===company);
+  if (!comp||!comp.qt) return;
+  const btn = document.getElementById('modal-ok-btn');
+  btn.disabled=true; btn.textContent='처리 중…';
+  try {
+    const items=comp.qt.items||[], opts=comp.qt.options||[], mtch=_matching[company]||{};
+    const optSum={},optPerItem={};
+    items.forEach((_,i)=>{optSum[i]=0;optPerItem[i]=[];});
+    Object.entries(mtch).forEach(([oi,ii])=>{
+      if(ii!==null&&ii!==undefined){const op=opts[Number(oi)];if(op){optSum[Number(ii)]+=(Number(op.price)||0);optPerItem[Number(ii)].push(op);}}
+    });
+    const rows = calcSubsidy(items,optSum);
+    const saveRows = rows.map(r=>({
+      name:r.name, model:r.model,
+      origPrice:r.orig, optionPrice:r.optAmt, adjPrice:r.adj,
+      subsidyAmt:r.subsidy, selfPayAmt:r.selfPay,
+      matchedOptions: optPerItem[r.origIdx]||[]
+    }));
+    const rS = await apiCall('saveAppQuote',{company, rows:saveRows});
+    if (!rS.ok) throw new Error('시트 저장 실패: '+(rS.error||''));
+    if (comp.email) {
+      const rM = await apiCall('sendAppQuoteMail',{to:comp.email, company, html:buildMailHtml(company,rows)});
+      if (!rM.ok) throw new Error('메일 실패: '+(rM.error||''));
+    }
+    closeModal();
+    toast(`${company} 확정 완료${comp.email?' · 메일 발송':' · 이메일 없음'}`, 'success');
+    await loadAll();
+  } catch(e) {
+    toast('오류: '+e.message,'error');
+    btn.disabled=false; btn.innerHTML='확정 &amp; 메일 발송';
+  }
+}
+
+// ══════════════════════════════════════════════
+// 메일 본문 (기본 템플릿 — 추후 교체 예정)
+// ══════════════════════════════════════════════
+function buildMailHtml(company, rows) {
+  const tAdj  = rows.reduce((s,r)=>s+r.adj,0);
+  const tSub  = rows.reduce((s,r)=>s+r.subsidy,0);
+  const tSelf = rows.reduce((s,r)=>s+r.selfPay,0);
+  return `<div style="font-family:'Malgun Gothic',Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#1e293b">
+  <h2 style="color:#1d4ed8;border-bottom:2px solid #e2e8f0;padding-bottom:10px">2026 스마트제조 지원사업 신청용 견적</h2>
+  <p style="margin:14px 0;font-size:14px;line-height:1.7">안녕하세요, <strong>${esc(company)}</strong> 담당자님.<br>신청용 견적을 안내드립니다.</p>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;margin:14px 0">
+    <thead><tr style="background:#f1f5f9">
+      <th style="padding:7px 10px;text-align:left;border:1px solid #e2e8f0">명칭</th>
+      <th style="padding:7px 10px;text-align:right;border:1px solid #e2e8f0">조정금액</th>
+      <th style="padding:7px 10px;text-align:right;border:1px solid #e2e8f0;color:#16a34a">국고보조금</th>
+      <th style="padding:7px 10px;text-align:right;border:1px solid #e2e8f0;color:#ea580c">현금자부담</th>
+    </tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td style="padding:7px 10px;border:1px solid #e2e8f0;font-weight:600">${esc(r.name)}</td>
+      <td style="padding:7px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:700">${won(r.adj)}</td>
+      <td style="padding:7px 10px;border:1px solid #e2e8f0;text-align:right;color:#16a34a;font-weight:700">${r.subsidy>0?won(r.subsidy):'-'}</td>
+      <td style="padding:7px 10px;border:1px solid #e2e8f0;text-align:right;color:#ea580c;font-weight:700">${r.selfPay>0?won(r.selfPay):'-'}</td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr style="background:#f8fafc;font-weight:800">
+      <td style="padding:8px 10px;border:1px solid #e2e8f0">합계</td>
+      <td style="padding:8px 10px;border:1px solid #e2e8f0;text-align:right;color:#1d4ed8">${won(tAdj)}</td>
+      <td style="padding:8px 10px;border:1px solid #e2e8f0;text-align:right;color:#16a34a">${won(tSub)}</td>
+      <td style="padding:8px 10px;border:1px solid #e2e8f0;text-align:right;color:#ea580c">${won(tSelf)}</td>
+    </tr></tfoot>
+  </table>
+  <p style="font-size:13px;color:#64748b;line-height:1.7">첨부된 사업신청 메뉴얼을 참고하여 신청 절차를 진행해 주시기 바랍니다.</p>
+  <p style="margin-top:16px;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px">BPK Smart 2026 운영팀</p>
+</div>`;
+}
+
+// ══════════════════════════════════════════════
+// 유틸
+// ══════════════════════════════════════════════
+function won(n)    { return Number(n||0).toLocaleString('ko-KR')+'원'; }
+function wonK(n)   { return Number(n||0).toLocaleString('ko-KR')+'원'; }
+function fmtNum(n) { return Number(n||0).toLocaleString('ko-KR'); }
+function parseMoney(s) { const n=Number(String(s).replace(/[^\d]/g,'')); return isNaN(n)?-1:n; }
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function toast(msg, type='info') {
+  const w=document.getElementById('toast-wrap');
+  const el=document.createElement('div');
+  el.className=`toast ${type}`; el.textContent=msg; w.appendChild(el);
+  setTimeout(()=>el.remove(),4000);
+}
+
+// ══════════════════════════════════════════════
+// 폴링 & 초기화
+// ══════════════════════════════════════════════
+function startPolling() {
+  if (_pollTimer) clearInterval(_pollTimer);
+  _pollTimer = setInterval(loadAll, 30000);
+}
+loadAll().then(startPolling);
+</script>
+</body>
+</html>
