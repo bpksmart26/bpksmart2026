@@ -17,3 +17,4 @@ __pycache__/
 .clasprc.json                  # 개인 OAuth 토큰 (절대 commit 금지)
 apps_script/**/*.js            # clasp pull 시 자동 생성되는 .js (.gs 가 SSoT)
 
+.clasp.json

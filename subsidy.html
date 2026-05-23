@@ -764,7 +764,11 @@ async function doConfirm() {
     const rS = await apiCall('saveAppQuote',{company, rows:saveRows});
     if (!rS.ok) throw new Error('시트 저장 실패: '+(rS.error||''));
     if (comp.email) {
-      const rM = await apiCall('sendAppQuoteMail',{to:comp.email, company, html:buildMailHtml(company,rows)});
+      const mailRows = rows.map(r=>{
+        const it = items[r.origIdx] || {};
+        return { name:r.name, qty:Number(it.qty||1), subsidy:r.subsidy, selfPay:r.selfPay };
+      });
+      const rM = await apiCall('sendAppQuoteMail',{to:comp.email, company, mailRows});
       if (!rM.ok) throw new Error('메일 실패: '+(rM.error||''));
     }
     closeModal();
@@ -774,41 +778,6 @@ async function doConfirm() {
     toast('오류: '+e.message,'error');
     btn.disabled=false; btn.innerHTML='확정 &amp; 메일 발송';
   }
-}
-
-// ══════════════════════════════════════════════
-// 메일 본문 (기본 템플릿 — 추후 교체 예정)
-// ══════════════════════════════════════════════
-function buildMailHtml(company, rows) {
-  const tAdj  = rows.reduce((s,r)=>s+r.adj,0);
-  const tSub  = rows.reduce((s,r)=>s+r.subsidy,0);
-  const tSelf = rows.reduce((s,r)=>s+r.selfPay,0);
-  return `<div style="font-family:'Malgun Gothic',Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#1e293b">
-  <h2 style="color:#1d4ed8;border-bottom:2px solid #e2e8f0;padding-bottom:10px">2026 스마트제조 지원사업 신청용 견적</h2>
-  <p style="margin:14px 0;font-size:14px;line-height:1.7">안녕하세요, <strong>${esc(company)}</strong> 담당자님.<br>신청용 견적을 안내드립니다.</p>
-  <table style="width:100%;border-collapse:collapse;font-size:13px;margin:14px 0">
-    <thead><tr style="background:#f1f5f9">
-      <th style="padding:7px 10px;text-align:left;border:1px solid #e2e8f0">명칭</th>
-      <th style="padding:7px 10px;text-align:right;border:1px solid #e2e8f0">조정금액</th>
-      <th style="padding:7px 10px;text-align:right;border:1px solid #e2e8f0;color:#16a34a">국고보조금</th>
-      <th style="padding:7px 10px;text-align:right;border:1px solid #e2e8f0;color:#ea580c">현금자부담</th>
-    </tr></thead>
-    <tbody>${rows.map(r=>`<tr>
-      <td style="padding:7px 10px;border:1px solid #e2e8f0;font-weight:600">${esc(r.name)}</td>
-      <td style="padding:7px 10px;border:1px solid #e2e8f0;text-align:right;font-weight:700">${won(r.adj)}</td>
-      <td style="padding:7px 10px;border:1px solid #e2e8f0;text-align:right;color:#16a34a;font-weight:700">${r.subsidy>0?won(r.subsidy):'-'}</td>
-      <td style="padding:7px 10px;border:1px solid #e2e8f0;text-align:right;color:#ea580c;font-weight:700">${r.selfPay>0?won(r.selfPay):'-'}</td>
-    </tr>`).join('')}</tbody>
-    <tfoot><tr style="background:#f8fafc;font-weight:800">
-      <td style="padding:8px 10px;border:1px solid #e2e8f0">합계</td>
-      <td style="padding:8px 10px;border:1px solid #e2e8f0;text-align:right;color:#1d4ed8">${won(tAdj)}</td>
-      <td style="padding:8px 10px;border:1px solid #e2e8f0;text-align:right;color:#16a34a">${won(tSub)}</td>
-      <td style="padding:8px 10px;border:1px solid #e2e8f0;text-align:right;color:#ea580c">${won(tSelf)}</td>
-    </tr></tfoot>
-  </table>
-  <p style="font-size:13px;color:#64748b;line-height:1.7">첨부된 사업신청 메뉴얼을 참고하여 신청 절차를 진행해 주시기 바랍니다.</p>
-  <p style="margin-top:16px;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px">BPK Smart 2026 운영팀</p>
-</div>`;
 }
 
 // ══════════════════════════════════════════════
