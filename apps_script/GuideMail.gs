@@ -26,7 +26,7 @@ const GUIDE_TEMPLATE_CACHE_KEY = 'guide_template_html_v1';
 const GUIDE_TEMPLATE_CACHE_SEC = 300;
 
 // 사업신청 메뉴얼 — 항상 첨부되는 고정 Drive 파일 ID
-const MANUAL_DRIVE_FILE_ID = '1IkDhoJW3joslgTmpsw8rIwlzsRv0vtrN';
+const MANUAL_DRIVE_FILE_ID = '18FKH8X7pUOPjdKZS57UotP3QaS_R5uIH';
 
 function _guideProp(key) {
   return PropertiesService.getScriptProperties().getProperty(key);
