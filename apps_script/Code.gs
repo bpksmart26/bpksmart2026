@@ -19,8 +19,9 @@ const SN = { EQ:'장비', APP:'신청', QT:'견적', CFG:'설정', UNIFIED:'통�
 const AQ_COLS = ['company','totalAdj','totalSubsidy','totalSelfPay','items_json','confirmedAt'];
 
 // 신청용견적 메일 본문 템플릿 — Drive 파일 ID 기반, 5분 캐시
-const APP_QUOTE_TEMPLATE_FILE_ID  = '1mibr4QdNU4fS8hQXKJutGMzZepjOEpDv';
-const APP_QUOTE_TEMPLATE_CACHE_KEY = 'app_quote_template_html_v1';
+// v2: 컬럼 구조 변경 (모델명만 → 명칭 + 모델명 2컬럼) → 캐시키 v1→v2 로 강제 무효화
+const APP_QUOTE_TEMPLATE_FILE_ID  = '1DBjb8taP6Q19wU_ck_ugu4sQuhNx9t-h';
+const APP_QUOTE_TEMPLATE_CACHE_KEY = 'app_quote_template_html_v2';
 const APP_QUOTE_TEMPLATE_CACHE_SEC = 300;
 
 const EQ_COLS  = ['id','name','model','price','category','desc','status',
@@ -1510,15 +1511,17 @@ function sendAppQuoteMail(data) {
     var template = getAppQuoteTemplate();
 
     var trs = mailRows.map(function(r, i) {
-      var name = _aqEsc(r.name || r.model || '-');
-      var qty  = Number(r.qty || 1);
-      var gov  = Number(r.subsidy || 0);
-      var cash = Number(r.selfPay || 0);
-      var tot  = gov + cash;
+      var label = _aqEsc(r.name  || '-');   // 명칭
+      var model = _aqEsc(r.model || '-');   // 모델명
+      var qty   = Number(r.qty || 1);
+      var gov   = Number(r.subsidy || 0);
+      var cash  = Number(r.selfPay || 0);
+      var tot   = gov + cash;
       return '<tr>' +
         '<td style="padding:11px 4px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:center;">' + (i+1) + '</td>' +
         '<td style="padding:11px 4px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:center;">구매</td>' +
-        '<td style="padding:11px 8px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:left;">' + name + '</td>' +
+        '<td style="padding:11px 8px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:left;">' + label + '</td>' +
+        '<td style="padding:11px 8px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:left;">' + model + '</td>' +
         '<td style="padding:11px 4px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:center;">' + qty + '</td>' +
         '<td style="padding:11px 6px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:right;">' + _aqNum(gov) + '</td>' +
         '<td style="padding:11px 6px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:right;">' + _aqNum(cash) + '</td>' +

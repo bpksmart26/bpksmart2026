@@ -766,7 +766,7 @@ async function doConfirm() {
     if (comp.email) {
       const mailRows = rows.map(r=>{
         const it = items[r.origIdx] || {};
-        return { name:r.name, qty:Number(it.qty||1), subsidy:r.subsidy, selfPay:r.selfPay };
+        return { name:r.name, model:r.model||it.model||'', qty:Number(it.qty||1), subsidy:r.subsidy, selfPay:r.selfPay };
       });
       const rM = await apiCall('sendAppQuoteMail',{to:comp.email, company, mailRows});
       if (!rM.ok) throw new Error('메일 실패: '+(rM.error||''));
