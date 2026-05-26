@@ -1568,10 +1568,9 @@ function sendSubsidyGuideMail(data) {
   try {
     var to       = String(data.to      || '').trim();
     var company  = String(data.company || '').trim();
-    var mailRows = Array.isArray(data.mailRows) ? data.mailRows : null;
-    if (!to)       return { ok:false, error:'to 누락' };
-    if (!company)  return { ok:false, error:'company 누락' };
-    if (!mailRows) return { ok:false, error:'mailRows 누락' };
+    var mailRows = Array.isArray(data.mailRows) ? data.mailRows : [];
+    if (!to)      return { ok:false, error:'to 누락' };
+    if (!company) return { ok:false, error:'company 누락' };
 
     // Drive 템플릿 로드 후 견적 행 렌더링
     var template = getAppQuoteTemplate();
