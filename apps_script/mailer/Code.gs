@@ -29,6 +29,10 @@ function doPost(e) {
       });
     }
 
+    if (body.cc) {
+      opts.cc = body.cc;
+    }
+
     GmailApp.sendEmail(body.to, body.subject, '', opts);
     return out({ ok:true, sentAt: new Date().toISOString() });
 

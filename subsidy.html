@@ -405,7 +405,9 @@ function buildCompanies() {
   const all = new Set([..._apps.map(a=>a.company||'(미입력)'), ...Object.keys(qtMap)]);
   return Array.from(all).sort().map(company => ({
     company, qt: qtMap[company]||null, done: !!doneMap[company],
-    email: (_apps.find(a=>(a.company||'(미입력)')===company)||{}).email||''
+    email:       (_apps.find(a=>(a.company||'(미입력)')===company)||{}).email||'',
+    pdfUrl:      (_apps.find(a=>(a.company||'(미입력)')===company)||{}).pdfUrl||'',
+    equipPdfUrl: (_apps.find(a=>(a.company||'(미입력)')===company)||{}).equipPdfUrl||''
   }));
 }
 
@@ -768,7 +770,7 @@ async function doConfirm() {
         const it = items[r.origIdx] || {};
         return { name:r.name, model:r.model||it.model||'', qty:Number(it.qty||1), subsidy:r.subsidy, selfPay:r.selfPay };
       });
-      const rM = await apiCall('sendAppQuoteMail',{to:comp.email, company, mailRows});
+      const rM = await apiCall('sendSubsidyGuideMail', {to:comp.email, company});
       if (!rM.ok) throw new Error('메일 실패: '+(rM.error||''));
     }
     closeModal();

@@ -269,9 +269,10 @@ function doPost(e) {
         Logger.log('[syncNotionNow] result: ' + JSON.stringify(result));
         break;
 
-      case 'getAppQuotes':  result = getAppQuotes(); break;
-      case 'saveAppQuote':  result = saveAppQuote(data); break;
-      case 'sendAppQuoteMail': result = sendAppQuoteMail(data); break;
+      case 'getAppQuotes':       result = getAppQuotes(); break;
+      case 'saveAppQuote':       result = saveAppQuote(data); break;
+      case 'sendQuoteConfirmMail': result = sendQuoteConfirmMail(data); break;  // 공급기업_관리.html 견적서 발급 후
+      case 'sendSubsidyGuideMail': result = sendSubsidyGuideMail(data); break; // subsidy.html 확정&메일발송
 
       default: result = { ok:false, error:'Unknown action: ' + action };
     }
@@ -1495,63 +1496,113 @@ function saveAppQuote(data) {
   }
 }
 
-// 신청용견적 확정 메일 발송
-// data.to: 수신 이메일
+// ── 견적확정 메일 ── 공급기업_관리.html 견적서 발급 완료 후 호출
+// data.to: 수신 이메일 (신청기업)
 // data.company: 업체명
-// data.html: 메일 본문 HTML
-function sendAppQuoteMail(data) {
+// data.pdfUrl: 견적서 PDF Drive URL
+// data.equipPdfUrl: 장비사양서 PDF Drive URL
+function sendQuoteConfirmMail(data) {
   try {
-    var to       = String(data.to || '').trim();
-    var company  = String(data.company || '').trim();
-    var mailRows = Array.isArray(data.mailRows) ? data.mailRows : null;
-    if (!to)       return { ok:false, error:'to 누락' };
-    if (!company)  return { ok:false, error:'company 누락' };
-    if (!mailRows) return { ok:false, error:'mailRows 누락' };
+    var to          = String(data.to          || '').trim();
+    var company     = String(data.company     || '').trim();
+    var pdfUrl      = String(data.pdfUrl      || '').trim();
+    var equipPdfUrl = String(data.equipPdfUrl || '').trim();
+    if (!to)      return { ok:false, error:'to 누락' };
+    if (!company) return { ok:false, error:'company 누락' };
 
-    var template = getAppQuoteTemplate();
-
-    var trs = mailRows.map(function(r, i) {
-      var label = _aqEsc(r.name  || '-');   // 명칭
-      var model = _aqEsc(r.model || '-');   // 모델명
-      var qty   = Number(r.qty || 1);
-      var gov   = Number(r.subsidy || 0);
-      var cash  = Number(r.selfPay || 0);
-      var tot   = gov + cash;
-      return '<tr>' +
-        '<td style="padding:11px 4px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:center;">' + (i+1) + '</td>' +
-        '<td style="padding:11px 4px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:center;">구매</td>' +
-        '<td style="padding:11px 8px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:left;">' + label + '</td>' +
-        '<td style="padding:11px 8px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:left;">' + model + '</td>' +
-        '<td style="padding:11px 4px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:center;">' + qty + '</td>' +
-        '<td style="padding:11px 6px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:right;">' + _aqNum(gov) + '</td>' +
-        '<td style="padding:11px 6px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; border-right:1px solid #d8dcd6; text-align:right;">' + _aqNum(cash) + '</td>' +
-        '<td style="padding:11px 6px; font-size:12px; color:#2a3635; border-bottom:1px solid #d8dcd6; text-align:right;">' + _aqNum(tot) + '</td>' +
-      '</tr>';
-    }).join('');
-
-    // 템플릿에 {{EQUIPMENT_ROWS}} 가 주석/실제표 두 곳에 존재하므로 모두 치환 (split+join → 백참조 이슈 회피)
-    var html = template.split('{{EQUIPMENT_ROWS}}').join(trs);
+    var html =
+      '<div style="font-family:\'Apple SD Gothic Neo\',Malgun Gothic,sans-serif;max-width:600px;margin:0 auto">' +
+      '<div style="background:#1d4ed8;border-radius:10px 10px 0 0;padding:28px 36px">' +
+        '<p style="margin:0;color:#bfdbfe;font-size:11px;letter-spacing:2px;font-weight:700">BPK SMART 2026</p>' +
+        '<h2 style="margin:8px 0 0;color:#ffffff;font-size:20px;font-weight:700">견적서 송부 및 동영상 촬영 가이드</h2>' +
+      '</div>' +
+      '<div style="background:#ffffff;padding:32px 36px;border:1px solid #e2e8f0;border-top:none">' +
+        '<p style="margin:0 0 14px;color:#374151;font-size:14px;line-height:1.8">' + _aqEsc(company) + ' 담당자님, 안녕하세요.</p>' +
+        '<p style="margin:0 0 14px;color:#374151;font-size:14px;line-height:1.8">' +
+          '2026 스마트제조지원사업 견적서 및 장비사양서를 첨부하여 발송드립니다.<br>' +
+          '첨부 파일을 확인하시어 검토해 주시기 바랍니다.' +
+        '</p>' +
+        '<p style="margin:0;color:#374151;font-size:14px">감사합니다.</p>' +
+      '</div>' +
+      '<div style="background:#f8fafc;border-radius:0 0 10px 10px;padding:16px 36px;border:1px solid #e2e8f0;border-top:none">' +
+        '<p style="margin:0;color:#94a3b8;font-size:12px">주식회사 비피케이 | bpksmart26@gmail.com</p>' +
+      '</div>' +
+      '</div>';
 
     var attachments = [];
 
-    // 사업신청 메뉴얼 PDF 첨부
-    try {
-      var manualBlob  = DriveApp.getFileById(MANUAL_DRIVE_FILE_ID).getBlob();
-      var manualBytes = manualBlob.getBytes();
-      if (manualBytes.length <= 20 * 1024 * 1024) {
-        attachments.push({
-          name:   '사업신청 메뉴얼.pdf',
-          base64: Utilities.base64Encode(manualBytes),
-          mime:   'application/pdf'
-        });
-      }
-    } catch(e) {
-      Logger.log('[sendAppQuoteMail] 메뉴얼 첨부 실패 (메일은 계속): ' + e);
+    // 견적서 PDF 첨부
+    if (pdfUrl) {
+      try {
+        var pdfBlob  = DriveApp.getFileById(_extractDriveFileId(pdfUrl)).getBlob();
+        var pdfBytes = pdfBlob.getBytes();
+        if (pdfBytes.length <= 20 * 1024 * 1024) {
+          attachments.push({ name: pdfBlob.getName() || '견적서.pdf', base64: Utilities.base64Encode(pdfBytes), mime: 'application/pdf' });
+        }
+      } catch(e) { Logger.log('[sendQuoteConfirmMail] 견적서 PDF 첨부 실패 (메일은 계속): ' + e); }
     }
 
-    var subject = '[BPK] 2026 스마트제조 지원사업 신청용 견적 — ' + company;
-    callMailer({ to:to, subject:subject, html:html, attachments:attachments });
+    // 장비사양서 PDF 첨부
+    if (equipPdfUrl) {
+      try {
+        var equipBlob  = DriveApp.getFileById(_extractDriveFileId(equipPdfUrl)).getBlob();
+        var equipBytes = equipBlob.getBytes();
+        if (equipBytes.length <= 20 * 1024 * 1024) {
+          attachments.push({ name: equipBlob.getName() || '장비사양서.pdf', base64: Utilities.base64Encode(equipBytes), mime: 'application/pdf' });
+        }
+      } catch(e) { Logger.log('[sendQuoteConfirmMail] 장비사양서 PDF 첨부 실패 (메일은 계속): ' + e); }
+    }
 
+    var subject = '[BPK] 견적서 송부 및 동영상 촬영 가이드 - ' + company;
+    callMailer({ to:to, subject:subject, html:html, attachments:attachments, cc:'choseonje@gmail.com' });
+    return { ok:true };
+  } catch(e) {
+    return { ok:false, error: e.toString() };
+  }
+}
+
+// ── 신청가이드 메일 ── subsidy.html 확정&메일발송 후 호출
+// data.to: 수신 이메일 (신청기업)
+// data.company: 업체명
+function sendSubsidyGuideMail(data) {
+  try {
+    var to      = String(data.to      || '').trim();
+    var company = String(data.company || '').trim();
+    if (!to)      return { ok:false, error:'to 누락' };
+    if (!company) return { ok:false, error:'company 누락' };
+
+    var html =
+      '<div style="font-family:\'Apple SD Gothic Neo\',Malgun Gothic,sans-serif;max-width:600px;margin:0 auto">' +
+      '<div style="background:#1d4ed8;border-radius:10px 10px 0 0;padding:28px 36px">' +
+        '<p style="margin:0;color:#bfdbfe;font-size:11px;letter-spacing:2px;font-weight:700">BPK SMART 2026</p>' +
+        '<h2 style="margin:8px 0 0;color:#ffffff;font-size:20px;font-weight:700">스마트제조지원사업 신청가이드</h2>' +
+      '</div>' +
+      '<div style="background:#ffffff;padding:32px 36px;border:1px solid #e2e8f0;border-top:none">' +
+        '<p style="margin:0 0 14px;color:#374151;font-size:14px;line-height:1.8">' + _aqEsc(company) + ' 담당자님, 안녕하세요.</p>' +
+        '<p style="margin:0 0 14px;color:#374151;font-size:14px;line-height:1.8">' +
+          '2026 스마트제조지원사업 사업신청 메뉴얼을 첨부하여 발송드립니다.<br>' +
+          '첨부 파일을 확인하시어 신청 절차를 진행해 주시기 바랍니다.' +
+        '</p>' +
+        '<p style="margin:0;color:#374151;font-size:14px">감사합니다.</p>' +
+      '</div>' +
+      '<div style="background:#f8fafc;border-radius:0 0 10px 10px;padding:16px 36px;border:1px solid #e2e8f0;border-top:none">' +
+        '<p style="margin:0;color:#94a3b8;font-size:12px">주식회사 비피케이 | bpksmart26@gmail.com</p>' +
+      '</div>' +
+      '</div>';
+
+    var attachments = [];
+
+    // 사업신청 메뉴얼 PDF 첨부 (고정 파일)
+    try {
+      var manualBlob  = DriveApp.getFileById(GUIDE_MANUAL_DRIVE_FILE_ID).getBlob();
+      var manualBytes = manualBlob.getBytes();
+      if (manualBytes.length <= 20 * 1024 * 1024) {
+        attachments.push({ name: '사업신청 메뉴얼.pdf', base64: Utilities.base64Encode(manualBytes), mime: 'application/pdf' });
+      }
+    } catch(e) { Logger.log('[sendSubsidyGuideMail] 메뉴얼 첨부 실패 (메일은 계속): ' + e); }
+
+    var subject = '[BPK] 스마트제조지원사업 신청가이드-' + company;
+    callMailer({ to:to, subject:subject, html:html, attachments:attachments, cc:'choseonje@gmail.com' });
     return { ok:true };
   } catch(e) {
     return { ok:false, error: e.toString() };

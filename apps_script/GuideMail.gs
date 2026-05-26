@@ -28,6 +28,9 @@ const GUIDE_TEMPLATE_CACHE_SEC = 300;
 // 사업신청 메뉴얼 — 항상 첨부되는 고정 Drive 파일 ID
 const MANUAL_DRIVE_FILE_ID = '18FKH8X7pUOPjdKZS57UotP3QaS_R5uIH';
 
+// 신청 가이드 메일 전용 메뉴얼 Drive 파일 ID
+const GUIDE_MANUAL_DRIVE_FILE_ID = '1qzVqiHGkXphC4Fz1PNM3Ok34Z8Bbw60d';
+
 function _guideProp(key) {
   return PropertiesService.getScriptProperties().getProperty(key);
 }
@@ -731,7 +734,7 @@ function sendGuideForRow(unifiedRow, opts) {
       const htmlFileId = _extractDriveFileId(unifiedRow.guide_html_url);
       const html = DriveApp.getFileById(htmlFileId).getBlob().getDataAsString('UTF-8');
 
-      // 2. 견적 PDF (있으면) 첨부
+      // 2. 견적서 PDF 첨부 (있으면)
       const attachments = [];
       if (unifiedRow.pdfUrl) {
         try {
@@ -752,7 +755,7 @@ function sendGuideForRow(unifiedRow, opts) {
         }
       }
 
-      // [E] 장비사양서 PDF (있으면) 첨부
+      // 장비사양서 PDF 첨부 (있으면)
       if (unifiedRow.equipPdfUrl) {
         try {
           const equipFileId = _extractDriveFileId(unifiedRow.equipPdfUrl);
@@ -772,30 +775,14 @@ function sendGuideForRow(unifiedRow, opts) {
         }
       }
 
-      // 사업신청 메뉴얼 — 항상 첨부 (고정 파일) [TODO: 재작성 필요, 일시 비활성화]
-      // try {
-      //   const manualBlob = DriveApp.getFileById(MANUAL_DRIVE_FILE_ID).getBlob();
-      //   const manualBytes = manualBlob.getBytes();
-      //   if (manualBytes.length > 20 * 1024 * 1024) {
-      //     Logger.log('[sendGuideForRow] 메뉴얼 20MB 초과, 첨부 생략');
-      //   } else {
-      //     attachments.push({
-      //       name: '사업신청 메뉴얼.pdf',
-      //       base64: Utilities.base64Encode(manualBytes),
-      //       mime: 'application/pdf'
-      //     });
-      //   }
-      // } catch (e) {
-      //   Logger.log('[sendGuideForRow] 메뉴얼 첨부 실패 (메일은 계속): ' + e);
-      // }
-
       // 3. Mailer 호출
-      const subject = '[BPK] 2026 스마트제조 지원사업 신청 가이드 — ' + (unifiedRow.company || '');
+      const subject = '[BPK] 견적서 송부 및 동영상 촬영 가이드 - ' + (unifiedRow.company || '');
       callMailer({
         to: unifiedRow.email,
         subject: subject,
         html: html,
-        attachments: attachments
+        attachments: attachments,
+        cc: 'choseonje@gmail.com'
       });
 
       // 4. 시트 업데이트 — 성공
