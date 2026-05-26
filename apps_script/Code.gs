@@ -1566,29 +1566,34 @@ function sendQuoteConfirmMail(data) {
 // data.company: 업체명
 function sendSubsidyGuideMail(data) {
   try {
-    var to      = String(data.to      || '').trim();
-    var company = String(data.company || '').trim();
-    if (!to)      return { ok:false, error:'to 누락' };
-    if (!company) return { ok:false, error:'company 누락' };
+    var to       = String(data.to      || '').trim();
+    var company  = String(data.company || '').trim();
+    var mailRows = Array.isArray(data.mailRows) ? data.mailRows : null;
+    if (!to)       return { ok:false, error:'to 누락' };
+    if (!company)  return { ok:false, error:'company 누락' };
+    if (!mailRows) return { ok:false, error:'mailRows 누락' };
 
-    var html =
-      '<div style="font-family:\'Apple SD Gothic Neo\',Malgun Gothic,sans-serif;max-width:600px;margin:0 auto">' +
-      '<div style="background:#1d4ed8;border-radius:10px 10px 0 0;padding:28px 36px">' +
-        '<p style="margin:0;color:#bfdbfe;font-size:11px;letter-spacing:2px;font-weight:700">BPK SMART 2026</p>' +
-        '<h2 style="margin:8px 0 0;color:#ffffff;font-size:20px;font-weight:700">스마트제조지원사업 신청가이드</h2>' +
-      '</div>' +
-      '<div style="background:#ffffff;padding:32px 36px;border:1px solid #e2e8f0;border-top:none">' +
-        '<p style="margin:0 0 14px;color:#374151;font-size:14px;line-height:1.8">' + _aqEsc(company) + ' 담당자님, 안녕하세요.</p>' +
-        '<p style="margin:0 0 14px;color:#374151;font-size:14px;line-height:1.8">' +
-          '2026 스마트제조지원사업 사업신청 메뉴얼을 첨부하여 발송드립니다.<br>' +
-          '첨부 파일을 확인하시어 신청 절차를 진행해 주시기 바랍니다.' +
-        '</p>' +
-        '<p style="margin:0;color:#374151;font-size:14px">감사합니다.</p>' +
-      '</div>' +
-      '<div style="background:#f8fafc;border-radius:0 0 10px 10px;padding:16px 36px;border:1px solid #e2e8f0;border-top:none">' +
-        '<p style="margin:0;color:#94a3b8;font-size:12px">주식회사 비피케이 | bpksmart26@gmail.com</p>' +
-      '</div>' +
-      '</div>';
+    // Drive 템플릿 로드 후 견적 행 렌더링
+    var template = getAppQuoteTemplate();
+    var trs = mailRows.map(function(r, i) {
+      var label = _aqEsc(r.name  || '-');
+      var model = _aqEsc(r.model || '-');
+      var qty   = Number(r.qty   || 1);
+      var gov   = Number(r.subsidy  || 0);
+      var cash  = Number(r.selfPay  || 0);
+      var tot   = gov + cash;
+      return '<tr>' +
+        '<td style="padding:11px 4px;font-size:12px;color:#2a3635;border-bottom:1px solid #d8dcd6;border-right:1px solid #d8dcd6;text-align:center;">'  + (i+1)  + '</td>' +
+        '<td style="padding:11px 4px;font-size:12px;color:#2a3635;border-bottom:1px solid #d8dcd6;border-right:1px solid #d8dcd6;text-align:center;">구매</td>' +
+        '<td style="padding:11px 8px;font-size:12px;color:#2a3635;border-bottom:1px solid #d8dcd6;border-right:1px solid #d8dcd6;text-align:left;">'   + label  + '</td>' +
+        '<td style="padding:11px 8px;font-size:12px;color:#2a3635;border-bottom:1px solid #d8dcd6;border-right:1px solid #d8dcd6;text-align:left;">'   + model  + '</td>' +
+        '<td style="padding:11px 4px;font-size:12px;color:#2a3635;border-bottom:1px solid #d8dcd6;border-right:1px solid #d8dcd6;text-align:center;">' + qty    + '</td>' +
+        '<td style="padding:11px 6px;font-size:12px;color:#2a3635;border-bottom:1px solid #d8dcd6;border-right:1px solid #d8dcd6;text-align:right;">'  + _aqNum(gov)  + '</td>' +
+        '<td style="padding:11px 6px;font-size:12px;color:#2a3635;border-bottom:1px solid #d8dcd6;border-right:1px solid #d8dcd6;text-align:right;">'  + _aqNum(cash) + '</td>' +
+        '<td style="padding:11px 6px;font-size:12px;color:#2a3635;border-bottom:1px solid #d8dcd6;text-align:right;">'                                  + _aqNum(tot)  + '</td>' +
+      '</tr>';
+    }).join('');
+    var html = template.split('{{EQUIPMENT_ROWS}}').join(trs);
 
     var attachments = [];
 

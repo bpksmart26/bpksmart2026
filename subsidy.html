@@ -770,7 +770,7 @@ async function doConfirm() {
         const it = items[r.origIdx] || {};
         return { name:r.name, model:r.model||it.model||'', qty:Number(it.qty||1), subsidy:r.subsidy, selfPay:r.selfPay };
       });
-      const rM = await apiCall('sendSubsidyGuideMail', {to:comp.email, company});
+      const rM = await apiCall('sendSubsidyGuideMail', {to:comp.email, company, mailRows});
       if (!rM.ok) throw new Error('메일 실패: '+(rM.error||''));
     }
     closeModal();
