@@ -1554,7 +1554,7 @@ function sendQuoteConfirmMail(data) {
     }
 
     var subject = '[BPK] 견적서 송부 및 동영상 촬영 가이드 - ' + company;
-    callMailer({ to:to, subject:subject, html:html, attachments:attachments, cc:'choseonje@gmail.com' });
+    callMailer({ to:to, subject:subject, html:html, attachments:attachments, cc:'bpk90@naver.com' });
     return { ok:true };
   } catch(e) {
     return { ok:false, error: e.toString() };
@@ -1640,7 +1640,7 @@ function sendSubsidyGuideMail(data) {
     } catch(e) { Logger.log('[sendSubsidyGuideMail] 메뉴얼 첨부 실패 (메일은 계속): ' + e); }
 
     var subject = '[BPK] 스마트제조지원사업 신청가이드-' + company;
-    callMailer({ to:to, subject:subject, html:html, attachments:attachments, cc:'choseonje@gmail.com' });
+    callMailer({ to:to, subject:subject, html:html, attachments:attachments, cc:'bpk90@naver.com' });
     return { ok:true };
   } catch(e) {
     return { ok:false, error: e.toString() };

@@ -782,7 +782,7 @@ function sendGuideForRow(unifiedRow, opts) {
         subject: subject,
         html: html,
         attachments: attachments,
-        cc: 'choseonje@gmail.com'
+        cc: 'bpk90@naver.com'
       });
 
       // 4. 시트 업데이트 — 성공
