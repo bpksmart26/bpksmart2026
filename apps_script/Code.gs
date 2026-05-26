@@ -1564,13 +1564,47 @@ function sendQuoteConfirmMail(data) {
 // ── 신청가이드 메일 ── subsidy.html 확정&메일발송 후 호출
 // data.to: 수신 이메일 (신청기업)
 // data.company: 업체명
+// data.mailRows: 견적 행 배열 (선택 — 없으면 신청용견적 시트에서 자동 조회)
 function sendSubsidyGuideMail(data) {
   try {
     var to       = String(data.to      || '').trim();
     var company  = String(data.company || '').trim();
-    var mailRows = Array.isArray(data.mailRows) ? data.mailRows : [];
     if (!to)      return { ok:false, error:'to 누락' };
     if (!company) return { ok:false, error:'company 누락' };
+
+    // 신청용견적 시트에서 직접 조회 (프론트엔드 버전에 무관하게 항상 최신 데이터 사용)
+    var mailRows = [];
+    try {
+      var aqSheet = getSpreadsheet().getSheetByName(SN.AQ);
+      if (aqSheet && aqSheet.getLastRow() > 1) {
+        var aqData   = aqSheet.getDataRange().getValues();
+        var aqHeader = aqData[0];
+        var colComp  = aqHeader.indexOf('company');
+        var colItems = aqHeader.indexOf('items_json');
+        for (var ri = 1; ri < aqData.length; ri++) {
+          if (String(aqData[ri][colComp]).trim() === company) {
+            var items = JSON.parse(aqData[ri][colItems] || '[]');
+            mailRows = items.map(function(r) {
+              return {
+                name:     r.name     || '-',
+                model:    r.model    || '-',
+                qty:      Number(r.qty || 1),
+                subsidy:  Number(r.subsidyAmt)  || 0,
+                selfPay:  Number(r.selfPayAmt)  || 0
+              };
+            });
+            break;
+          }
+        }
+      }
+    } catch(e) {
+      Logger.log('[sendSubsidyGuideMail] 시트 조회 실패, fallback: ' + e);
+    }
+
+    // 시트 조회 실패 시 프론트엔드가 보낸 mailRows 사용 (fallback)
+    if (!mailRows.length && Array.isArray(data.mailRows) && data.mailRows.length) {
+      mailRows = data.mailRows;
+    }
 
     // Drive 템플릿 로드 후 견적 행 렌더링
     var template = getAppQuoteTemplate();
